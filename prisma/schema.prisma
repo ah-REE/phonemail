@@ -4,6 +4,15 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  // Why this is pinned (found by container verification, Day 1 Phase C):
+  // the build stages are node:22-bookworm-slim WITHOUT the `openssl` CLI, so
+  // Prisma's runtime detection falls back to debian-openssl-1.1.x and generates
+  // an engine the bookworm runtime cannot load:
+  //   "Could not locate the Query Engine for runtime debian-openssl-3.0.x"
+  // Declaring the target explicitly makes the generated client match the
+  // runner image regardless of what detection guesses on the build machine.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
