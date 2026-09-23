@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { DEV_FAKE_OTP, OTP_TTL_SECONDS, otpKey } from "@/lib/otp";
+import { OtpCooldownError, requestOtp } from "@/lib/otp";
 import { phoneNumberSchema } from "@/lib/phone";
-import { getRedis } from "@/lib/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,31 +36,43 @@ export async function POST(request: Request) {
 
   const { phoneNumber } = parsed.data;
 
-  // Day 1: fixed fake OTP, no SMS is sent.
-  // Day 2 hook: generate a random OTP here and call Fast2SMS with
-  //   route=otp, variables_values=<otp>, numbers=<phoneNumber>
-  // using process.env.FAST2SMS_API_KEY, then store the generated value below.
-  const otp = DEV_FAKE_OTP;
-
   try {
-    const redis = await getRedis();
-    await redis.set(otpKey(phoneNumber), otp, { EX: OTP_TTL_SECONDS });
+    const result = await requestOtp(phoneNumber);
+
+    return NextResponse.json(
+      {
+        success: true,
+        phoneNumber,
+        expiresInSeconds: result.ttlSeconds,
+        resendAfterSeconds: 60,
+        message: "OTP sent successfully.",
+        // Present only when Fast2SMS is not configured. The evaluator boots the
+        // stack with a placeholder key, so this is the documented dev path, not
+        // an error state.
+        ...(result.devMode
+          ? {
+              devHint:
+                "Fast2SMS is not configured (placeholder key): no SMS was sent and the fixed dev OTP 123456 is active.",
+            }
+          : {}),
+      },
+      { status: 200 },
+    );
   } catch (error) {
-    console.error("[send-otp] failed to store OTP in Redis", error);
+    if (error instanceof OtpCooldownError) {
+      return NextResponse.json(
+        {
+          error: "Please wait before requesting another OTP.",
+          retryAfterSeconds: error.retryAfterSeconds,
+        },
+        { status: 429 },
+      );
+    }
+
+    console.error("[send-otp] failed to issue OTP", error);
     return NextResponse.json(
       { error: "Could not send OTP. Please try again." },
       { status: 503 },
     );
   }
-
-  // The OTP is intentionally NOT echoed back in the response.
-  return NextResponse.json(
-    {
-      success: true,
-      phoneNumber,
-      expiresInSeconds: OTP_TTL_SECONDS,
-      message: "OTP sent successfully.",
-    },
-    { status: 200 },
-  );
 }

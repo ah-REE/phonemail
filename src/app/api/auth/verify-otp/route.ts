@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { MissingJwtSecretError, signAuthToken } from "@/lib/jwt";
-import { otpKey } from "@/lib/otp";
+import { verifyOtp } from "@/lib/otp";
 import { otpSchema, phoneNumberSchema } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
-import { getRedis } from "@/lib/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,37 +37,43 @@ export async function POST(request: Request) {
   }
 
   const { phoneNumber, otp } = parsed.data;
-  const key = otpKey(phoneNumber);
 
-  // 1. Check the submitted OTP against the value stored by /send-otp.
-  let storedOtp: string | null;
+  // 1. Check the code against Redis. Success consumes it (one-time use); the
+  //    counter behind the brute-force guard also burns it after 5 failures.
+  let verified: Awaited<ReturnType<typeof verifyOtp>>;
   try {
-    const redis = await getRedis();
-    storedOtp = await redis.get(key);
+    verified = await verifyOtp(phoneNumber, otp);
   } catch (error) {
-    console.error("[verify-otp] Redis read failed", error);
+    console.error("[verify-otp] Redis failure", error);
     return NextResponse.json(
       { error: "Verification is temporarily unavailable. Please try again." },
       { status: 503 },
     );
   }
 
-  if (!storedOtp || storedOtp !== otp) {
+  if (!verified.ok) {
+    if (verified.reason === "locked") {
+      return NextResponse.json(
+        {
+          error: "Too many incorrect attempts. Request a new OTP.",
+          attemptsLeft: 0,
+        },
+        { status: 429 },
+      );
+    }
+
     return NextResponse.json(
-      { error: "Invalid or expired OTP." },
+      {
+        error: "Invalid or expired OTP.",
+        ...(verified.attemptsLeft !== undefined
+          ? { attemptsLeft: verified.attemptsLeft }
+          : {}),
+      },
       { status: 401 },
     );
   }
 
-  // 2. One-time use: consume the OTP as soon as it is verified.
-  try {
-    const redis = await getRedis();
-    await redis.del(key);
-  } catch (error) {
-    console.error("[verify-otp] Redis delete failed", error);
-  }
-
-  // 3. First signup creates the account; later logins reuse the same row.
+  // 2. First signup creates the account; later logins reuse the same row.
   try {
     const user = await prisma.user.upsert({
       where: { phoneNumber },

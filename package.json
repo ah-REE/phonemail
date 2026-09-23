@@ -13,15 +13,18 @@
     "@prisma/client": "^6",
     "jsonwebtoken": "^9",
     "next": "^15",
+    "nodemailer": "^10.0.10",
     "prisma": "^6",
     "react": "^19",
     "react-dom": "^19",
     "redis": "^4",
+    "socket.io": "^4.8.3",
     "zod": "^3"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9",
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"
