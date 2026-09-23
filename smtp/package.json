@@ -1,0 +1,14 @@
+{
+  "name": "phonemail-smtp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PhoneMail self-hosted SMTP service: accepts submissions for the local mail domain and hands the parsed message to the app's inbound webhook.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "mailparser": "^3",
+    "smtp-server": "^3"
+  }
+}

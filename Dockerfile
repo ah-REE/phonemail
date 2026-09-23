@@ -7,7 +7,7 @@
 #   builder    -> `prisma generate` + `next build`
 #   prod-deps  -> production-only dependency tree (includes the Prisma CLI, so
 #                 `prisma migrate deploy` can run in the final image)
-#   runner     -> small, non-root runtime image that runs `next start`
+#   runner     -> small, non-root runtime image that runs server.mjs
 #
 # No network access is required at container runtime.
 
@@ -72,6 +72,9 @@ COPY --from=builder   --chown=nextjs:nodejs /app/prisma       ./prisma
 # COPY --from=builder /app/public ./public # needed Day 3: PWA manifest + service worker
 COPY --chown=nextjs:nodejs package.json         ./package.json
 COPY --chown=nextjs:nodejs next.config.ts       ./next.config.ts
+# Custom server: Next + Socket.io share one HTTP listener, so `next start` is
+# replaced by `npm run start` -> `node server.mjs`.
+COPY --chown=nextjs:nodejs server.mjs           ./server.mjs
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 # A Windows checkout can deliver CRLF (git autocrlf); a CRLF shebang breaks the
 # entrypoint inside Linux containers, so normalize defensively before chmod.

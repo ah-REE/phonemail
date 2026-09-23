@@ -1,23 +1,24 @@
-# PhoneMail — Day 1 walking skeleton.
+# PhoneMail — Day 2 stack.
 #
 # Evaluator flow:  git clone <repo>  &&  docker compose up -d
-# No .env file and no manual setup are required: every variable the app needs
-# is set below. The values marked PLACEHOLDER are the ones to replace with
-# real credentials later (Fast2SMS API key, a strong JWT secret).
+# No .env file and no manual setup are required: every variable both sides need
+# is set below, and any value that is still a PLACEHOLDER degrades gracefully
+# (see FAST2SMS_API_KEY: without a real key the API uses a fixed dev OTP).
+# Real credentials belong in docker-compose.override.yml, which is gitignored.
 #
 # Startup order is enforced by healthchecks:
-#   postgres healthy + redis healthy  ->  app starts
-#   app entrypoint runs `prisma migrate deploy`  ->  then `next start`
+#   postgres healthy + redis healthy  ->  app starts (entrypoint runs migrations)
+#   app healthy                       ->  smtp starts
 #
-# postgres and redis are intentionally NOT published to the host: they are
-# internal-only services on the Compose network.
+# postgres and redis are intentionally NOT published to the host, and neither is
+# smtp: they are internal-only services on the Compose network.
 
 services:
   postgres:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: phonemail
-      POSTGRES_PASSWORD: phonemail
+      POSTGRES_PASSWORD: "phonemail"
       POSTGRES_DB: phonemail
       # keeps `pg_isready`/connections stable on a cold volume
       POSTGRES_HOST_AUTH_METHOD: scram-sha-256
@@ -56,8 +57,9 @@ services:
       PORT: "3000"
 
       # ---------------------------------------------------------------
-      # PLACEHOLDER — replace with a real key to enable real SMS (Day 2).
-      # Day 1 uses a fixed fake OTP ("123456") and never calls Fast2SMS.
+      # PLACEHOLDER — replace with a real key to enable real SMS.
+      # Without it (or while it is still this placeholder) the API uses the
+      # fixed dev OTP 123456 and reports devHint, so the whole flow still works.
       # ---------------------------------------------------------------
       FAST2SMS_API_KEY: "replace-with-real-fast2sms-api-key"
 
@@ -71,6 +73,13 @@ services:
       # PLACEHOLDER — replace before any real deployment.
       # ---------------------------------------------------------------
       JWT_SECRET: "change-me-placeholder-jwt-secret"
+
+      # --- mail path (app -> smtp -> app) ---
+      SMTP_HOST: "smtp"
+      SMTP_PORT: "25"
+      MAIL_DOMAIN: "phonemail.com"
+      # Must equal the smtp service's value; rotate both together.
+      MAIL_WEBHOOK_SECRET: "replace-with-real-mail-webhook-secret"
     ports:
       - "3000:3000"
     healthcheck:
@@ -79,6 +88,34 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    restart: unless-stopped
+
+  smtp:
+    build:
+      context: ./smtp
+      dockerfile: Dockerfile
+    depends_on:
+      # The webhook target must be up before we accept mail for it.
+      app:
+        condition: service_healthy
+    environment:
+      SMTP_PORT: "25"
+      MAIL_DOMAIN: "phonemail.com"
+      APP_INBOUND_URL: "http://app:3000/api/mail/inbound"
+      # Same committed value as the app's; see the note there.
+      MAIL_WEBHOOK_SECRET: "replace-with-real-mail-webhook-secret"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const net=require('net');const s=net.connect(25,'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),2000);",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
