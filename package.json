@@ -1,0 +1,29 @@
+{
+  "name": "phonemail",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^6",
+    "jsonwebtoken": "^9",
+    "next": "^15",
+    "prisma": "^6",
+    "react": "^19",
+    "react-dom": "^19",
+    "redis": "^4",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+build
+
+.git
+.gitignore
+
+# keep project notes out of the image build context
+PROJECT.md
+README.md
+
+# env files are never baked into an image
+.env
+.env.local
+.env.*.local
+
+npm-debug.log*
+*.tsbuildinfo
+.DS_Store

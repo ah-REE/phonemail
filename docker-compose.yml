@@ -1,0 +1,85 @@
+# PhoneMail — Day 1 walking skeleton.
+#
+# Evaluator flow:  git clone <repo>  &&  docker compose up -d
+# No .env file and no manual setup are required: every variable the app needs
+# is set below. The values marked PLACEHOLDER are the ones to replace with
+# real credentials later (Fast2SMS API key, a strong JWT secret).
+#
+# Startup order is enforced by healthchecks:
+#   postgres healthy + redis healthy  ->  app starts
+#   app entrypoint runs `prisma migrate deploy`  ->  then `next start`
+#
+# postgres and redis are intentionally NOT published to the host: they are
+# internal-only services on the Compose network.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: phonemail
+      POSTGRES_PASSWORD: phonemail
+      POSTGRES_DB: phonemail
+      # keeps `pg_isready`/connections stable on a cold volume
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U phonemail -d phonemail"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+
+      # ---------------------------------------------------------------
+      # PLACEHOLDER — replace with a real key to enable real SMS (Day 2).
+      # Day 1 uses a fixed fake OTP ("123456") and never calls Fast2SMS.
+      # ---------------------------------------------------------------
+      FAST2SMS_API_KEY: "replace-with-real-fast2sms-api-key"
+
+      # Internal Compose DNS names; no host ports are published.
+      REDIS_URL: "redis://redis:6379"
+
+      # Internal Compose DNS name; matches the postgres service above.
+      DATABASE_URL: "postgresql://phonemail:phonemail@postgres:5432/phonemail?schema=public"
+
+      # ---------------------------------------------------------------
+      # PLACEHOLDER — replace before any real deployment.
+      # ---------------------------------------------------------------
+      JWT_SECRET: "change-me-placeholder-jwt-secret"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

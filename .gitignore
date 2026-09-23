@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+
+# env files — docker-compose.yml carries the evaluator-facing values
+.env
+.env.local
+.env.*.local
+
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+.DS_Store
+Thumbs.db
+.vercel
