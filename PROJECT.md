@@ -121,13 +121,13 @@ know how to use WhatsApp.
 - [x] GitHub repo created
 - [x] Fast2SMS account set up (OTP Message route, no DLT needed) +
       Exotel trial account signed up
-- [ ] Define the DB schema (Prisma) and JWT payload shape early — keeps
+- [x] Define the DB schema (Prisma) and JWT payload shape early — keeps
       later days consistent even working sequentially
-- [ ] `Dockerfile` for the Next.js app
-- [ ] `docker-compose.yml`: app + Postgres + Redis, health checks, auto-migrations (`prisma migrate deploy` on startup)
-- [ ] Next.js API route: phone number + **fake OTP** (`123456` in dev) → Redis → JWT
-- [ ] Confirm `docker compose up -d` boots clean, login responds <500ms
-- [ ] End-to-end: signup → fake OTP → JWT → empty inbox, fully in Docker
+- [x] `Dockerfile` for the Next.js app
+- [x] `docker-compose.yml`: app + Postgres + Redis, health checks, auto-migrations (`prisma migrate deploy` on startup)
+- [x] Next.js API route: phone number + **fake OTP** (`123456` in dev) → Redis → JWT
+- [x] Confirm `docker compose up -d` boots clean, login responds <500ms
+- [x] End-to-end: signup → fake OTP → JWT → empty inbox, fully in Docker *(auth chain verified end to end in Docker; the inbox screen itself arrives Days 3-5 - no inbox UI exists yet)*
 
 ### Day 2 — Thu Sep 24: Real OTP + Email Core
 - [x] Real OTP via Fast2SMS wired in (send via `route=otp`, verify
@@ -215,8 +215,35 @@ README quality, core chat-style mobile inbox (this is the "wow" feature).
 *(Update this section daily as you build — helps any AI tool pick up
 context instantly)*
 
-- Day 1: Swapped Twilio → Fast2SMS for OTP/SMS (no recipient
-  whitelist, no DLT on the OTP route — see Section 10 for code)
+- Day 1 (final): Walking skeleton complete and verified end to end in Docker.
+  - Stack: Next.js 15.5.26 (App Router) + Prisma 6.19.3 + Postgres 17 + Redis 7;
+    JWT via jsonwebtoken (HS256, 7d); zod validation.
+  - Auth chain: phone -> fake OTP `123456` in Redis (`otp:<phone>`, EX 300) ->
+    verify (one-time use, key deleted) -> upsert User -> JWT. Swapped Twilio ->
+    Fast2SMS for OTP/SMS (no recipient whitelist, no DLT on the OTP route -
+    see Section 10 for code).
+  - Evaluator path verified from a fresh clone on a clean volume: exactly
+    `git clone` then `docker compose up -d` - all three services healthy, no
+    .env, no manual steps. The app entrypoint applies `prisma migrate deploy`
+    (bounded 5x3s retry) before the server starts.
+  - Hardening: `prisma`/`@prisma/client` in dependencies so they survive
+    --omit=dev; `prisma generate` in the prod-deps stage; `.gitattributes` pins
+    .sh/Dockerfile/docker-compose.yml to LF; the image strips CRLF from the
+    entrypoint before chmod.
+  - Found by container verification (not visible to build or typecheck): the
+    slim build stages have no `openssl` CLI, so `prisma generate` fell back to
+    debian-openssl-1.1.x while the bookworm runtime needs debian-openssl-3.0.x.
+    The app booted and reported *healthy* (health touches no DB) but every
+    DB-backed route failed: /api/auth/verify-otp returned 500 and wrote no User
+    row. Fixed by pinning `binaryTargets = ["native", "debian-openssl-3.0.x"]`
+    in prisma/schema.prisma (commit b1a95bd).
+  - Measured on this machine (curl.exe, 5 runs each): send-otp 4.9-5.9 ms,
+    verify-otp 8.0-13.7 ms - far under the 500 ms target.
+  - Commits: 6f9687a walking skeleton; 0741852 Day 1 hardening; b1a95bd Prisma
+    engine target.
+  - Known gap carried forward: /api/health is intentionally dependency-free, so
+    it reported healthy while the DB path was broken (that is what hid the
+    Prisma defect). A DB-aware readiness check belongs in Day 6 hardening.
 - Day 2:
 - Day 3:
 - Day 4:
