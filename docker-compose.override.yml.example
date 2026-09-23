@@ -1,0 +1,19 @@
+# Copy this file to docker-compose.override.yml and fill in the real values.
+#
+# docker-compose.override.yml is gitignored (verify with `git check-ignore -v
+# docker-compose.override.yml`); this .example file is the committed reference.
+# Compose merges the override over docker-compose.yml automatically, so
+# `docker compose up -d` needs no extra flags.
+#
+# Twilio trial accounts can only deliver to numbers verified in the Twilio
+# console, so add the phone you intend to test with there first.
+
+services:
+  app:
+    environment:
+      # Twilio Console -> Account Info
+      TWILIO_ACCOUNT_SID: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      TWILIO_AUTH_TOKEN: "your-auth-token-here"
+      # A Twilio phone number in E.164 form, e.g. "+14155550123".
+      # The recipient is always built as +91<10-digit Indian mobile>.
+      TWILIO_FROM_NUMBER: "+14155550123"

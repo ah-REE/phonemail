@@ -1,10 +1,11 @@
-# PhoneMail — Day 2 stack.
+# PhoneMail — Day 2 stack (OTP transport: Twilio).
 #
 # Evaluator flow:  git clone <repo>  &&  docker compose up -d
 # No .env file and no manual setup are required: every variable both sides need
 # is set below, and any value that is still a PLACEHOLDER degrades gracefully
-# (see FAST2SMS_API_KEY: without a real key the API uses a fixed dev OTP).
-# Real credentials belong in docker-compose.override.yml, which is gitignored.
+# (see the TWILIO_* block: without real credentials the API uses a fixed dev OTP).
+# Real credentials belong in docker-compose.override.yml, which is gitignored —
+# see docker-compose.override.yml.example.
 #
 # Startup order is enforced by healthchecks:
 #   postgres healthy + redis healthy  ->  app starts (entrypoint runs migrations)
@@ -57,11 +58,15 @@ services:
       PORT: "3000"
 
       # ---------------------------------------------------------------
-      # PLACEHOLDER — replace with a real key to enable real SMS.
-      # Without it (or while it is still this placeholder) the API uses the
-      # fixed dev OTP 123456 and reports devHint, so the whole flow still works.
+      # PLACEHOLDER SMS TRANSPORT — fill all three (in an override file) to
+      # enable real SMS. While any of them is still the value below, the API
+      # uses the fixed dev OTP 123456 and reports devHint, so the whole flow
+      # still works for an evaluator who never edits anything.
+      # Replaced Fast2SMS, which requires KYC before any send.
       # ---------------------------------------------------------------
-      FAST2SMS_API_KEY: "replace-with-real-fast2sms-api-key"
+      TWILIO_ACCOUNT_SID: "replace-with-real-twilio-account-sid"
+      TWILIO_AUTH_TOKEN: "replace-with-real-twilio-auth-token"
+      TWILIO_FROM_NUMBER: "replace-with-real-twilio-from-number"
 
       # Internal Compose DNS names; no host ports are published.
       REDIS_URL: "redis://redis:6379"

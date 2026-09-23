@@ -46,13 +46,13 @@ export async function POST(request: Request) {
         expiresInSeconds: result.ttlSeconds,
         resendAfterSeconds: 60,
         message: "OTP sent successfully.",
-        // Present only when Fast2SMS is not configured. The evaluator boots the
-        // stack with a placeholder key, so this is the documented dev path, not
-        // an error state.
+        // Present only when Twilio is not configured. The evaluator boots the
+        // stack with placeholder credentials, so this is the documented dev
+        // path, not an error state.
         ...(result.devMode
           ? {
               devHint:
-                "Fast2SMS is not configured (placeholder key): no SMS was sent and the fixed dev OTP 123456 is active.",
+                "Twilio is not configured (placeholder credentials): no SMS was sent and the fixed dev OTP 123456 is active.",
             }
           : {}),
       },
