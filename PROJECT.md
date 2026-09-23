@@ -22,12 +22,16 @@ know how to use WhatsApp.
 - No APK required or preferred — just a responsive website with two
   interfaces (mobile-styled + desktop-styled).
 - OTP auth is **preferred** over password auth. Since OTP works
-  reliably via Fast2SMS, **password auth is not being built** — this
+  reliably via Twilio, **password auth is not being built** — this
   is noted in the README as satisfying the spec's conditional
   fallback (only needed "if no free OTP providers are available").
-- Fast2SMS's "OTP Message" route sends a fixed, pre-built template
+- ~~Fast2SMS's "OTP Message" route sends a fixed, pre-built template
   (no custom text) — this satisfies the "generic template only"
-  clarification without any extra work.
+  clarification without any extra work.~~ **Historical — Day 2 hotfix:**
+  Fast2SMS requires KYC before any send, so the transport is now
+  Twilio's Messages REST API. Twilio imposes no template-only constraint,
+  so the SMS text is ours: "Your PhoneMail verification code is {otp}.
+  It expires in 5 minutes."
 - Live hosting is optional/bonus, not required — evaluators will run
   the project locally via Docker regardless.
 - Evaluators will run **exactly two commands**:
@@ -56,7 +60,7 @@ know how to use WhatsApp.
 | Styling | **Tailwind CSS + shadcn/ui** | Prebuilt accessible components, speeds up all 9–10 unique screens |
 | Chat encryption | RSA (public-key) | End-to-end encryption of email/chat content — *stretch* |
 | Email transport | Self-hosted SMTP (Postfix/Haraka) | Required by spec as "SMTP (local)" — do not replace with a 3rd-party email API |
-| OTP + SMS | **Fast2SMS (OTP Message route)** ✅ done | No DLT needed on this route, no recipient whitelist (unlike Twilio trial's 5-number cap) — any Indian number works immediately |
+| OTP + SMS | **Twilio (Messages REST API)** ✅ done | Trial account delivers only to numbers verified in the Twilio console — the real-SMS demo is limited to those. Fast2SMS was dropped in the Day 2 hotfix because it requires KYC before any send; fallback mode keeps the evaluator flow working with no credentials at all |
 | IVR ("press 1" signup) | Exotel (free trial) 🔜 **current focus** | Open inbound calls without per-caller verification |
 | Mobile interface | Next.js route/layout, PWA (manifest + service worker) | WhatsApp-style UI, same codebase as desktop |
 | Desktop interface | Next.js route/layout | Gmail-style UI, same codebase as mobile |
@@ -284,6 +288,31 @@ context instantly)*
     whose Docker credential helper works (same caveat as Day 1).
   - Commits: 9002768 Day 2 part 1 (OTP + email core + portal); 5b73519 Day 2 part 2
     (SMTP service + Socket.io server).
+- Day 2 hotfix: Fast2SMS required KYC before any send; swapped to Twilio via
+  REST (fetch, no SDK). Evaluator flow unaffected (fallback mode unchanged).
+  Real-SMS demo limited to Twilio-verified numbers.
+  - `src/lib/otp.ts`: Twilio Messages API — Basic auth (sid:token),
+    form-encoded `To=+91<canonical>`, `From`, `Body`. Success = 2xx with a
+    `sid`; anything else throws, logs Twilio's error code/message, and does NOT
+    consume the resend cooldown (the SMS is attempted before Redis is touched).
+    Config detection covers all three `TWILIO_*` variables, including "still a
+    committed placeholder" -> fallback mode with the fixed dev OTP and a
+    devHint that now names Twilio.
+  - Config surface: compose drops `FAST2SMS_API_KEY` and adds the three
+    `TWILIO_*` placeholders; `docker-compose.override.yml.example` documents the
+    real values (the override file itself stays gitignored).
+  - Unchanged by design: Redis key names, TTLs, the 60s cooldown, the 5-strike
+    burn, verify-otp behaviour, JWT issuance, every response shape, portal UI.
+  - Evidence: 19/19 unit assertions against the real module (mocked fetch,
+    stubbed Redis); 7/7 live regression checks (fallback, cooldown 429, burn,
+    two-user signup, SMTP round trip); fresh-clone evaluation green on a cold
+    volume; four services healthy.
+  - Also normalised placeholder values that had picked up a display-artifact
+    ellipsis (they had silently become 10-character strings), which briefly
+    broke the compose database credentials during the swap.
+  - REAL TWILIO SEND IS UNVERIFIED: no credentials exist on the build machine.
+    Commit: eba6d9a.
+
 - Day 3:
 - Day 4:
 - Day 5: IVR (Exotel) is next up
@@ -292,7 +321,11 @@ context instantly)*
 
 ---
 
-## 10. OTP Implementation Reference (working, Fast2SMS-based)
+## 10. OTP Implementation Reference (historical — Fast2SMS)
+
+> **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
+> `src/lib/otp.ts` is the source of truth; the Fast2SMS sample below is kept
+> only as history and is no longer what runs.
 
 `lib/otp.ts` — generate, send, verify. No manual number list anywhere;
 any phone number a user types in flows straight through this.
