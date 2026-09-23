@@ -44,6 +44,13 @@ COPY prisma ./prisma
 # (This is why package.json must never move `prisma` to devDependencies.)
 RUN npm ci --omit=dev || npm install --omit=dev
 
+# The runner copies node_modules from THIS stage (a fresh install), not from
+# builder where generate ran, so the generated client must be produced here.
+# It lands in node_modules/.prisma/client and has to exist at runtime; we do
+# not rely on postinstall auto-generation. The schema is copied above, so this
+# needs no other changes.
+RUN npx prisma generate
+
 ########## Stage 4: runtime ##########
 FROM node:${NODE_VERSION} AS runner
 WORKDIR /app
@@ -62,6 +69,7 @@ RUN apt-get update \
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder   --chown=nextjs:nodejs /app/.next        ./.next
 COPY --from=builder   --chown=nextjs:nodejs /app/prisma       ./prisma
+# COPY --from=builder /app/public ./public # needed Day 3: PWA manifest + service worker
 COPY --chown=nextjs:nodejs package.json         ./package.json
 COPY --chown=nextjs:nodejs next.config.ts       ./next.config.ts
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
