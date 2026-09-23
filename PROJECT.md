@@ -132,10 +132,10 @@ know how to use WhatsApp.
 ### Day 2 — Thu Sep 24: Real OTP + Email Core
 - [x] Real OTP via Fast2SMS wired in (send via `route=otp`, verify
       against Redis locally — see Section 10 for working code)
-- [ ] SMTP container (Postfix/Haraka) — send/receive test email
-- [ ] Web portal (2-field registration-only page, can be a simple
+- [x] SMTP container (Postfix/Haraka) — send/receive test email *(shipped as a small self-hosted Node SMTP service on the smtp-server package instead of Haraka — see Section 9 Day 2)*
+- [x] Web portal (2-field registration-only page, can be a simple
       Next.js route or a tiny standalone static page)
-- [ ] Socket.io server wired into the Next.js app for realtime chat updates
+- [x] Socket.io server wired into the Next.js app for realtime chat updates
 
 ### Day 3 — Fri Sep 25: Mobile Interface, Part 1
 - [ ] Stitch designs (elder-friendly: large text, high contrast, big tap targets)
@@ -244,7 +244,46 @@ context instantly)*
   - Known gap carried forward: /api/health is intentionally dependency-free, so
     it reported healthy while the DB path was broken (that is what hid the
     Prisma defect). A DB-aware readiness check belongs in Day 6 hardening.
-- Day 2:
+- Day 2 (final): real OTP with a dev fallback, email core, SMTP service, Socket.io, portal.
+  - OTP: Fast2SMS `route=otp` sends a random 6-digit code (redis `otp:<phone>`, EX 300).
+    When FAST2SMS_API_KEY is missing or still the committed placeholder the API skips
+    SMS, uses the fixed dev OTP `123456`, and reports `devHint` - that is what keeps the
+    evaluator's placeholder-key boot fully working. Added the §10 60s resend cooldown (429)
+    and a brute-force guard (5 wrong codes burn the pending OTP; further attempts 429).
+  - REAL SMS IS UNVERIFIED: no real Fast2SMS key exists on the build machine, so every
+    verification below ran in fallback mode. Real-key behaviour is coded to §10 and awaits
+    a live test with the user's key.
+  - Email core: `Email` model with two User FKs (+ the inbox index), migration
+    `20260924120000_add_email_model` generated offline and proven byte-identical to a
+    re-run of `prisma migrate diff`. POST /api/emails (JWT) resolves the recipient and
+    SUBMITS over SMTP only - it never writes a row; POST /api/mail/inbound (shared-secret
+    webhook) is the only writer; GET /api/emails (JWT) returns the newest 50 for the inbox.
+    `requireUser()` is the shared bearer guard.
+  - SMTP: shipped as a small self-hosted Node SMTP service (`smtp-server` + `mailparser`)
+    instead of Haraka, because the build host cannot pull new registry images and because
+    PROJECT.md already standardises on Node. Behaviour is what the spec asks for: serves
+    `phonemail.com` only, denies relay for anything else, and POSTs each accepted message
+    to the app with a retry before it acknowledges the SMTP transaction. Rationale and the
+    swap path are in smtp/README.md.
+  - Socket.io: `next start` cannot host it, so `server.mjs` boots Next programmatically and
+    attaches Socket.io to the same listener (start script + Dockerfile CMD updated; entrypoint
+    migration logic untouched). The handshake verifies the JWT, rejects unauthenticated
+    sockets, joins room = user id, and the inbound path emits `new-email` { from, subject,
+    preview } to that room.
+  - Portal: `/portal` phone+OTP registration page calling the existing auth endpoints.
+  - Verified on this machine: 4 services healthy; fallback signup; cooldown 429; brute-force
+    burn (the correct code stops working after 5 failures); two-user round trip A -> SMTP
+    -> inbound -> B's inbox with the SMTP log and the Postgres row as evidence; the send
+    route proven not to write rows (SMTP stopped -> 502 and the inbox unchanged); a real
+    socket client received `new-email`; /portal serves and its bundle calls the real
+    endpoints; latency send-otp 6.4-8.5 ms, verify-otp 9.9-12.6 ms. Evaluator simulation
+    from a fresh clone (`git clone` + `docker compose up -d` only) green with both
+    migrations applied on a cold volume.
+  - Still unverified: real SMS delivery; the browser click-through on /portal (verified at
+    HTTP + bundle level, no browser automation available); registry image pulls on a machine
+    whose Docker credential helper works (same caveat as Day 1).
+  - Commits: 9002768 Day 2 part 1 (OTP + email core + portal); 5b73519 Day 2 part 2
+    (SMTP service + Socket.io server).
 - Day 3:
 - Day 4:
 - Day 5: IVR (Exotel) is next up
