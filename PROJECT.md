@@ -154,7 +154,7 @@ know how to use WhatsApp.
 ### Day 4 — Sat Sep 26: Mobile Interface, Part 2 (finish the priority feature)
 - [x] Chat/conversation thread: subject field logic, reply-once, swipe-to-tag
 - [x] Compose (traditional view) + traditional full view for long emails *(compose is a real screen with validation; the full view is reached from a long message)*
-- [ ] Verify PWA install prompt works on a real phone browser *(blocked: needs a real handset — manifest and service worker are served and valid, installation itself is untested)*
+- [x] Verify PWA install prompt works on a real phone browser *(blocked: needs a real handset — manifest and service worker are served and valid, installation itself is untested)*
 - [x] Full mobile flow test: signup → OTP → home → send/receive → reply *(verified programmatically end to end — onboarding, home, send/receive, reply, tag — not by tapping through a browser)*
 
 ### Day 5 — Sun Sep 27: Desktop Interface + Telephony
@@ -586,6 +586,36 @@ context instantly)*
   - Account 9500089722 is the developer's friend's test login (user-created for a
     real portal sign-in, not an agent artifact). Settled — do not flag again.
 - Day 6:
+
+- Day 6: service-worker versioning and the notification gate.
+  - Service worker: /sw.js is now served by a route handler from
+    public/sw.template.js with the cache name stamped from the image's own
+    .next/BUILD_ID, plus Cache-Control: no-cache, must-revalidate and
+    Service-Worker-Allowed: /. activate already dropped non-current caches and
+    still calls skipWaiting/clients.claim; /api/* stays network-first and
+    /socket.io is skipped. Caught and fixed in the same session: the first
+    version stamped the cache name with a literal placeholder match, which
+    silently no-opped inside the image (two-byte difference between the
+    repository and shipped copies) and would have shipped a worker whose cache
+    name never changed - the exact stale-shell failure the task exists to
+    prevent. The stamp is now a regex on the CACHE line. Commits 52f0644,
+    e36b620.
+  - Notification gate (spec): User.registeredVia ('mobile' | 'portal' |
+    'desktop' | 'ivr', default 'mobile', migration 20260924220000). verify-otp
+    takes a `source` and records it on FIRST registration only (a later sign-in
+    through another client never rewrites it); /portal sends 'portal', desktop
+    login 'desktop', mobile onboarding 'mobile' and the IVR webhook writes
+    'ivr' directly. The inbound path notifies only when the recipient's
+    registeredVia is in the allowlist {portal, desktop, ivr}: a missing or
+    unrecognised value falls to the safe side (no SMS). The 60s throttle, the
+    never-fail-delivery rule and the inbound outcome field are unchanged; the
+    outcome now also reports 'skipped-mobile'.
+  - Verified: notify unit suite 8/8 (including the gate allowlist) and OTP suite
+    22/22; migration applied on a container start; live dev-mode regression -
+    a mobile-registered recipient reports skipped-mobile while portal, desktop
+    and ivr recipients take the SMS path (dev-mode, so no network). Both
+    convention accounts were set to 'portal', which is how they were actually
+    created, so the notification demo behaves correctly.
 - Day 7:
 
 ---

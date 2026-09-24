@@ -150,7 +150,7 @@ export default function OnboardingPage() {
         const response = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: normalizedPhone, otp: code }),
+          body: JSON.stringify({ phoneNumber: normalizedPhone, otp: code, source: "mobile" }),
         });
         const body = (await response.json().catch(() => ({}))) as VerifyOtpResponse;
 

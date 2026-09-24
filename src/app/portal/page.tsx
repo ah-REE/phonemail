@@ -80,7 +80,7 @@ export default function PortalPage() {
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber, otp }),
+        body: JSON.stringify({ phoneNumber, otp, source: "portal" }),
       });
       const data = (await response.json()) as ApiError & { user?: { phoneNumber: string } };
 

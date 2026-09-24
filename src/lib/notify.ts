@@ -34,7 +34,20 @@ export function notificationText(senderAddress: string, subject: string): string
   return `You have received an email from ${senderAddress}. Subject: ${subject}.`;
 }
 
-export type NotificationOutcome = "sent" | "throttled" | "dev-mode" | "failed";
+export type NotificationOutcome = "sent" | "throttled" | "dev-mode" | "failed" | "skipped-mobile";
+
+/**
+ * The spec's gate: an SMS notification goes only to someone who registered
+ * somewhere OTHER than the mobile app (portal, desktop or IVR). A missing or
+ * unrecognised value counts as 'mobile', because the safe side of this decision
+ * is not sending.
+ */
+export function shouldNotify(registeredVia: string | null | undefined): boolean {
+  // Allowlist, not "anything that is not mobile": an unknown value must fall to
+  // the safe side (no SMS), and only these three registration paths notify.
+  const notifiable = new Set(["portal", "desktop", "ivr"]);
+  return typeof registeredVia === "string" && notifiable.has(registeredVia);
+}
 
 export async function notifyNewMail({
   recipientPhone,

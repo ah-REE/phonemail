@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   const user = await prisma.user.upsert({
     where: { phoneNumber: callerPhone },
     update: {},
-    create: { phoneNumber: callerPhone },
+    create: { phoneNumber: callerPhone, registeredVia: "ivr" },
     select: { id: true, phoneNumber: true },
   });
 

@@ -4,7 +4,7 @@ import { addressForPhone } from "@/lib/mailer";
 import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
-import { notifyNewMail, type NotificationOutcome } from "@/lib/notify";
+import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
 
 /**
  * Inbound delivery: the only place an Email row is ever created.
@@ -49,7 +49,7 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
   const [recipient, sender] = await Promise.all([
     prisma.user.findUnique({
       where: { phoneNumber: recipientPhone },
-      select: { id: true, phoneNumber: true },
+      select: { id: true, phoneNumber: true, registeredVia: true },
     }),
     prisma.user.findUnique({
       where: { phoneNumber: senderPhone },
@@ -84,12 +84,15 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     preview: email.body.slice(0, PREVIEW_LENGTH),
   });
 
-  // Best-effort SMS notification. Never allowed to fail the delivery.
-  const smsNotification = await notifyNewMail({
-    recipientPhone: recipient.phoneNumber,
-    senderAddress: email.fromAddress,
-    subject: email.subject,
-  });
+  // Best-effort SMS notification, gated by how the recipient registered.
+  // Never allowed to fail the delivery.
+  const smsNotification = shouldNotify(recipient.registeredVia)
+    ? await notifyNewMail({
+        recipientPhone: recipient.phoneNumber,
+        senderAddress: email.fromAddress,
+        subject: email.subject,
+      })
+    : "skipped-mobile";
 
   return {
     ok: true,

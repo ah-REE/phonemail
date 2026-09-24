@@ -26,6 +26,12 @@ model User {
   phoneNumber String   @unique
   createdAt   DateTime @default(now())
 
+  /// How the account was first created. The spec sends the "you have new mail"
+  /// SMS only to people who registered somewhere OTHER than the mobile app, so
+  /// this field is what makes that gate possible. Missing/unknown is treated as
+  /// 'mobile' — the safe side is no SMS.
+  registeredVia String @default("mobile")
+
   sentEmails     Email[] @relation("SentEmails")
   receivedEmails Email[] @relation("ReceivedEmails")
 }

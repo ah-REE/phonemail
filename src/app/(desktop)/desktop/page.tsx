@@ -79,7 +79,7 @@ export default function DesktopLoginPage() {
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: normalized, otp: code }),
+        body: JSON.stringify({ phoneNumber: normalized, otp: code, source: "desktop" }),
       });
       const body = (await response.json().catch(() => ({}))) as {
         token?: string;

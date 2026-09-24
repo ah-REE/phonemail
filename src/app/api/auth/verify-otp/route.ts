@@ -12,6 +12,9 @@ export const dynamic = "force-dynamic";
 const requestSchema = z.object({
   phoneNumber: phoneNumberSchema,
   otp: otpSchema,
+  // Which client is registering. Unknown/missing falls back to "mobile", the
+  // safe side: it suppresses the new-mail SMS.
+  source: z.enum(["mobile", "portal", "desktop"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
   }
 
   const { phoneNumber, otp } = parsed.data;
+  const registeredVia = parsed.data.source ?? "mobile";
 
   // 1. Check the code against Redis. Success consumes it (one-time use); the
   //    counter behind the brute-force guard also burns it after 5 failures.
@@ -77,9 +81,11 @@ export async function POST(request: Request) {
   try {
     const user = await prisma.user.upsert({
       where: { phoneNumber },
+      // Registered-via records FIRST registration: a later sign-in through a
+      // different client must not rewrite it.
       update: {},
-      create: { phoneNumber },
-      select: { id: true, phoneNumber: true, createdAt: true },
+      create: { phoneNumber, registeredVia },
+      select: { id: true, phoneNumber: true, createdAt: true, registeredVia: true },
     });
 
     const token = signAuthToken(user);
