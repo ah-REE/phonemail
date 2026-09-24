@@ -5,6 +5,7 @@ import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
 import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
+import { deriveThreadKey } from "@/lib/threadKey";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +15,15 @@ export const dynamic = "force-dynamic";
  *
  * POST deliberately does NOT write an Email row: it only submits the message to
  * our SMTP service. The row is created when the SMTP service posts the message
- * back to /api/mail/inbound, so a bug in SMTP delivery cannot silently produce
- * a "sent" email that nobody received.
+ * back to /api/mail/inbound, so a bug in SMTP delivery cannot silently produce a
+ * "sent" email that nobody received.
+ *
+ * Day 6 (group chat): `to` accepts a LIST - an array and/or a comma-separated
+ * string - and the whole list travels in ONE SMTP submission (nodemailer takes
+ * `to: [array]` natively). The per-recipient fan-out happens once, in the inbound
+ * path, so there is no loop here and no chance of half a group receiving it.
+ * The response carries the DERIVED threadKey of the member set so the client can
+ * open the group thread it just created without computing anything itself.
  *
  * Replying (optional `replyToId`) is enforced here as reply-ONCE: the original
  * message is claimed with a conditional update, so a second reply cannot be
@@ -26,7 +34,10 @@ export const dynamic = "force-dynamic";
 const INBOX_LIMIT = 50;
 
 const sendSchema = z.object({
-  to: z.string().trim().min(1, "to is required"),
+  to: z.union([
+    z.string().trim().min(1, "to is required"),
+    z.array(z.string().trim().min(1)).min(1, "to is required"),
+  ]),
   subject: z.string().trim().min(1, "subject is required").max(200).optional(),
   body: z.string().min(1, "body is required"),
   replyToId: z.string().trim().min(1).optional(),
@@ -65,21 +76,58 @@ export async function POST(request: Request) {
     );
   }
 
-  const recipient = parseRecipient(parsed.data.to);
-  if (!recipient) {
+  // One list, whatever shape it arrived in, with duplicates collapsed.
+  const rawRecipients = (Array.isArray(parsed.data.to) ? parsed.data.to : [parsed.data.to]).flatMap(
+    (entry) => entry.split(","),
+  );
+
+  const recipients: { phoneNumber: string; address: string }[] = [];
+  const rejected: string[] = [];
+
+  for (const raw of rawRecipients) {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    const recipient = parseRecipient(trimmed);
+    if (!recipient) {
+      rejected.push(trimmed);
+      continue;
+    }
+    if (!recipients.some((existing) => existing.phoneNumber === recipient.phoneNumber)) {
+      recipients.push(recipient);
+    }
+  }
+
+  if (rejected.length > 0) {
     return NextResponse.json(
-      { error: "`to` must be a 10-digit Indian mobile number or <phone>@phonemail.com." },
+      {
+        error: "`to` must be 10-digit Indian mobile numbers or <phone>@phonemail.com.",
+        invalid: rejected,
+      },
       { status: 400 },
     );
   }
 
-  const recipientUser = await prisma.user.findUnique({
-    where: { phoneNumber: recipient.phoneNumber },
+  if (recipients.length === 0) {
+    return NextResponse.json({ error: "`to` must name at least one recipient." }, { status: 400 });
+  }
+
+  const recipientUsers = await prisma.user.findMany({
+    where: { phoneNumber: { in: recipients.map((recipient) => recipient.phoneNumber) } },
     select: { id: true, phoneNumber: true },
   });
 
-  if (!recipientUser) {
-    return NextResponse.json({ error: "Recipient not found." }, { status: 404 });
+  const known = new Set(recipientUsers.map((recipient) => recipient.phoneNumber));
+  const unknown = recipients
+    .map((recipient) => recipient.phoneNumber)
+    .filter((phoneNumber) => !known.has(phoneNumber));
+
+  if (unknown.length > 0) {
+    return NextResponse.json(
+      { error: `Recipient not found: ${unknown.join(", ")}.` },
+      { status: 404 },
+    );
   }
 
   // Reply-once: claim the original message atomically before sending anything.
@@ -134,11 +182,13 @@ export async function POST(request: Request) {
   }
 
   const fromAddress = addressForPhone(user.phoneNumber);
+  const addresses = recipients.map((recipient) => recipient.address);
 
   try {
     await submitOutboundEmail({
       from: fromAddress,
-      to: recipient.address,
+      // ONE submission, the full recipient list in To.
+      to: addresses,
       subject,
       body: parsed.data.body,
     });
@@ -156,12 +206,20 @@ export async function POST(request: Request) {
     );
   }
 
-  // No Email row here on purpose — see the file header.
+  // The same derivation the inbound path will use, so the client can open the
+  // thread immediately. A hint, not stored state: nothing is written here.
+  const threadKey =
+    recipients.length > 1
+      ? deriveThreadKey([user.phoneNumber, ...recipients.map((recipient) => recipient.phoneNumber)])
+      : null;
+
+  // No Email row here on purpose - see the file header.
   return NextResponse.json(
     {
       queued: true,
       from: fromAddress,
-      to: recipient.address,
+      to: addresses,
+      threadKey,
       subject,
       replyToId: claimedReplyTo,
       message: "Message submitted to the mail service.",

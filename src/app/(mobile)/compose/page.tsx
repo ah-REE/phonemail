@@ -10,7 +10,10 @@ import { useAuth } from "@/lib/useAuth";
 /**
  * Compose (traditional view).
  *
- *  - To accepts a bare 10-digit number or a full <phone>@phonemail.com address
+ *  - To accepts ONE OR MANY recipients: a bare 10-digit number, a full
+ *    <phone>@phonemail.com address, or a comma list of them (Day 6 group chat).
+ *    Each accepted recipient becomes a chip, and a chip can be removed again
+ *    while the field is not locked
  *  - opened from a thread as a reply (?to=…&replyTo=…), the To field is LOCKED
  *    to the counterpart and the subject is prefilled, because reply-once is
  *    enforced server-side against that message
@@ -18,6 +21,29 @@ import { useAuth } from "@/lib/useAuth";
  *    round trip completes, so we navigate back to the thread rather than
  *    pretending the message already exists
  */
+
+/**
+ * "9876543210, +91 98765 43211, 9876543212@phonemail.com" -> canonical numbers.
+ * The preset query string, the chip input and validation all use this one
+ * function, so all three agree on what a recipient is.
+ */
+function parseRecipients(raw: string): string[] {
+  return [
+    ...new Set(
+      raw
+        .split(/[,\s]+/)
+        .map((entry) =>
+          entry
+            .trim()
+            .replace(/@.*$/, "")
+            .replace(/\D/g, "")
+            .replace(/^91(?=\d{10}$)/, "")
+            .replace(/^0(?=\d{10}$)/, ""),
+        )
+        .filter((entry) => entry.length > 0),
+    ),
+  ];
+}
 
 function ComposeForm() {
   const router = useRouter();
@@ -28,7 +54,8 @@ function ComposeForm() {
   const replyToId = searchParams.get("replyTo") ?? "";
   const isReply = Boolean(replyToId);
 
-  const [to, setTo] = useState(presetTo);
+  const [recipients, setRecipients] = useState<string[]>(() => parseRecipients(presetTo));
+  const [draftRecipient, setDraftRecipient] = useState("");
   const [subject, setSubject] = useState(isReply ? "re: " : "");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -42,11 +69,29 @@ function ComposeForm() {
     }
   }, [status, router]);
 
+  function addRecipientsFrom(raw: string) {
+    const parsed = parseRecipients(raw);
+    if (parsed.length === 0) {
+      return;
+    }
+    setRecipients((current) => [...new Set([...current, ...parsed])]);
+    setDraftRecipient("");
+  }
+
+  function removeRecipient(entry: string) {
+    // The recipient set of a reply is locked (reply-once is server-enforced).
+    if (isReply) {
+      return;
+    }
+    setRecipients((current) => current.filter((recipient) => recipient !== entry));
+  }
+
   function validate() {
     const next: { to?: string; subject?: string; body?: string } = {};
-    const digits = to.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      next.to = "Enter a 10-digit Indian mobile number (or <number>@phonemail.com).";
+    if (recipients.length === 0) {
+      next.to = "Add at least one 10-digit number (two or more makes a group).";
+    } else if (!recipients.every((recipient) => /^[6-9]\d{9}$/.test(recipient))) {
+      next.to = "Every recipient must be a 10-digit Indian mobile number starting with 6, 7, 8 or 9.";
     }
     if (!subject.trim()) {
       next.subject = "Add a subject.";
@@ -72,7 +117,8 @@ function ComposeForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to,
+          // Always an array: one recipient or the whole group, one submission.
+          to: recipients,
           subject,
           body,
           ...(replyToId ? { replyToId } : {}),
@@ -80,7 +126,8 @@ function ComposeForm() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
-        to?: string;
+        to?: string | string[];
+        threadKey?: string | null;
         subject?: string;
       };
 
@@ -93,10 +140,19 @@ function ComposeForm() {
         return;
       }
 
-      setNotice(`Handed to the mail service for ${payload.to ?? to}.`);
-      const target = payload.to ?? to;
+      const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
+      setNotice(`Handed to the mail service for ${addresses.join(", ")}.`);
       // Back to the thread so the new message appears when delivery completes.
-      setTimeout(() => router.push(`/thread/${target.replace(/@.*$/, "")}`), 700);
+      // A group send opens the derived group thread - the server hands us the key.
+      const groupKey = payload.threadKey ?? null;
+      const single = addresses[0]?.replace(/@.*$/, "") ?? recipients[0] ?? "";
+      setTimeout(() => {
+        if (groupKey) {
+          router.push(`/thread/group/${encodeURIComponent(groupKey)}`);
+        } else {
+          router.push(`/thread/${single}`);
+        }
+      }, 700);
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -123,15 +179,45 @@ function ComposeForm() {
         <label className="text-sm text-wa-muted" htmlFor="to">
           To {isReply && <span className="text-wa-teal">(locked — replying in this thread)</span>}
         </label>
+        {!isReply && recipients.length > 1 && (
+          <p className="text-sm text-wa-teal">Group: {recipients.length} recipients</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {recipients.map((recipient) => (
+            <span
+              key={recipient}
+              className="flex items-center gap-2 rounded-full border border-wa-line bg-wa-panel px-3 py-1 text-sm"
+            >
+              {recipient}
+              {!isReply && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${recipient}`}
+                  className="min-h-tap min-w-tap leading-none text-wa-muted"
+                  onClick={() => removeRecipient(recipient)}
+                >
+                  x
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
         <input
           id="to"
           className={`field ${isReply ? "bg-wa-bg" : ""}`}
           inputMode="tel"
-          placeholder="9876543210"
-          value={to}
+          placeholder={isReply ? "" : "9876543210, 9876543211"}
+          value={isReply ? recipients.join(", ") : draftRecipient}
           readOnly={isReply}
           aria-readonly={isReply}
-          onChange={(event) => setTo(event.target.value)}
+          onChange={(event) => setDraftRecipient(event.target.value)}
+          onBlur={() => addRecipientsFrom(draftRecipient)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === ",") {
+              event.preventDefault();
+              addRecipientsFrom(draftRecipient);
+            }
+          }}
         />
         {fieldErrors.to && (
           <p className="text-sm text-wa-alert" role="alert">

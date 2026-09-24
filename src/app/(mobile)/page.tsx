@@ -25,6 +25,17 @@ interface ConversationThread {
   unread: number;
 }
 
+/** Day 6: a group conversation, keyed by its DERIVED thread key. */
+interface ConversationGroup {
+  threadKey: string;
+  members: string[];
+  memberAddresses: string[];
+  subject: string;
+  preview: string;
+  lastAt: string;
+  unread: number;
+}
+
 function initialOf(counterpart: string): string {
   return counterpart.slice(0, 1) || "?";
 }
@@ -43,6 +54,7 @@ export default function HomePage() {
   const { status, token, authorizedFetch } = useAuth();
 
   const [threads, setThreads] = useState<ConversationThread[]>([]);
+  const [groupThreads, setGroupThreads] = useState<ConversationGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -61,8 +73,12 @@ export default function HomePage() {
         setError(body?.error ?? "Could not load conversations.");
         return;
       }
-      const body = (await response.json()) as { threads?: ConversationThread[] };
+      const body = (await response.json()) as {
+        threads?: ConversationThread[];
+        groupThreads?: ConversationGroup[];
+      };
       setThreads(body.threads ?? []);
+      setGroupThreads(body.groupThreads ?? []);
       setError(null);
     } catch {
       setError("Network error.");
@@ -114,7 +130,27 @@ export default function HomePage() {
     });
   }, [threads, query, filter]);
 
-  const unreadTotal = threads.reduce((sum, thread) => sum + thread.unread, 0);
+  // Day 6: group threads answer the same search and filter question.
+  const visibleGroups = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return groupThreads.filter((group) => {
+      if (filter === "unread" && group.unread === 0) {
+        return false;
+      }
+      if (!needle) {
+        return true;
+      }
+      return (
+        group.members.some((member) => member.includes(needle)) ||
+        group.subject.toLowerCase().includes(needle) ||
+        group.preview.toLowerCase().includes(needle)
+      );
+    });
+  }, [groupThreads, query, filter]);
+
+  const unreadTotal =
+    threads.reduce((sum, thread) => sum + thread.unread, 0) +
+    groupThreads.reduce((sum, group) => sum + group.unread, 0);
 
   if (status !== "authenticated") {
     return (
@@ -182,22 +218,53 @@ export default function HomePage() {
         </p>
       )}
 
-      {!loading && !error && visible.length === 0 && (
+      {!loading && !error && visible.length + visibleGroups.length === 0 && (
         <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
           <p className="text-lg font-semibold">
-            {threads.length === 0 ? "No messages yet" : "Nothing matches that search"}
+            {threads.length + groupThreads.length === 0 ? "No messages yet" : "Nothing matches that search"}
           </p>
           <p className="text-sm text-wa-muted">
-            {threads.length === 0
+            {threads.length + groupThreads.length === 0
               ? "Start a conversation and it will appear here."
               : "Try a different name, subject or number."}
           </p>
-          {threads.length === 0 && (
+          {threads.length + groupThreads.length === 0 && (
             <Link href="/compose" className="btn-primary">
               Write a message
             </Link>
           )}
         </div>
+      )}
+
+      {visibleGroups.length > 0 && (
+        <ul className="border-b-2 border-wa-teal/30">
+          {visibleGroups.map((group) => (
+            <li key={group.threadKey} className="border-b border-wa-line">
+              <Link href={`/thread/group/${encodeURIComponent(group.threadKey)}`} className="row">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-lg font-semibold text-white">
+                  {group.members.length}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline gap-2">
+                    <span className="truncate text-lg font-semibold">
+                      Group - {group.members.join(", ")}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-wa-muted">
+                      {formatTime(group.lastAt)}
+                    </span>
+                  </span>
+                  <span className="block truncate text-sm text-wa-muted">{group.subject}</span>
+                  <span className="block truncate text-sm text-wa-muted">{group.preview}</span>
+                </span>
+                {group.unread > 0 && (
+                  <span className="ml-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-wa-green px-2 text-sm font-semibold text-white">
+                    {group.unread}
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
 
       <ul className="flex-1 overflow-y-auto">

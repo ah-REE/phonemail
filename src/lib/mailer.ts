@@ -48,7 +48,12 @@ export function getTransport(): Transporter {
 
 export interface OutboundEmail {
   from: string;
-  to: string;
+  /**
+   * One recipient, or the full list of a group message. A list is submitted as
+   * ONE message with every address in To - nodemailer takes an array natively -
+   * so a group's member set travels intact to the inbound fan-out.
+   */
+  to: string | string[];
   subject: string;
   body: string;
 }

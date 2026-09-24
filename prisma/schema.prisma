@@ -59,6 +59,13 @@ model Email {
   /// Day 6's folders (Drafts/Spam/Trash) build on this field.
   tag String?
 
+  /// Day 6 group chat. The DERIVED thread key of a multi-recipient message:
+  /// "grp:" + sha256(sorted unique member numbers, comma-joined). NULL for
+  /// pairwise mail, so 1:1 conversations group exactly as they did before, and
+  /// a group thread is reconstructed from the rows alone - no thread table, no
+  /// stored membership (see lib/threadKey.ts).
+  threadKey String?
+
   fromUser User @relation("SentEmails", fields: [fromUserId], references: [id])
   toUser   User @relation("ReceivedEmails", fields: [toUserId], references: [id])
 
@@ -66,4 +73,6 @@ model Email {
   @@index([toUserId, createdAt])
   /// Serves the thread query: WHERE (fromUserId = ? AND toUserId = ?) OR vice versa.
   @@index([fromUserId, toUserId, createdAt])
+  /// Serves the group thread query: WHERE threadKey = ? ORDER BY createdAt.
+  @@index([threadKey, createdAt])
 }

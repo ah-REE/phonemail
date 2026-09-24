@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
-
 import { addressForPhone } from "@/lib/mailer";
 import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
 import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
+import { deriveThreadKey } from "@/lib/threadKey";
 
 /**
  * Inbound delivery: the only place an Email row is ever created.
@@ -13,26 +12,35 @@ import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/not
  * secret). Both parties must already be PhoneMail users, because the row needs
  * both foreign keys.
  *
- * After the row exists it (a) emits the realtime event and (b) attempts the
- * "new mail" SMS notification. The notification is best-effort by design: it
- * can never fail a delivery, and dev mode skips it entirely.
+ * Day 6 (group chat): the SMTP service submits ONE message carrying the whole
+ * recipient list. This function FANS IT OUT - one row per recipient - and every
+ * row of the submission carries the same derived threadKey for the member set
+ * (see lib/threadKey.ts). A message with a single recipient still gets
+ * threadKey NULL, so pairwise threads are grouped exactly as before.
+ *
+ * Per row, exactly as for a single recipient: (a) emit the realtime event and
+ * (b) attempt the "new mail" SMS notification. The notification is best-effort
+ * by design: it can never fail a delivery, and dev mode skips it entirely.
  */
+
+export interface InboundDelivery {
+  emailId: string;
+  recipientUserId: string;
+  recipient: string;
+  socketNotified: boolean;
+  smsNotification: NotificationOutcome;
+}
 
 export interface InboundMessage {
   from: string;
-  to: string;
+  /** The full recipient list of the submission (min 1). */
+  to: string[];
   subject: string;
   body: string;
 }
 
 export type InboundResult =
-  | {
-      ok: true;
-      emailId: string;
-      recipientUserId: string;
-      socketNotified: boolean;
-      smsNotification: NotificationOutcome;
-    }
+  | { ok: true; threadKey: string | null; deliveries: InboundDelivery[] }
   | { ok: false; status: number; error: string };
 
 /** Extracts the canonical 10-digit number from "<phone>@phonemail.com". */
@@ -41,14 +49,25 @@ function phoneFromAddress(address: string): string {
 }
 
 const PREVIEW_LENGTH = 120;
+const RECIPIENT_RE = /^[6-9]\d{9}$/;
 
 export async function submitInboundEmail(message: InboundMessage): Promise<InboundResult> {
-  const recipientPhone = phoneFromAddress(message.to);
   const senderPhone = phoneFromAddress(message.from);
+  // Duplicates are collapsed: the same member must not get two copies.
+  const recipientPhones = [...new Set(message.to.map(phoneFromAddress))];
 
-  const [recipient, sender] = await Promise.all([
-    prisma.user.findUnique({
-      where: { phoneNumber: recipientPhone },
+  if (recipientPhones.length === 0) {
+    return { ok: false, status: 422, error: "At least one recipient is required." };
+  }
+
+  const invalid = recipientPhones.filter((phone) => !RECIPIENT_RE.test(phone));
+  if (invalid.length > 0) {
+    return { ok: false, status: 422, error: `Not a valid recipient address: ${invalid.join(", ")}.` };
+  }
+
+  const [recipients, sender] = await Promise.all([
+    prisma.user.findMany({
+      where: { phoneNumber: { in: recipientPhones } },
       select: { id: true, phoneNumber: true, registeredVia: true },
     }),
     prisma.user.findUnique({
@@ -57,48 +76,66 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     }),
   ]);
 
-  if (!recipient) {
-    return { ok: false, status: 404, error: "Recipient is not a PhoneMail user." };
+  const found = new Set(recipients.map((recipient) => recipient.phoneNumber));
+  const missing = recipientPhones.filter((phone) => !found.has(phone));
+  if (missing.length > 0) {
+    return { ok: false, status: 404, error: `Recipient is not a PhoneMail user: ${missing.join(", ")}.` };
   }
 
   if (!sender) {
     return { ok: false, status: 422, error: "Sender is not a PhoneMail user." };
   }
 
-  const email = await prisma.email.create({
-    data: {
-      fromUserId: sender.id,
-      toUserId: recipient.id,
-      fromAddress: addressForPhone(sender.phoneNumber),
-      toAddress: addressForPhone(recipient.phoneNumber),
-      subject: message.subject,
-      body: message.body,
-    },
-    select: { id: true, fromAddress: true, subject: true, body: true },
-  });
+  // The derived key. Only a real group (2+ recipients) gets one: a single
+  // recipient keeps threadKey NULL so the pairwise view is untouched.
+  const threadKey =
+    recipients.length > 1
+      ? deriveThreadKey([sender.phoneNumber, ...recipients.map((recipient) => recipient.phoneNumber)])
+      : null;
 
-  // Realtime notification. No-op when the custom server is not in use.
-  const socketNotified = emitNewEmail(recipient.id, {
-    from: email.fromAddress,
-    subject: email.subject,
-    preview: email.body.slice(0, PREVIEW_LENGTH),
-  });
+  const fromAddress = addressForPhone(sender.phoneNumber);
+  const deliveries: InboundDelivery[] = [];
 
-  // Best-effort SMS notification, gated by how the recipient registered.
-  // Never allowed to fail the delivery.
-  const smsNotification = shouldNotify(recipient.registeredVia)
-    ? await notifyNewMail({
-        recipientPhone: recipient.phoneNumber,
-        senderAddress: email.fromAddress,
-        subject: email.subject,
-      })
-    : "skipped-mobile";
+  for (const recipient of recipients) {
+    const email = await prisma.email.create({
+      data: {
+        fromUserId: sender.id,
+        toUserId: recipient.id,
+        fromAddress,
+        toAddress: addressForPhone(recipient.phoneNumber),
+        subject: message.subject,
+        body: message.body,
+        threadKey,
+      },
+      select: { id: true, subject: true, body: true },
+    });
 
-  return {
-    ok: true,
-    emailId: email.id,
-    recipientUserId: recipient.id,
-    socketNotified,
-    smsNotification,
-  };
+    // Realtime notification, one per fan-out row. No-op when the custom server
+    // is not in use.
+    const socketNotified = emitNewEmail(recipient.id, {
+      from: fromAddress,
+      subject: email.subject,
+      preview: email.body.slice(0, PREVIEW_LENGTH),
+    });
+
+    // Best-effort SMS notification, gated by how the recipient registered.
+    // Never allowed to fail the delivery.
+    const smsNotification = shouldNotify(recipient.registeredVia)
+      ? await notifyNewMail({
+          recipientPhone: recipient.phoneNumber,
+          senderAddress: fromAddress,
+          subject: email.subject,
+        })
+      : "skipped-mobile";
+
+    deliveries.push({
+      emailId: email.id,
+      recipientUserId: recipient.id,
+      recipient: recipient.phoneNumber,
+      socketNotified,
+      smsNotification,
+    });
+  }
+
+  return { ok: true, threadKey, deliveries };
 }

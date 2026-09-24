@@ -102,9 +102,11 @@ const server = new SMTPServer({
         return callback(new Error("No sender"));
       }
 
-      for (const to of recipients) {
-        await deliverToApp({ from, to, subject, body });
-      }
+      // ONE webhook call carrying the FULL recipient list: the app writes one
+      // row per recipient and derives the group thread key from the member set.
+      // Looping here would produce N independent single-recipient messages and
+      // the app could no longer tell a group send from separate sends.
+      await deliverToApp({ from, to: recipients, subject, body });
 
       callback();
     } catch (error) {

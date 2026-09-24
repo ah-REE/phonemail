@@ -170,7 +170,7 @@ MVP — both interfaces, OTP auth, SMTP, IVR or SMS. Everything from
 here is enhancement, not core function.
 
 ### Day 6 — Mon Sep 28: Buffer 1 — Remaining Features + Performance — documentation + rehearsal must be COMPLETE by EOD
-- [ ] Group chat logic (2+ recipients → group; future 1:1 stays separate)
+- [x] Group chat logic (2+ recipients → group; future 1:1 stays separate) *(shipped Day 6: the DERIVED thread key - see the Day 6 group-chat entry below)*
 - [ ] Drafts, Spam, Trash; alias ID management in settings
 - [ ] k6/autocannon load test on login — fix anything over 500ms
 - [ ] Postgres connection pooling, response compression
@@ -632,6 +632,57 @@ context instantly)*
   Language -> Phone -> OTP, with the acknowledgement as a consent line under the
   Send OTP button ("By continuing, you agree to the Terms & Conditions", teal
   link) that opens a plain /terms view. The phone pre-fill is untouched.
+- Day 6: GROUP CHAT - the derived thread key (2+ recipients; 1:1 untouched).
+  - Decision (user-confirmed): a group conversation is NOT stored, it is
+    DERIVED. threadKey = "grp:" + sha256(sorted unique [sender, ...recipients],
+    comma-joined, members in canonical 10-digit form). A -> B+C and B -> [A,C]
+    therefore reduce to the same set {A,B,C} and land in the same thread with
+    no group id to allocate, store or keep in sync; the rows alone rebuild the
+    conversation. A message with exactly ONE recipient gets threadKey NULL, so
+    pairwise threads group byte-for-byte as before.
+  - Accepted trade-off: two SEPARATE composes to the same member set merge into
+    one group thread (Gmail-conversation behaviour). Deliberate, user-confirmed.
+  - Plumbing - one submission, fanned out exactly once: POST /api/emails takes
+    an array and/or a comma list and submits ONE SMTP message with every
+    recipient in To (no per-recipient loop); the SMTP service forwards the whole
+    list in the webhook payload; /api/mail/inbound accepts `to` as an array (a
+    bare string or comma list is still accepted, so an older SMTP container
+    keeps working); inbound.ts writes one Email row per recipient, all sharing
+    the derived key, then runs the socket emit and the notification gate per
+    recipient exactly as it did for a single one.
+  - Read model: GET /api/conversations excludes keyed rows from pairwise
+    grouping and returns them separately as groupThreads (members, latest
+    message, timestamp, per-user unread); GET /api/conversations/thread/[key]
+    returns the WHOLE thread to any member - membership is proven by the rows
+    themselves (sender or recipient on at least one row), so a non-member
+    holding the key gets 403. Mark-read stays per member: it only updates rows
+    addressed to the requester, so one member reading cannot clear another
+    member's badge.
+  - UI: the chat list renders group threads (avatar = member count, title = the
+    members); /thread/group/[key] is the group conversation with a LOCKED
+    in-thread composer that sends to all OTHER members (no add/remove); home
+    compose takes multiple recipients as removable chips.
+  - Migration 20260924230000_add_group_thread_key (nullable threadKey + the
+    (threadKey, createdAt) index the group queries use).
+  - Verified on this machine (dev mode, real SMTP round trip): build green
+    (`npm run build`, exit 0, /thread/group/[key] and both group API routes in
+    the route table); the migration applied on container start ("Applying
+    migration `20260924230000_add_group_thread_key`"); a 43-assertion API
+    regression passed 43/43 - the group thread is visible to all three members
+    with the complete 3-member list, unread B=1 / C=1 / A=0, the second compose
+    to the same members lands on the SAME derived key, a single-recipient send
+    stays pairwise (threadKey null) and leaves the group untouched, the reply
+    lands on the same key and reaches both other members, mark-read clears only
+    the reader's own badge, and a malformed key is 400 / an unknown key is 404.
+    The recipient-set lock is asserted at CODE level (no remove affordance and
+    no free-text recipient input in the group composer) - it is NOT
+    browser-verified, and the non-member 403 path is code-inspected only
+    (testing it would need a fourth account, which the conventions forbid).
+  - Deferred, recorded honestly: the desktop inbox still renders pairwise
+    threads only (group mail is invisible there, not lost); the group view has
+    no swipe-to-tag and no per-group reply-once - those stay pairwise
+    affordances.
+
 - Day 7:
 
 ---
