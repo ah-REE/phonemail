@@ -216,6 +216,31 @@ README quality, core chat-style mobile inbox (this is the "wow" feature).
 
 ## 9. Notes / Decisions Log
 
+### Testing conventions (permanent)
+
+**Test accounts are exactly two real numbers owned by the developer:
+8870313035 and 6381195975.** Agent verification runs MUST switch to dev mode
+first (rename the override away) and restore the prior mode after. Real mode is
+used only for user-driven demos, and only with these numbers. Reserved
+unregistered number for 404 tests (dev mode only): 9999999999. A third user
+requires an explicit decision — never invent numbers.
+
+The mechanics, in order:
+
+1. **Safety gate first.** If `docker-compose.override.yml` exists, real SMS is
+   live and ANY `/api/auth/send-otp` sends a real message from the developer's
+   SIM (this went wrong once: two OTPs reached strangers on Day 4). Rename the
+   override away and `docker compose up -d` before the first OTP request, then
+   confirm the response carries `devHint` — that is the proof no SMS was sent.
+2. **Only these two numbers** may be signed up or sent to: 8870313035 (SIM
+   slot 0) and 6381195975 (SIM slot 1). Nothing else, ever, without asking.
+3. **9999999999** is reserved for negative-path tests (unknown recipient →
+   404). It is never signed up, never appears in the database, never receives
+   anything, and is only used while dev mode is active.
+4. **Restore the mode you found** when the run is over — the developer's
+   rehearsals use real SMS.
+
+
 *(Update this section daily as you build — helps any AI tool pick up
 context instantly)*
 
