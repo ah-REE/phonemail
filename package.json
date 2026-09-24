@@ -20,6 +20,7 @@
     "react-dom": "^19",
     "redis": "^4",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "zod": "^3"
   },
   "devDependencies": {
@@ -28,6 +29,9 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5"
   }
 }

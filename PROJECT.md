@@ -59,7 +59,7 @@ know how to use WhatsApp.
 | Realtime (chat updates) | **Socket.io** | Live chat-style inbox updates; more mainstream/documented than raw WebSockets → more reliable AI-generated code |
 | Styling | **Tailwind CSS + shadcn/ui** | Prebuilt accessible components, speeds up all 9–10 unique screens |
 | Chat encryption | RSA (public-key) | End-to-end encryption of email/chat content — *stretch* |
-| Email transport | Self-hosted SMTP (Postfix/Haraka) | Required by spec as "SMTP (local)" — do not replace with a 3rd-party email API |
+| Email transport | Self-hosted SMTP, implemented with Node's `smtp-server` package | Required by spec as "SMTP (local)" — do not replace with a 3rd-party email API. `smtp-server` is maintained by the author of `nodemailer`, so the stack stays one runtime; the Postfix/Haraka swap path is documented in smtp/README.md |
 | OTP + SMS | **sms-gate.app** (self-hosted Android SMS gateway) ✅ done | Sends through the developer's own phone + SIM via a self-hosted gateway: free, no KYC, no DLT. Real sends require the gateway phone to be online with the app logged in; with the committed placeholder credentials the API runs documented dev-OTP mode (fixed 123456 + devHint) |
 | IVR ("press 1" signup) | Exotel (free trial) 🔜 **current focus** | Open inbound calls without per-caller verification |
 | Mobile interface | Next.js route/layout, PWA (manifest + service worker) | WhatsApp-style UI, same codebase as desktop |

@@ -1,0 +1,25 @@
+{
+  "name": "PhoneMail",
+  "short_name": "PhoneMail",
+  "description": "Your phone number is your email address — a chat-style inbox for first-time smartphone users.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efeae2",
+  "theme_color": "#075e54",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

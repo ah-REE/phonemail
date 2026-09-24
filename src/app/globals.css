@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Global hooks for the mobile design system. Kept deliberately small: tokens
+ * live in tailwind.config.ts, screens compose utilities from them.
+ */
+@layer base {
+  html {
+    /* Root font size drives every rem-based size; 18px is the elder-friendly
+       floor agreed in PROJECT.md §3. */
+    font-size: 18px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-wa-bg text-wa-ink antialiased;
+  }
+
+  /* Never let a tap target shrink below 48px. */
+  button,
+  a[role="button"],
+  input,
+  select,
+  textarea {
+    @apply min-h-tap;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex min-h-tap items-center justify-center rounded-md bg-wa-teal px-6 text-lg font-semibold text-white disabled:opacity-60;
+  }
+
+  .btn-quiet {
+    @apply inline-flex min-h-tap items-center justify-center rounded-md border border-wa-line bg-wa-panel px-6 text-lg font-semibold text-wa-ink disabled:opacity-60;
+  }
+
+  .field {
+    @apply min-h-tap w-full rounded-md border border-wa-line bg-wa-panel px-4 text-lg text-wa-ink outline-none focus:border-wa-teal;
+  }
+
+  .surface {
+    @apply border border-wa-line bg-wa-panel;
+  }
+}

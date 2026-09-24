@@ -69,7 +69,7 @@ RUN apt-get update \
 COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder   --chown=nextjs:nodejs /app/.next        ./.next
 COPY --from=builder   --chown=nextjs:nodejs /app/prisma       ./prisma
-# COPY --from=builder /app/public ./public # needed Day 3: PWA manifest + service worker
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --chown=nextjs:nodejs package.json         ./package.json
 COPY --chown=nextjs:nodejs next.config.ts       ./next.config.ts
 # Custom server: Next + Socket.io share one HTTP listener, so `next start` is
