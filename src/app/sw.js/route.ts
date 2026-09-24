@@ -46,7 +46,14 @@ export async function GET() {
     });
   }
 
-  const source = template.replace("__CACHE_NAME__", `phonemail-shell-${buildId}`);
+  // Stamp the cache name with a regex on the CACHE line rather than a literal
+  // placeholder match: an exact-string match proved brittle (the same replace that
+  // works on the repository copy silently no-opped inside the image, which would
+  // have shipped a worker that never changed name and therefore never updated).
+  const source = template.replace(
+    /const CACHE = "[^"]*";/,
+    `const CACHE = "phonemail-shell-${buildId}";`,
+  );
 
   return new Response(source, {
     status: 200,
