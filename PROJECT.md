@@ -1,6 +1,8 @@
 # PhoneMail — AlphaStack 7-Day Buildathon
 
 **Deadline:** Tuesday, Sep 29, 2026, 11:59 PM
+
+**`docs/SPEC.md` is the official organizer task document and the source of truth; PROJECT.md is the working plan.**
 **Today:** Wednesday, Sep 23, 2026 (Day 1)
 **Team:** Solo build
 
