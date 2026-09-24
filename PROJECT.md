@@ -557,6 +557,20 @@ context instantly)*
     interface feels in a browser. Account 9500089722 is still pending the
     developer's decision.
 
+
+- Day 5 hotfix: OTP SMS rotates among user-verified formats — resists
+  exact-duplicate filtering while every format is proven to deliver; untested
+  formats are never shipped.
+  - src/lib/otp.ts: `OTP_MESSAGE_FORMATS` holds the verified list (currently a
+    single entry, "PhoneMail: {otp}"); `otpMessage()` picks one with
+    crypto.randomInt — the same randomness standard as the code itself. The long
+    templated wording the carrier drops is gone, and a unit assertion fails if it
+    ever returns.
+  - Tests: 22/22 — every generated message matches a committed format, all
+    committed formats appear across 500 generations, no format is over-long or
+    templated, and the body shape / To / From assertions still pass.
+  - NEEDS FROM THE DEVELOPER: more manually-verified formats. With one entry this
+    is a rotation mechanism, not yet a mix — and unverified formats must not ship.
 - Day 6:
 - Day 7:
 

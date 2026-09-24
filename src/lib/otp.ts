@@ -106,9 +106,26 @@ function generateOtp(): string {
   return randomInt(100000, 1000000).toString();
 }
 
-/** The exact SMS body. Some providers append their own banner. */
+/**
+ * OTP message formats, rotated per message.
+ *
+ * Why rotation: the carrier drops the long templated text this project used to
+ * send (proven by manual tests), and it also filters exact duplicates — so a
+ * day's worth of identical OTP bodies is a delivery risk. Short,
+ * personal-looking text with a varying wrapper passes both.
+ *
+ * HARD RULE: only formats the developer has VERIFIED deliver belong in this
+ * list. An untested format is never shipped, because a dropped OTP is a broken
+ * signup. Adding one is a deliberate act, not a refactor.
+ */
+export const OTP_MESSAGE_FORMATS = ["PhoneMail: {otp}"] as const;
+
+/** The SMS body for one message: a uniform random pick from the verified set. */
 export function otpMessage(otp: string): string {
-  return `Your PhoneMail verification code is ${otp}. It expires in 5 minutes. Do not share it with anyone.`;
+  // crypto.randomInt, same standard as the code itself: uniform over the list,
+  // no modulo bias, no predictable pattern.
+  const format = OTP_MESSAGE_FORMATS[randomInt(0, OTP_MESSAGE_FORMATS.length)];
+  return format.replace("{otp}", otp);
 }
 
 /** Raised when a second OTP is requested inside the cooldown window. */
