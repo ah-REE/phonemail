@@ -1,12 +1,18 @@
 /*
- * PhoneMail service worker — deliberately minimal.
+ * PhoneMail service worker — the source of truth for /sw.js.
+ *
+ * This file is NOT served directly. `src/app/sw.js/route.ts` reads it, stamps
+ * __CACHE_NAME__ with the current Next build id, and serves the result with
+ * Cache-Control: no-cache. That is what makes a returning user (including the
+ * phone PWA) pick up the current build's shell instead of a stale one.
  *
  *  - precaches the app shell so navigation works offline
  *  - network-first for /api/* (data must never be stale)
- *  - never touches /socket.io (realtime must not be proxied through a cache)
+ *  - never touches /socket.io (realtime must not go through a cache)
+ *  - on activate, drops every cache that is not the current build
  */
 
-const CACHE = "phonemail-shell-v1";
+const CACHE = "__CACHE_NAME__";
 const SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -22,6 +28,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      // Drop every stale build's shell, then take over open pages immediately.
       const names = await caches.keys();
       await Promise.all(names.filter((name) => name !== CACHE).map((name) => caches.delete(name)));
       await self.clients.claim();
