@@ -526,6 +526,37 @@ context instantly)*
   - Commit: 41232a7.
 
 - Day 5: IVR (Exotel) is next up
+- Day 5 (desktop client, IVR, notifications): the MVP checkpoint day.
+  - Desktop: app/(desktop)/desktop with its own layout (explicit /desktop URL so
+    evaluators open both interfaces without user-agent guessing). Single-screen
+    login (phone + inline OTP), three-zone inbox (rail, thread list, reading pane
+    that marks a thread read on select), compose pane, profile, settings. REUSE
+    only: the same useAuth (per-tab sessionStorage, so the two-tab method is safe
+    here too), authorizedFetch, useRealtime and endpoints as mobile — no
+    desktop-only backend logic. Cross-links both ways for discoverability.
+  - IVR: POST /api/ivr/signup — shared secret via ?token= (or the x-ivr-secret
+    header), caller number taken from CallFrom, upsert (idempotent), XiML
+    Response/Say reply. No OTP by design: the call itself proves the number, so a
+    caller cannot create an account for a number they do not control.
+    docs/ivr-setup.md documents the Exotel console steps and the tunnel or hosted
+    URL requirement.
+  - Notification: the inbound path (after the row is written and the socket event
+    is emitted) sends the recipient a plain SMS through the same gateway, with
+    the text 'New PhoneMail message from <sender>: <subject>', throttled to one
+    per recipient per 60s. It can NEVER fail a delivery (outcomes are returned as
+    values, not thrown) and dev mode skips it silently. The inbound response now
+    reports the outcome, so the mechanism is visible in the SMTP service log.
+  - Verified: build green; mobile AND desktop routes 200; IVR 401 (wrong secret)
+    / 400 (unreadable number) / 200 + idempotent repeat (10/10 live checks);
+    notification logic covered by 7/7 unit assertions against a mocked transport
+    and stubbed Redis (dev-mode silence, one send, per-recipient throttle,
+    failure-never-throws); both convention accounts still sign in with the dev
+    OTP and the round trip still delivers.
+  - USER-VERIFIED (cannot be done from here): the Exotel console plus a real call,
+    the notification SMS actually arriving on the handset, and how the desktop
+    interface feels in a browser. Account 9500089722 is still pending the
+    developer's decision.
+
 - Day 6:
 - Day 7:
 
