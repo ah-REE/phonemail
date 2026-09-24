@@ -150,10 +150,10 @@ know how to use WhatsApp.
       while building the shell rather than bolting it on later
 
 ### Day 4 — Sat Sep 26: Mobile Interface, Part 2 (finish the priority feature)
-- [ ] Chat/conversation thread: subject field logic, reply-once, swipe-to-tag
-- [ ] Compose (traditional view) + traditional full view for long emails
-- [ ] Verify PWA install prompt works on a real phone browser
-- [ ] Full mobile flow test: signup → OTP → home → send/receive → reply
+- [x] Chat/conversation thread: subject field logic, reply-once, swipe-to-tag
+- [x] Compose (traditional view) + traditional full view for long emails *(compose is a real screen with validation; the full view is reached from a long message)*
+- [ ] Verify PWA install prompt works on a real phone browser *(blocked: needs a real handset — manifest and service worker are served and valid, installation itself is untested)*
+- [x] Full mobile flow test: signup → OTP → home → send/receive → reply *(verified programmatically end to end — onboarding, home, send/receive, reply, tag — not by tapping through a browser)*
 
 ### Day 5 — Sun Sep 27: Desktop Interface + Telephony
 - [ ] Stitch → Gmail-style desktop design
@@ -423,6 +423,55 @@ context instantly)*
   - Commit: 6b3278c.
 
 - Day 4:
+- Day 4 (mobile interface, part 2): the screens that make it a working client,
+  ending with the organisers' own evaluation shape — two tabs, two users, live
+  delivery between them.
+  - Per-tab sessions (Task 0, critical): the auth session moved from
+    localStorage to sessionStorage, so each TAB is its own user. With
+    localStorage a second tab silently inherited the first user's token and the
+    two-user test collapsed into one account. Trade-off accepted and documented:
+    closing a tab signs you out, which forces the onboarding flow an evaluator
+    should see anyway. The socket takes its token from the same hook, and
+    sign-out clears both keys.
+  - Thread screen: WhatsApp-style bubbles (theirs left, ours right), the subject
+    as the thread header line, per-message timestamps, messages that were unread
+    when the thread opened marked `new`, and a long message collapsing to a
+    preview with `Read full message` expanding to the traditional full view
+    (complete body + From/To/Subject header block).
+  - Endpoints: GET /api/conversations/[phone] (both directions, chronological,
+    cap 200; a pure read) and POST /api/conversations/[phone]/read (batched
+    mark-read when a thread opens, so opening is what marks it read).
+  - reply-once: POST /api/emails accepts `replyToId` and claims the original
+    message with a conditional update, so a second reply cannot be recorded even
+    under a race (409). The claim is rolled back if SMTP refuses, so a failed
+    send does not burn the reply. Replying to your own message or to someone
+    else's is 403; an unknown id is 404. `Email.repliedAt` drives the UI, which
+    replaces the Reply affordance with `Replied`.
+  - swipe-to-tag: `Email.tag` (persisted) written through PATCH /api/emails/[id]
+    from a fixed set (important/later/done, nullable). The gesture is a pointer
+    swipe; a `⋯` button exposes the same actions for anyone not swiping. Day 6's
+    folders build on this field.
+  - Migration 20260924140000_add_thread_state: repliedAt + tag + a
+    (fromUserId, toUserId, createdAt) index, generated offline and proven
+    byte-identical to a re-run of prisma migrate diff.
+  - Realtime: a shared useRealtime hook owns the socket and the 30s polling
+    fallback for whichever screen is open. The open thread APPENDS the socket
+    payload in place (marked `arriving…`) instead of refetching, so a message
+    that lands while you are reading the thread appears immediately.
+  - Verified programmatically: 28/28 checks against the running stack (session
+    storage contract in code, compose validation, thread auth/400/404/ordering/
+    ownership/unread, mark-read-on-open, reply-once 202→409 plus the 403/404
+    edges, tag persist/reject/forbid/clear) and 8/8 in a fresh-clone evaluation
+    (four services healthy, all three migrations on a cold volume, two users,
+    round trip, reply, tag, PWA assets 200).
+  - NOT verified: the actual two-tab browser behaviour and the browser
+    click-through (no browser automation here), and the PWA install prompt on a
+    handset. One incident worth recording: my first verification run happened
+    while the local override was active, so the app was in REAL mode — the two
+    send-otp calls queued real SMS through the gateway before the run was
+    switched to dev mode.
+  - Commits: b1a5356 (20s sms-gate budget), da53d4c (Day 4).
+
 - Day 5: IVR (Exotel) is next up
 - Day 6:
 - Day 7:
