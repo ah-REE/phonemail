@@ -571,6 +571,12 @@ context instantly)*
     templated, and the body shape / To / From assertions still pass.
   - NEEDS FROM THE DEVELOPER: more manually-verified formats. With one entry this
     is a rotation mechanism, not yet a mix — and unverified formats must not ship.
+- Day 6: repository and conventions
+  - docs/SPEC.md now holds the organizer's task document verbatim (saved from the
+    paste between the SPEC markers, markers excluded) and PROJECT.md declares it
+    the source of truth, with PROJECT.md as the working plan.
+  - Account 9500089722 is the developer's friend's test login (user-created for a
+    real portal sign-in, not an agent artifact). Settled — do not flag again.
 - Day 6:
 - Day 7:
 
