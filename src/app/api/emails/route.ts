@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
+import { classifyToken, lookupRecipientUsers, recipientToken } from "@/lib/alias";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
-import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { deriveThreadKey } from "@/lib/threadKey";
 
@@ -43,18 +43,6 @@ const sendSchema = z.object({
   replyToId: z.string().trim().min(1).optional(),
 });
 
-/** Accepts a bare 10-digit number or <phone>@phonemail.com. */
-function parseRecipient(raw: string): { phoneNumber: string; address: string } | null {
-  const withoutDomain = raw.trim().replace(/@.*$/, "");
-  const phoneNumber = normalizePhoneNumber(withoutDomain);
-
-  if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
-    return null;
-  }
-
-  return { phoneNumber, address: addressForPhone(phoneNumber) };
-}
-
 export async function POST(request: Request) {
   const user = requireUser(request);
   if (!user) {
@@ -76,59 +64,43 @@ export async function POST(request: Request) {
     );
   }
 
-  // One list, whatever shape it arrived in, with duplicates collapsed.
+  // One list, whatever shape it arrived in, with duplicates collapsed. An entry
+  // may be a 10-digit number OR an alias local part (Day 6); both go through the
+  // same lookup the inbound path uses, so the two paths cannot drift apart.
   const rawRecipients = (Array.isArray(parsed.data.to) ? parsed.data.to : [parsed.data.to]).flatMap(
     (entry) => entry.split(","),
   );
 
-  const recipients: { phoneNumber: string; address: string }[] = [];
-  const rejected: string[] = [];
+  const tokens = [...new Set(rawRecipients.map(recipientToken).filter((token) => token.length > 0))];
 
-  for (const raw of rawRecipients) {
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-    const recipient = parseRecipient(trimmed);
-    if (!recipient) {
-      rejected.push(trimmed);
-      continue;
-    }
-    if (!recipients.some((existing) => existing.phoneNumber === recipient.phoneNumber)) {
-      recipients.push(recipient);
-    }
+  if (tokens.length === 0) {
+    return NextResponse.json({ error: "`to` must name at least one recipient." }, { status: 400 });
   }
 
+  const rejected = tokens.filter((token) => classifyToken(token) === "invalid");
   if (rejected.length > 0) {
     return NextResponse.json(
       {
-        error: "`to` must be 10-digit Indian mobile numbers or <phone>@phonemail.com.",
+        error:
+          "`to` must be 10-digit Indian mobile numbers, or aliases of 3-20 lowercase letters, digits and dots.",
         invalid: rejected,
       },
       { status: 400 },
     );
   }
 
-  if (recipients.length === 0) {
-    return NextResponse.json({ error: "`to` must name at least one recipient." }, { status: 400 });
-  }
+  const resolved = await lookupRecipientUsers(tokens);
 
-  const recipientUsers = await prisma.user.findMany({
-    where: { phoneNumber: { in: recipients.map((recipient) => recipient.phoneNumber) } },
-    select: { id: true, phoneNumber: true },
-  });
-
-  const known = new Set(recipientUsers.map((recipient) => recipient.phoneNumber));
-  const unknown = recipients
-    .map((recipient) => recipient.phoneNumber)
-    .filter((phoneNumber) => !known.has(phoneNumber));
-
+  // An unknown alias is an unknown recipient: same 404, same wording.
+  const unknown = tokens.filter((token) => !resolved.has(token));
   if (unknown.length > 0) {
     return NextResponse.json(
       { error: `Recipient not found: ${unknown.join(", ")}.` },
       { status: 404 },
     );
   }
+
+  const recipients = tokens.map((token) => resolved.get(token) as { id: string; phoneNumber: string; registeredVia: string });
 
   // Reply-once: claim the original message atomically before sending anything.
   let claimedReplyTo: string | null = null;
@@ -182,7 +154,9 @@ export async function POST(request: Request) {
   }
 
   const fromAddress = addressForPhone(user.phoneNumber);
-  const addresses = recipients.map((recipient) => recipient.address);
+  // The stored address is always the canonical number address: an alias is a
+  // way in, not a second identity in the message data.
+  const addresses = recipients.map((recipient) => addressForPhone(recipient.phoneNumber));
 
   try {
     await submitOutboundEmail({

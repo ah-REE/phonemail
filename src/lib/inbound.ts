@@ -1,5 +1,10 @@
+import {
+  classifyToken,
+  lookupRecipientUsers,
+  recipientToken,
+  type RecipientUser,
+} from "@/lib/alias";
 import { addressForPhone } from "@/lib/mailer";
-import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
 import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
@@ -18,6 +23,12 @@ import { deriveThreadKey } from "@/lib/threadKey";
  * (see lib/threadKey.ts). A message with a single recipient still gets
  * threadKey NULL, so pairwise threads are grouped exactly as before.
  *
+ * Day 6 (aliases): a recipient may arrive as an alias local part. It is resolved
+ * to its owner BEFORE anything else happens, so an alias takes exactly the same
+ * path as a number from here on. The stored addresses stay canonical
+ * (<number>@phonemail.com): the alias is a way IN, not a second identity in the
+ * message data.
+ *
  * Per row, exactly as for a single recipient: (a) emit the realtime event and
  * (b) attempt the "new mail" SMS notification. The notification is best-effort
  * by design: it can never fail a delivery, and dev mode skips it entirely.
@@ -33,7 +44,7 @@ export interface InboundDelivery {
 
 export interface InboundMessage {
   from: string;
-  /** The full recipient list of the submission (min 1). */
+  /** The full recipient list of the submission (min 1); numbers or aliases. */
   to: string[];
   subject: string;
   body: string;
@@ -43,41 +54,32 @@ export type InboundResult =
   | { ok: true; threadKey: string | null; deliveries: InboundDelivery[] }
   | { ok: false; status: number; error: string };
 
-/** Extracts the canonical 10-digit number from "<phone>@phonemail.com". */
-function phoneFromAddress(address: string): string {
-  return normalizePhoneNumber(address.trim().replace(/@.*$/, ""));
-}
-
 const PREVIEW_LENGTH = 120;
-const RECIPIENT_RE = /^[6-9]\d{9}$/;
 
 export async function submitInboundEmail(message: InboundMessage): Promise<InboundResult> {
-  const senderPhone = phoneFromAddress(message.from);
+  const senderPhone = recipientToken(message.from);
   // Duplicates are collapsed: the same member must not get two copies.
-  const recipientPhones = [...new Set(message.to.map(phoneFromAddress))];
+  const recipientTokens = [...new Set(message.to.map(recipientToken).filter((token) => token.length > 0))];
 
-  if (recipientPhones.length === 0) {
+  if (recipientTokens.length === 0) {
     return { ok: false, status: 422, error: "At least one recipient is required." };
   }
 
-  const invalid = recipientPhones.filter((phone) => !RECIPIENT_RE.test(phone));
+  const invalid = recipientTokens.filter((token) => classifyToken(token) === "invalid");
   if (invalid.length > 0) {
     return { ok: false, status: 422, error: `Not a valid recipient address: ${invalid.join(", ")}.` };
   }
 
-  const [recipients, sender] = await Promise.all([
-    prisma.user.findMany({
-      where: { phoneNumber: { in: recipientPhones } },
-      select: { id: true, phoneNumber: true, registeredVia: true },
-    }),
+  const [resolved, sender] = await Promise.all([
+    lookupRecipientUsers(recipientTokens),
     prisma.user.findUnique({
       where: { phoneNumber: senderPhone },
       select: { id: true, phoneNumber: true },
     }),
   ]);
 
-  const found = new Set(recipients.map((recipient) => recipient.phoneNumber));
-  const missing = recipientPhones.filter((phone) => !found.has(phone));
+  // An unknown alias is an unknown recipient. Same answer, same status.
+  const missing = recipientTokens.filter((token) => !resolved.has(token));
   if (missing.length > 0) {
     return { ok: false, status: 404, error: `Recipient is not a PhoneMail user: ${missing.join(", ")}.` };
   }
@@ -86,8 +88,11 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     return { ok: false, status: 422, error: "Sender is not a PhoneMail user." };
   }
 
-  // The derived key. Only a real group (2+ recipients) gets one: a single
-  // recipient keeps threadKey NULL so the pairwise view is untouched.
+  const recipients: RecipientUser[] = recipientTokens.map((token) => resolved.get(token) as RecipientUser);
+
+  // The derived key is built from canonical NUMBERS, never from whatever alias
+  // a sender happened to type: the same three people must always land in the
+  // same thread.
   const threadKey =
     recipients.length > 1
       ? deriveThreadKey([sender.phoneNumber, ...recipients.map((recipient) => recipient.phoneNumber)])

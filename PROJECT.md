@@ -171,7 +171,7 @@ here is enhancement, not core function.
 
 ### Day 6 — Mon Sep 28: Buffer 1 — Remaining Features + Performance — documentation + rehearsal must be COMPLETE by EOD
 - [x] Group chat logic (2+ recipients → group; future 1:1 stays separate) *(shipped Day 6: the DERIVED thread key - see the Day 6 group-chat entry below)*
-- [ ] Drafts, Spam, Trash; alias ID management in settings
+- [ ] Drafts, Spam, Trash; alias ID management in settings *(alias ID management shipped Day 6 - see the alias entry in Section 9; Drafts/Spam/Trash are still pending)*
 - [ ] k6/autocannon load test on login — fix anything over 500ms
 - [ ] Postgres connection pooling, response compression
 - [ ] Docker network hardening: only expose the `app` and `smtp` ports;
@@ -682,6 +682,48 @@ context instantly)*
     threads only (group mail is invisible there, not lost); the group view has
     no swipe-to-tag and no per-group reply-once - those stay pairwise
     affordances.
+
+- Day 6: ALIAS IDs (a second address for one account) + desktop group visibility.
+  - Model: Alias(id, userId FK cascade, localPart UNIQUE, createdAt), migration
+    20260924233000_add_alias. localPart is unique AND is checked against
+    User.phoneNumber before creation, so "<localPart>@phonemail.com" always
+    resolves to exactly one account - an alias can neither shadow a phone number
+    nor be shadowed by one, and a collision is refused (400).
+  - API (JWT): GET /api/aliases (list mine), POST /api/aliases (create),
+    DELETE /api/aliases/[localPart]. Owner-scoped by construction - the token's
+    sub is the only userId ever read or written. Rules: 3-20 characters, lowercase
+    letters/digits/dots, no leading/trailing/doubled dots, reserved words blocked
+    (admin, support, postmaster, abuse, hostmaster, webmaster, noreply, mail,
+    smtp, api, portal, ivr, ... - the full list is in lib/alias.ts). Invalid or
+    duplicate is 400.
+  - Resolution: ONE lookup (lib/alias.ts) shared by POST /api/emails and the
+    inbound path, so the two cannot drift apart. From resolution onward an alias
+    takes exactly the same path as a number - same row, same socket event, same
+    notification gate - and an unknown alias is indistinguishable from an unknown
+    number (404). Stored addresses stay canonical <number>@phonemail.com, and the
+    derived group key is built from NUMBERS rather than from whatever alias a
+    sender typed, so the same people always land in the same thread.
+  - UI: alias management (list / add / remove) on the mobile profile & settings
+    screen. Functional only - the visual pass comes later.
+  - Desktop correctness fix: the desktop inbox rendered PAIRWISE threads only, so
+    group mail was visible on mobile and invisible there. It now renders the
+    groupThreads that /api/conversations already returned and opens one through
+    /api/conversations/thread/[key] with the same per-member mark-read semantics.
+  - Verified (dev mode): build green; the migration applied on container start
+    ("Applying migration 20260924233000_add_alias", Alias table present); the prior
+    group regression still 43/43 AND an alias suite 31/31 - create 201 plus the
+    full address, owner-scoped list (another account sees none), duplicate 400,
+    too-short 400, reserved-word 400, invalid-character 400, leading-dot 400,
+    phone-number collision 400, mail to the alias delivered (unread +1), mail to
+    the full alias address delivered too, unknown alias 404, non-member (8072788917)
+    reading a group thread 403 with the group absent from that account's list,
+    foreign delete 404, owner delete 200, mail to a deleted alias 404. The desktop
+    rendering itself is build- and code-verified only - no browser in this session.
+  - DEFERRED, not started (mobile-spec items this session did not reach):
+    search-to-chat from the home search box; the traditional-compose button in the
+    thread input row; swipe-right "traditional view" reply; Favorites and
+    Attachments filter chips; Drafts/Spam/Trash folders plus swipe-to-move.
+    Nothing was begun for these, so no half-built code sits in the tree.
 
 - Day 7:
 

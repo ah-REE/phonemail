@@ -34,6 +34,9 @@ model User {
 
   sentEmails     Email[] @relation("SentEmails")
   receivedEmails Email[] @relation("ReceivedEmails")
+
+  /// Day 6 alias IDs: extra addresses that resolve to this same account.
+  aliases        Alias[]
 }
 
 /// A delivered message. Rows are only ever created by the inbound delivery
@@ -75,4 +78,20 @@ model Email {
   @@index([fromUserId, toUserId, createdAt])
   /// Serves the group thread query: WHERE threadKey = ? ORDER BY createdAt.
   @@index([threadKey, createdAt])
+}
+
+/// A second address for one account (Day 6). localPart is unique AND is checked
+/// against User.phoneNumber at creation time, so "<localPart>@phonemail.com"
+/// always resolves to exactly one user: an alias can neither shadow a phone
+/// number nor be shadowed by one.
+model Alias {
+  id        String   @id @default(cuid())
+  userId    String
+  localPart String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Serves the settings list: WHERE userId = ? ORDER BY createdAt.
+  @@index([userId, createdAt])
 }

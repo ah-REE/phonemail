@@ -35,6 +35,21 @@ interface Message {
   tag: string | null;
 }
 
+/**
+ * Day 6: a group conversation. /api/conversations has always returned these -
+ * the desktop list simply never rendered them, which is why group mail was
+ * invisible here.
+ */
+interface GroupThread {
+  threadKey: string;
+  members: string[];
+  memberAddresses: string[];
+  subject: string;
+  preview: string;
+  lastAt: string;
+  unread: number;
+}
+
 function formatWhen(iso: string): string {
   const date = new Date(iso);
   return date.toDateString() === new Date().toDateString()
@@ -47,6 +62,7 @@ export default function DesktopInboxPage() {
   const { status, token, authorizedFetch } = useAuth();
 
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [groups, setGroups] = useState<GroupThread[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [threadSubject, setThreadSubject] = useState("");
@@ -68,8 +84,9 @@ export default function DesktopInboxPage() {
         setError("Could not load the inbox.");
         return;
       }
-      const body = (await response.json()) as { threads?: Thread[] };
+      const body = (await response.json()) as { threads?: Thread[]; groupThreads?: GroupThread[] };
       setThreads(body.threads ?? []);
+      setGroups(body.groupThreads ?? []);
       setError(null);
     } catch {
       setError("Network error.");
@@ -93,6 +110,37 @@ export default function DesktopInboxPage() {
         setThreadSubject(body.subject ?? "");
         // Opening a thread marks it read; refresh the list so the badge clears.
         await authorizedFetch(`/api/conversations/${phone}/read`, { method: "POST" });
+        void loadThreads();
+      } finally {
+        setLoadingThread(false);
+      }
+    },
+    [authorizedFetch, loadThreads],
+  );
+
+  /**
+   * Day 6: open a group thread by its derived key. Same reading pane, same
+   * mark-read semantics as mobile - a group thread is addressed to the whole
+   * member set, and the reader only ever clears their own rows.
+   */
+  const openGroup = useCallback(
+    async (threadKey: string) => {
+      setSelected(threadKey);
+      setLoadingThread(true);
+      try {
+        const response = await authorizedFetch(
+          `/api/conversations/thread/${encodeURIComponent(threadKey)}`,
+        );
+        if (!response.ok) {
+          setError("Could not load that conversation.");
+          return;
+        }
+        const body = (await response.json()) as { subject?: string; messages?: Message[] };
+        setMessages(body.messages ?? []);
+        setThreadSubject(body.subject ?? "");
+        await authorizedFetch(`/api/conversations/thread/${encodeURIComponent(threadKey)}/read`, {
+          method: "POST",
+        });
         void loadThreads();
       } finally {
         setLoadingThread(false);
@@ -127,6 +175,11 @@ export default function DesktopInboxPage() {
   const selectedThread = useMemo(
     () => threads.find((thread) => thread.counterpart === selected),
     [threads, selected],
+  );
+
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.threadKey === selected),
+    [groups, selected],
   );
 
   async function sendCompose(event: React.FormEvent) {
@@ -170,8 +223,36 @@ export default function DesktopInboxPage() {
       <section className="flex w-96 flex-col overflow-y-auto border-r border-wa-line bg-wa-panel">
         <h1 className="border-b border-wa-line px-4 py-3 text-lg font-semibold">Inbox</h1>
         {loadingList && <p className="p-4 text-wa-muted">Loading…</p>}
-        {!loadingList && threads.length === 0 && (
+        {!loadingList && threads.length + groups.length === 0 && (
           <p className="p-4 text-wa-muted">No conversations yet.</p>
+        )}
+        {groups.length > 0 && (
+          <ul className="border-b-2 border-wa-teal/30">
+            {groups.map((group) => (
+              <li key={group.threadKey} className="border-b border-wa-line">
+                <button
+                  type="button"
+                  onClick={() => void openGroup(group.threadKey)}
+                  className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-wa-bg ${
+                    selected === group.threadKey ? "bg-wa-bg" : ""
+                  }`}
+                >
+                  <span className="flex items-baseline gap-2">
+                    <span className={`truncate ${group.unread > 0 ? "font-bold" : "font-semibold"}`}>
+                      Group - {group.members.join(", ")}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-wa-muted">
+                      {formatWhen(group.lastAt)}
+                    </span>
+                  </span>
+                  <span className="block truncate text-sm">{group.subject}</span>
+                  <span className="block truncate text-sm text-wa-muted">
+                    {group.members.length} members - {group.preview}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         <ul>
           {threads.map((thread) => (
@@ -246,7 +327,9 @@ export default function DesktopInboxPage() {
         {selected && !composeOpen && (
           <>
             <header className="border-b border-wa-line px-6 py-4">
-              <h2 className="text-xl font-semibold">{selected}</h2>
+              <h2 className="text-xl font-semibold">
+                {selectedGroup ? `Group - ${selectedGroup.members.join(", ")}` : selected}
+              </h2>
               <p className="text-sm text-wa-muted">{threadSubject || selectedThread?.subject}</p>
             </header>
             <div className="flex-1 overflow-y-auto p-6">
