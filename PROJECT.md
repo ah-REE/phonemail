@@ -585,6 +585,10 @@ context instantly)*
     the source of truth, with PROJECT.md as the working plan.
   - Account 9500089722 is the developer's friend's test login (user-created for a
     real portal sign-in, not an agent artifact). Settled — do not flag again.
+  - Account 8072788917 is the developer's friend's SECOND test account — a second
+    real number the same friend owns, used for the same real portal sign-in.
+    Settled (user-confirmed 2026-09-24) — keep the account; do not flag or
+    remove it again.
 - Day 6:
 
 - Day 6: service-worker versioning and the notification gate.
