@@ -497,6 +497,34 @@ context instantly)*
     switched to dev mode.
   - Commits: b1a5356 (20s sms-gate budget), da53d4c (Day 4).
 
+- Day 4 polish hotfix (from the developer's first real click-through):
+  - Finding 1 — the refresh race (FIXED): the guards waited on a `ready` flag
+    that is resolved in an effect, so between the first paint and that effect the
+    session was still UNKNOWN. An unknown session is not a signed-out one, but
+    there was no third state to express that, so a guard could act on the gap.
+    `useAuth` now exposes `status = loading | authenticated | unauthenticated`,
+    reads the session SYNCHRONOUSLY in the useState initializer (SSR-guarded) so
+    nothing is left to guess once the client mounts, and EVERY redirect is gated
+    on a confirmed status; the first paint is a skeleton, never onboarding.
+    Per-tab sessionStorage, the socket's token source and logout clearing both
+    keys are unchanged. Honesty note: the browser timing could not be reproduced
+    here, so the original mechanism is reasoned from the code rather than
+    observed — the fix removes the window either way, and the developer's
+    click-through is the confirmation.
+  - Finding 2 — conservative polish, same design language: 8px-based rhythm and
+    one card radius as tokens, darker muted text for real contrast, skeletons for
+    the chat list and the thread instead of blank flashes, an empty state with one
+    clear action, visible focus rings, restrained 180ms transitions with a
+    reduced-motion guard, one shared AppBar so the chrome cannot drift between
+    screens, and thread auto-scroll to the newest message.
+  - Verified: build green; 16/16 (the auth contract read from source, plus a full
+    dev-mode regression on the two convention numbers — round trip, reply-once
+    409, tags, mark-read, conversations, reserved-number 404, every route 200);
+    8/8 in a fresh-clone evaluation. NOT verified: the browser refresh behaviour
+    itself and how the polish looks on a handset — both are the developer's next
+    click-through.
+  - Commit: 41232a7.
+
 - Day 5: IVR (Exotel) is next up
 - Day 6:
 - Day 7:
