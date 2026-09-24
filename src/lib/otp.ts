@@ -37,6 +37,18 @@ export const DEV_FALLBACK_OTP = "123456";
 export const SMS_GATE_URL = "https://api.sms-gate.app/3rdparty/v1/message";
 
 /**
+ * Total budget for one send attempt.
+ *
+ * Diagnosis (2026-09-24 12:56-12:57 IST): two sends failed with
+ * UND_ERR_CONNECT_TIMEOUT - undici's default connect budget is 10s, and a
+ * transient host-network stall pushed connects past it. There is no retry here
+ * on purpose (a 2xx means "queued", so retrying could send twice), so the only
+ * safe hardening is to allow a slower-but-working link to finish: 20s covers
+ * the stalls seen in practice without holding a request open indefinitely.
+ */
+export const SMS_GATE_TIMEOUT_MS = 20_000;
+
+/**
  * The literal placeholder values committed in docker-compose.yml. Treating them
  * as "not configured" is deliberate: an evaluator who never edits compose must
  * still get a working OTP flow.
@@ -135,6 +147,8 @@ export async function sendOtpSms(phoneNumber: string, otp: string): Promise<void
 
   const response = await fetch(SMS_GATE_URL, {
     method: "POST",
+    // Bounded so a stalled connect fails with a clear error instead of hanging.
+    signal: AbortSignal.timeout(SMS_GATE_TIMEOUT_MS),
     headers: {
       Authorization: `Basic ${Buffer.from(`${config.login}:${config.password}`).toString("base64")}`,
       "Content-Type": "application/json",
