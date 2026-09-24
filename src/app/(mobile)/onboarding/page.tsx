@@ -43,7 +43,7 @@ const OTP_LENGTH = 6;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { ready, token, signIn } = useAuth();
+  const { status, token, signIn } = useAuth();
 
   const [step, setStep] = useState<Step>("language");
   const [language, setLanguage] = useState("en");
@@ -63,11 +63,12 @@ export default function OnboardingPage() {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   // Already signed in? The app shell is where you belong.
+  // Only bounce a CONFIRMED session; never act while the phase is unknown.
   useEffect(() => {
-    if (ready && token) {
+    if (status === "authenticated") {
       router.replace("/");
     }
-  }, [ready, token, router]);
+  }, [status, router]);
 
   // "resend in Xs" countdown, driven by the server's own numbers.
   useEffect(() => {
@@ -178,8 +179,14 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!ready) {
-    return null;
+  if (status === "loading") {
+    return (
+      <main className="flex flex-1 flex-col p-4">
+        <span className="skeleton mb-3 h-6 w-1/2 rounded" />
+        <span className="skeleton mb-3 h-4 w-3/4 rounded" />
+        <span className="skeleton h-12 w-full rounded-card" />
+      </main>
+    );
   }
 
   return (

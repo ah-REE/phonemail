@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { AppBar } from "@/components/app-bar";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -13,28 +14,30 @@ import { useAuth } from "@/lib/useAuth";
  */
 export default function ProfilePage() {
   const router = useRouter();
-  const { ready, token, user, signOut } = useAuth();
+  const { status, token, user, signOut } = useAuth();
 
   useEffect(() => {
-    if (ready && !token) {
+    if (status === "unauthenticated") {
       router.replace("/onboarding");
     }
-  }, [ready, token, router]);
+  }, [status, router]);
 
-  if (!ready || !token) {
-    return null;
+  if (status !== "authenticated") {
+    return (
+      <main className="flex flex-1 flex-col">
+        <AppBar title="Profile" backHref="/" />
+        <div className="p-4">
+          <span className="skeleton h-20 w-full rounded-card" />
+        </div>
+      </main>
+    );
   }
 
   const address = user ? `${user.phoneNumber}@phonemail.com` : "—";
 
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex min-h-tap items-center gap-3 bg-wa-teal px-4 py-3 text-white">
-        <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none">
-          ←
-        </Link>
-        <h1 className="text-xl font-semibold">Profile &amp; settings</h1>
-      </header>
+      <AppBar title="Profile & settings" backHref="/" />
 
       <section className="flex flex-col gap-4 p-4">
         <div className="surface flex items-center gap-4 p-4">

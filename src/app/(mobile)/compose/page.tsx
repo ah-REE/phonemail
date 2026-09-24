@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { AppBar } from "@/components/app-bar";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -21,7 +22,7 @@ import { useAuth } from "@/lib/useAuth";
 function ComposeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { ready, token, authorizedFetch } = useAuth();
+  const { status, token, authorizedFetch } = useAuth();
 
   const presetTo = searchParams.get("to") ?? "";
   const replyToId = searchParams.get("replyTo") ?? "";
@@ -36,10 +37,10 @@ function ComposeForm() {
   const [fieldErrors, setFieldErrors] = useState<{ to?: string; subject?: string; body?: string }>({});
 
   useEffect(() => {
-    if (ready && !token) {
+    if (status === "unauthenticated") {
       router.replace("/onboarding");
     }
-  }, [ready, token, router]);
+  }, [status, router]);
 
   function validate() {
     const next: { to?: string; subject?: string; body?: string } = {};
@@ -103,18 +104,20 @@ function ComposeForm() {
     }
   }
 
-  if (!ready || !token) {
-    return null;
+  if (status !== "authenticated") {
+    return (
+      <main className="flex flex-1 flex-col">
+        <AppBar title="New message" backHref="/" />
+        <div className="p-4">
+          <span className="skeleton h-12 w-full rounded-card" />
+        </div>
+      </main>
+    );
   }
 
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex min-h-tap items-center gap-3 bg-wa-teal px-4 py-3 text-white">
-        <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none" aria-label="Back">
-          ←
-        </Link>
-        <h1 className="text-xl font-semibold">{isReply ? "Reply" : "New message"}</h1>
-      </header>
+      <AppBar title={isReply ? "Reply" : "New message"} backHref="/" />
 
       <form className="flex flex-1 flex-col gap-3 p-4" onSubmit={handleSend} noValidate>
         <label className="text-sm text-wa-muted" htmlFor="to">

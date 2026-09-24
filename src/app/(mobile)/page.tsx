@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ChatListSkeleton } from "@/components/skeleton";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -39,7 +40,7 @@ function formatTime(iso: string): string {
 
 export default function HomePage() {
   const router = useRouter();
-  const { ready, token, authorizedFetch } = useAuth();
+  const { status, token, authorizedFetch } = useAuth();
 
   const [threads, setThreads] = useState<ConversationThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,11 +71,12 @@ export default function HomePage() {
     }
   }, [authorizedFetch, router]);
 
+  // Never redirect while the phase is unknown — that is the refresh-race fix.
   useEffect(() => {
-    if (ready && !token) {
+    if (status === "unauthenticated") {
       router.replace("/onboarding");
     }
-  }, [ready, token, router]);
+  }, [status, router]);
 
   useEffect(() => {
     if (token) {
@@ -114,8 +116,15 @@ export default function HomePage() {
 
   const unreadTotal = threads.reduce((sum, thread) => sum + thread.unread, 0);
 
-  if (!ready || !token) {
-    return null;
+  if (status !== "authenticated") {
+    return (
+      <main className="flex flex-1 flex-col">
+        <header className="bg-wa-teal px-4 py-3 text-white">
+          <h1 className="text-xl font-semibold">PhoneMail</h1>
+        </header>
+        <ChatListSkeleton />
+      </main>
+    );
   }
 
   return (
@@ -166,7 +175,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {loading && <p className="p-4 text-wa-muted">Loading conversations…</p>}
+      {loading && <ChatListSkeleton rows={4} />}
       {error && (
         <p className="p-4 text-wa-alert" role="alert">
           {error}
@@ -174,17 +183,27 @@ export default function HomePage() {
       )}
 
       {!loading && !error && visible.length === 0 && (
-        <p className="p-6 text-center text-wa-muted">
-          {threads.length === 0
-            ? "No messages yet. Say hello with the compose button."
-            : "Nothing matches that search."}
-        </p>
+        <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
+          <p className="text-lg font-semibold">
+            {threads.length === 0 ? "No messages yet" : "Nothing matches that search"}
+          </p>
+          <p className="text-sm text-wa-muted">
+            {threads.length === 0
+              ? "Start a conversation and it will appear here."
+              : "Try a different name, subject or number."}
+          </p>
+          {threads.length === 0 && (
+            <Link href="/compose" className="btn-primary">
+              Write a message
+            </Link>
+          )}
+        </div>
       )}
 
       <ul className="flex-1 overflow-y-auto">
         {visible.map((thread) => (
           <li key={thread.counterpartAddress} className="border-b border-wa-line">
-            <Link href={`/thread/${thread.counterpart}`} className="flex items-center gap-3 px-4 py-3">
+            <Link href={`/thread/${thread.counterpart}`} className="row">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-xl font-semibold text-white">
                 {initialOf(thread.counterpart)}
               </span>

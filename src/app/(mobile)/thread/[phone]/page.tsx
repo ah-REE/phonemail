@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
+import { AppBar } from "@/components/app-bar";
+import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
@@ -57,7 +59,7 @@ export default function ThreadPage() {
   const router = useRouter();
   const params = useParams<{ phone: string }>();
   const phone = params?.phone ?? "";
-  const { ready, token, authorizedFetch } = useAuth();
+  const { status, token, authorizedFetch } = useAuth();
 
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [subject, setSubject] = useState("");
@@ -67,6 +69,7 @@ export default function ThreadPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(
     async (markRead: boolean) => {
@@ -116,11 +119,12 @@ export default function ThreadPage() {
     [authorizedFetch, phone, router],
   );
 
+  // Never redirect while the phase is unknown — see the refresh-race fix.
   useEffect(() => {
-    if (ready && !token) {
+    if (status === "unauthenticated") {
       router.replace("/onboarding");
     }
-  }, [ready, token, router]);
+  }, [status, router]);
 
   useEffect(() => {
     if (token) {
@@ -156,6 +160,14 @@ export default function ThreadPage() {
     onFallbackPoll: () => void load(false),
   });
 
+  // Keep the newest message in view: a chat should not open mid-thread.
+  useEffect(() => {
+    const node = listRef.current;
+    if (node) {
+      node.scrollTop = node.scrollHeight;
+    }
+  }, [messages.length]);
+
   const headerSubject = useMemo(() => subject || "Conversation", [subject]);
 
   async function setTag(messageId: string, tag: string | null) {
@@ -174,8 +186,13 @@ export default function ThreadPage() {
     }
   }
 
-  if (!ready || !token) {
-    return null;
+  if (status !== "authenticated") {
+    return (
+      <main className="flex h-screen flex-col">
+        <AppBar title={phone} backHref="/" />
+        <ThreadSkeleton />
+      </main>
+    );
   }
 
   return (
@@ -197,7 +214,7 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      {loading && <p className="p-4 text-wa-muted">Loading…</p>}
+      {loading && <ThreadSkeleton />}
       {error && (
         <p className="p-4 text-wa-alert" role="alert">
           {error}
@@ -207,7 +224,7 @@ export default function ThreadPage() {
         <p className="p-6 text-center text-wa-muted">No messages in this conversation yet.</p>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-4">
         {messages.map((message) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
@@ -215,7 +232,7 @@ export default function ThreadPage() {
           return (
             <div key={message.id} className={`mb-3 flex ${message.mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[85%] rounded-lg border px-3 py-2 ${
+                className={`max-w-[85%] rounded-bubble border px-3 py-2.5 ${
                   message.mine ? "border-wa-teal/20 bg-wa-bubble" : "border-wa-line bg-wa-panel"
                 }`}
                 onPointerDown={(event) => {

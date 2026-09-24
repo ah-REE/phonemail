@@ -5,6 +5,9 @@
 /*
  * Global hooks for the mobile design system. Kept deliberately small: tokens
  * live in tailwind.config.ts, screens compose utilities from them.
+ *
+ * Day 4 polish: skeletons, one focus treatment, restrained transitions and
+ * consistent pressed states live here so every screen behaves the same.
  */
 @layer base {
   html {
@@ -26,22 +29,57 @@
   textarea {
     @apply min-h-tap;
   }
+
+  /* One visible focus treatment for keyboard and switch users. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-wa-teal ring-offset-2 ring-offset-wa-panel;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex min-h-tap items-center justify-center rounded-md bg-wa-teal px-6 text-lg font-semibold text-white disabled:opacity-60;
+    @apply inline-flex min-h-tap items-center justify-center rounded-card bg-wa-teal px-6 text-lg font-semibold text-white transition-colors duration-ui hover:bg-[#0a6b60] active:bg-[#064a43] disabled:opacity-60;
   }
 
   .btn-quiet {
-    @apply inline-flex min-h-tap items-center justify-center rounded-md border border-wa-line bg-wa-panel px-6 text-lg font-semibold text-wa-ink disabled:opacity-60;
+    @apply inline-flex min-h-tap items-center justify-center rounded-card border border-wa-line bg-wa-panel px-6 text-lg font-semibold text-wa-ink transition-colors duration-ui hover:bg-wa-bg active:bg-wa-line disabled:opacity-60;
   }
 
   .field {
-    @apply min-h-tap w-full rounded-md border border-wa-line bg-wa-panel px-4 text-lg text-wa-ink outline-none focus:border-wa-teal;
+    @apply min-h-tap w-full rounded-card border border-wa-line bg-wa-panel px-4 text-lg text-wa-ink outline-none transition-colors duration-ui focus:border-wa-teal;
   }
 
   .surface {
-    @apply border border-wa-line bg-wa-panel;
+    @apply rounded-card border border-wa-line bg-wa-panel;
+  }
+
+  /* A chat-list / thread row: one radius, even padding, subtle press feedback. */
+  .row {
+    @apply flex items-center gap-3 px-4 py-row transition-colors duration-ui active:bg-wa-bg;
+  }
+
+  /* Loading placeholder. Static tint at rest; a slow pulse when motion is OK. */
+  .skeleton {
+    @apply block bg-wa-line/70;
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
   }
 }

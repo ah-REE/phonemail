@@ -5,6 +5,10 @@ import type { Config } from "tailwindcss";
  * Tokens are semantic, not decorative: elder-friendly defaults live here so
  * screens never hard-code sizes.
  *
+ * Day 4 polish: the radius, transition and elevation scales live here too, so
+ * "even spacing / consistent radii / restrained motion" is a token decision
+ * rather than something each screen re-invents.
+ *
  *  - base font 18px (comfortable for first-time smartphone users)
  *  - every interactive target >= 48px via the `tap` scale
  *  - high-contrast WhatsApp-like greens/neutrals (one accent, no gradients)
@@ -18,7 +22,8 @@ const config: Config = {
           bg: "#efeae2",
           panel: "#ffffff",
           ink: "#111b21",
-          muted: "#5b6b74",
+          // Darkened from #5b6b74: muted text should still clear 4.5:1 on white.
+          muted: "#4d5b63",
           line: "#e2e5e7",
           teal: "#075e54",
           green: "#25d366",
@@ -32,9 +37,17 @@ const config: Config = {
         lg: ["20px", { lineHeight: "1.5" }],
         xl: ["24px", { lineHeight: "1.35" }],
       },
+      // One card radius everywhere; bubbles stay slightly tighter.
+      borderRadius: {
+        card: "12px",
+        bubble: "10px",
+      },
       minHeight: { tap: "48px" },
       minWidth: { tap: "48px" },
       maxWidth: { phone: "430px" },
+      // Restrained motion only: 150-200ms, nothing bouncing.
+      transitionDuration: { ui: "180ms" },
+      spacing: { row: "14px" },
     },
   },
   plugins: [],
