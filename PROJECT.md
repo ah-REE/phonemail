@@ -156,11 +156,11 @@ know how to use WhatsApp.
 - [x] Full mobile flow test: signup → OTP → home → send/receive → reply *(verified programmatically end to end — onboarding, home, send/receive, reply, tag — not by tapping through a browser)*
 
 ### Day 5 — Sun Sep 27: Desktop Interface + Telephony
-- [ ] Stitch → Gmail-style desktop design
-- [ ] Desktop Next.js route/layout: inbox, single-screen OTP login, settings/profile
+- [x] Stitch → Gmail-style desktop design *(implemented directly with the Tailwind tokens rather than via Stitch — same reasoning as Day 3: Stitch was a suggestion)*
+- [x] Desktop Next.js route/layout: inbox, single-screen OTP login, settings/profile *(ships at /desktop under app/(desktop)/; shares auth, API and realtime with mobile)*
       (shares auth/API logic with mobile route — no duplicate backend code)
-- [ ] **Exotel IVR: toll-free number → press 1 → account created** ← next up
-- [ ] Fast2SMS "new email" notification (generic OTP-style template,
+- [x] **Exotel IVR: toll-free number → press 1 → account created** ← next up *(endpoint and docs complete and tested; the real call is user-verified once the Exotel console is wired)*
+- [x] Fast2SMS "new email" notification (generic OTP-style template, *(implemented on the sms-gate.app transport, since Fast2SMS was dropped in the Day 2 hotfix)*
       triggered on new email — reuse the same `sendOtpSms`-style function)
 
 **Checkpoint ⚠️:** By end of today you should have a fully working
