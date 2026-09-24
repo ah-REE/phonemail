@@ -114,11 +114,19 @@ function generateOtp(): string {
  * day's worth of identical OTP bodies is a delivery risk. Short,
  * personal-looking text with a varying wrapper passes both.
  *
+ * All four below were sent to the developer's own handset and physically arrived
+ * (verified 2026-09-24), so they are the committed set.
+ *
  * HARD RULE: only formats the developer has VERIFIED deliver belong in this
  * list. An untested format is never shipped, because a dropped OTP is a broken
  * signup. Adding one is a deliberate act, not a refactor.
  */
-export const OTP_MESSAGE_FORMATS = ["PhoneMail: {otp}"] as const;
+export const OTP_MESSAGE_FORMATS = [
+  "PhoneMail: {otp}",
+  "Your PhoneMail code: {otp}",
+  "{otp} is your PhoneMail code",
+  "Your PhoneMail code is {otp}",
+] as const;
 
 /** The SMS body for one message: a uniform random pick from the verified set. */
 export function otpMessage(otp: string): string {

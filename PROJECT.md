@@ -573,6 +573,12 @@ context instantly)*
     templated, and the body shape / To / From assertions still pass.
   - NEEDS FROM THE DEVELOPER: more manually-verified formats. With one entry this
     is a rotation mechanism, not yet a mix — and unverified formats must not ship.
+- Day 6: SMS wording is FINAL and user-verified — all five candidate texts were
+  sent to the developer's handset (8870313035) through the real sms-gate path on
+  2026-09-24 and all five physically arrived. Committed aftermath: the OTP
+  rotation pool is the four verified OTP formats, and the new-mail notification
+  uses the spec's exact wording "You have received an email from <sender>.
+  Subject: <subject>." with <sender> as the sender's number@phonemail.com.
 - Day 6: repository and conventions
   - docs/SPEC.md now holds the organizer's task document verbatim (saved from the
     paste between the SPEC markers, markers excluded) and PROJECT.md declares it

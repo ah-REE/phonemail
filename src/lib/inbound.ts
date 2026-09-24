@@ -87,7 +87,7 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
   // Best-effort SMS notification. Never allowed to fail the delivery.
   const smsNotification = await notifyNewMail({
     recipientPhone: recipient.phoneNumber,
-    senderPhone: sender.phoneNumber,
+    senderAddress: email.fromAddress,
     subject: email.subject,
   });
 

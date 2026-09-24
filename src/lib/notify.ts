@@ -25,19 +25,24 @@ export function notifyCooldownKey(phoneNumber: string): string {
   return `notify-cooldown:${phoneNumber}`;
 }
 
-export function notificationText(senderPhoneNumber: string, subject: string): string {
-  return `New PhoneMail message from ${senderPhoneNumber}: ${subject}`;
+/**
+ * The notification text, in the spec's exact wording (user-verified delivered):
+ * "You have received an email from <sender>. Subject: <subject>."
+ * <sender> is the sender's full <number>@phonemail.com address.
+ */
+export function notificationText(senderAddress: string, subject: string): string {
+  return `You have received an email from ${senderAddress}. Subject: ${subject}.`;
 }
 
 export type NotificationOutcome = "sent" | "throttled" | "dev-mode" | "failed";
 
 export async function notifyNewMail({
   recipientPhone,
-  senderPhone,
+  senderAddress,
   subject,
 }: {
   recipientPhone: string;
-  senderPhone: string;
+  senderAddress: string;
   subject: string;
 }): Promise<NotificationOutcome> {
   const config = smsGateConfig();
@@ -61,7 +66,7 @@ export async function notifyNewMail({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        textMessage: { text: notificationText(senderPhone, subject) },
+        textMessage: { text: notificationText(senderAddress, subject) },
         phoneNumbers: [`+91${recipientPhone}`],
       }),
     });
