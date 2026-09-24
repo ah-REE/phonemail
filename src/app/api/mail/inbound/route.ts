@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       emailId: result.emailId,
       recipientUserId: result.recipientUserId,
       socketNotified: result.socketNotified,
+      smsNotification: result.smsNotification,
     },
     { status: 202 },
   );

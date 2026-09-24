@@ -249,6 +249,9 @@ export default function HomePage() {
             <Link href="/trash" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
               Trash
             </Link>
+            <Link href="/desktop" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+              Desktop version
+            </Link>
             <button type="button" className="btn-quiet mt-4 w-full" onClick={() => setMenuOpen(false)}>
               Close
             </button>

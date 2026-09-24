@@ -15,3 +15,5 @@ services:
       # Credentials you created in the sms-gate.app web console.
       SMS_GATE_LOGIN: "your-sms-gate-login"
       SMS_GATE_PASSWORD: "your-sms-gate-password"
+      # IVR signup webhook (Exotel) — must match the token in the webhook URL.
+      IVR_WEBHOOK_SECRET: "replace-with-real-ivr-webhook-secret"

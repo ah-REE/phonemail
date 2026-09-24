@@ -85,6 +85,11 @@ services:
       MAIL_DOMAIN: "phonemail.com"
       # Must equal the smtp service's value; rotate both together.
       MAIL_WEBHOOK_SECRET: "replace-with-real-mail-webhook-secret"
+
+      # --- IVR signup webhook (Exotel) ---
+      # Same shared-secret pattern as the mail webhook: Exotel is configured with
+      # <public-url>/api/ivr/signup?token=<this value>.
+      IVR_WEBHOOK_SECRET: "replace-with-real-ivr-webhook-secret"
     ports:
       - "3000:3000"
     healthcheck:

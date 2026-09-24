@@ -1,7 +1,10 @@
+import { NextResponse } from "next/server";
+
 import { addressForPhone } from "@/lib/mailer";
 import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
+import { notifyNewMail, type NotificationOutcome } from "@/lib/notify";
 
 /**
  * Inbound delivery: the only place an Email row is ever created.
@@ -9,6 +12,10 @@ import { emitNewEmail } from "@/lib/socket";
  * Called by the SMTP service (or, in tests, by anything holding the shared
  * secret). Both parties must already be PhoneMail users, because the row needs
  * both foreign keys.
+ *
+ * After the row exists it (a) emits the realtime event and (b) attempts the
+ * "new mail" SMS notification. The notification is best-effort by design: it
+ * can never fail a delivery, and dev mode skips it entirely.
  */
 
 export interface InboundMessage {
@@ -19,7 +26,13 @@ export interface InboundMessage {
 }
 
 export type InboundResult =
-  | { ok: true; emailId: string; recipientUserId: string; socketNotified: boolean }
+  | {
+      ok: true;
+      emailId: string;
+      recipientUserId: string;
+      socketNotified: boolean;
+      smsNotification: NotificationOutcome;
+    }
   | { ok: false; status: number; error: string };
 
 /** Extracts the canonical 10-digit number from "<phone>@phonemail.com". */
@@ -71,10 +84,18 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     preview: email.body.slice(0, PREVIEW_LENGTH),
   });
 
+  // Best-effort SMS notification. Never allowed to fail the delivery.
+  const smsNotification = await notifyNewMail({
+    recipientPhone: recipient.phoneNumber,
+    senderPhone: sender.phoneNumber,
+    subject: email.subject,
+  });
+
   return {
     ok: true,
     emailId: email.id,
     recipientUserId: recipient.id,
     socketNotified,
+    smsNotification,
   };
 }
