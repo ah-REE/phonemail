@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<meta content="mobile_blank" name="shell-type">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-tint": "#1c695f",
+            "surface-dim": "#d1dbe4",
+            "primary": "#075e54",
+            "primary-dark": "#054c44",
+            "primary-container": "#075e54",
+            "secondary-accent": "#25D366",
+            "on-primary": "#ffffff",
+            "surface": "#f8fafc",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f5f9",
+            "surface-container": "#e2e8f0",
+            "on-surface": "#111827",
+            "on-surface-variant": "#4b5563",
+            "outline": "#94a3b8",
+            "outline-variant": "#e2e8f0",
+            "error": "#dc2626",
+            "error-container": "#fee2e2"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            display: ["Plus Jakarta Sans", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      html, body {
+        width: 100vw;
+        margin: 0;
+        padding: 0;
+        background-color: #075e54;
+      }
+      body {
+        overscroll-behavior: none;
+      }
+      .pb-safe {
+        padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.75rem);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 0px);
+      }
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    }
+    .material-symbols-outlined.fill {
+      font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-primary text-on-surface font-sans antialiased min-h-screen flex justify-center">
+<!-- Mobile Viewport Wrapper (390px width) -->
+<main class="w-full max-w-[390px] min-h-screen flex flex-col bg-[#F8FAFC] pb-safe relative overflow-x-hidden">
+<!-- Top Bar & Profile Header Area -->
+<header class="w-full bg-[#075e54] text-white pt-safe relative z-10 flex flex-col">
+<!-- Top Navigation with Center-Aligned Title & Left Back Arrow -->
+<div class="h-14 px-3 relative flex items-center justify-between">
+<button aria-label="Go back" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/10 active:bg-white/20 transition-colors z-10" type="button">
+<span class="material-symbols-outlined text-[24px] text-white">arrow_back</span>
+</button>
+<h1 class="absolute inset-x-0 text-center font-display font-bold text-[18px] text-white tracking-tight pointer-events-none">Profile &amp; Settings</h1>
+<div class="w-12 h-12"></div> <!-- Spacer to ensure visual symmetry -->
+</div>
+<!-- Avatar & Account Details -->
+<div class="pt-2 pb-8 px-5 flex flex-col items-center text-center">
+<!-- Avatar with checkmark badge -->
+<div class="relative">
+<div class="w-[80px] h-[80px] rounded-full bg-[#00453d] ring-4 ring-white/15 flex items-center justify-center">
+<span class="font-display font-bold text-3xl text-white select-none">R</span>
+</div>
+<div class="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#25D366] border-2 border-[#075e54] flex items-center justify-center text-white" title="Verified Phone Identity">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</div>
+</div>
+<!-- Phone Identity -->
+<h2 class="mt-3.5 font-display font-extrabold text-[22px] text-white tracking-tight leading-tight">
+  +91 88703 13035
+</h2>
+<!-- Primary PhoneMail Pill -->
+<div class="mt-2.5 inline-flex items-center gap-2 bg-[#00453d]/80 border border-white/10 px-4 py-1.5 rounded-full">
+
+<span class="text-[13px] font-semibold text-[#25D366] tracking-wide select-all">8870313035@phonemail.com</span>
+</div>
+<!-- End of header: strictly NO encrypted link or text below pill -->
+</div>
+</header>
+<!-- Scrollable Content - Flat, Clean Minimalist Focus -->
+<div class="flex-1 flex flex-col space-y-6 px-4 pt-6 pb-6">
+<!-- Section: Preferences -->
+<section aria-labelledby="section-preferences">
+<h3 class="text-[11px] font-bold tracking-wider text-slate-400 uppercase px-1 mb-2.5" id="section-preferences">Preferences</h3>
+<div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden divide-y divide-slate-100">
+<!-- Language Option (Touch target 58px+) -->
+<button class="w-full min-h-[58px] px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors text-left" type="button">
+<div class="flex items-center gap-3.5">
+<!-- Circular pastel teal backdrop -->
+<div class="w-10 h-10 rounded-full bg-teal-50 text-[#075e54] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">translate</span>
+</div>
+<span class="text-[15px] font-medium text-slate-900">Language</span>
+</div>
+<div class="flex items-center gap-1 text-slate-500">
+<span class="text-[14px] font-normal text-slate-600">English (India)</span>
+<span class="material-symbols-outlined text-[20px] text-slate-400">chevron_right</span>
+</div>
+</button>
+<!-- SMS Notifications Row (Touch target 58px+) -->
+<div class="w-full min-h-[58px] px-4 py-3.5 flex items-center justify-between bg-white">
+<div class="flex items-center gap-3.5">
+<!-- Circular pastel teal backdrop -->
+<div class="w-10 h-10 rounded-full bg-teal-50 text-[#075e54] flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">sms</span>
+</div>
+<div>
+<p class="text-[15px] font-medium text-slate-900 leading-tight">SMS alerts</p>
+<p class="text-[12px] text-slate-500 mt-0.5">Digest for critical priority mails</p>
+</div>
+</div>
+<!-- Toggle in active ON state -->
+<button aria-checked="true" class="w-12 h-7 bg-[#25D366] rounded-full p-1 flex items-center justify-end transition-colors cursor-pointer shrink-0" role="switch" type="button">
+<span class="w-5 h-5 bg-white rounded-full block"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- Section: Account & Security -->
+<section aria-labelledby="section-account">
+<h3 class="text-[11px] font-bold tracking-wider text-slate-400 uppercase px-1 mb-2.5" id="section-account">Account &amp; Security</h3>
+<div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+<!-- Personal Details (Touch target 58px+) -->
+<button class="w-full min-h-[58px] px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-slate-100 transition-colors text-left" type="button">
+<div class="flex items-center gap-3.5">
+<!-- Circular pastel blue backdrop -->
+<div class="w-10 h-10 rounded-full bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">badge</span>
+</div>
+<span class="text-[15px] font-medium text-slate-900">Personal details</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-slate-400">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Section: Actions -->
+<section aria-labelledby="section-actions">
+<h3 class="text-[11px] font-bold tracking-wider text-slate-400 uppercase px-1 mb-2.5" id="section-actions">Actions</h3>
+<div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden divide-y divide-slate-100">
+<!-- Sign out (Touch target 58px+) -->
+<button class="w-full min-h-[58px] px-4 py-3.5 flex items-center justify-between hover:bg-red-50/50 active:bg-red-50 transition-colors text-left group" type="button">
+<div class="flex items-center gap-3.5">
+<!-- Circular pastel red backdrop -->
+<div class="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+</div>
+<span class="text-[15px] font-medium text-red-600">Sign out</span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-red-300 group-hover:text-red-500 transition-colors">chevron_right</span>
+</button>
+<!-- Delete account (Touch target 58px+) -->
+<button class="w-full min-h-[58px] px-4 py-3.5 flex items-center justify-between hover:bg-red-50/50 active:bg-red-50 transition-colors text-left group" type="button">
+<div class="flex items-center gap-3.5">
+<!-- Circular pastel red backdrop -->
+<div class="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete_forever</span>
+</div>
+<div>
+<span class="text-[15px] font-medium text-red-600">Delete account</span>
+<p class="text-[12px] text-red-500/80 mt-0.5">Erase all keys &amp; cached mail</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-[20px] text-red-300 group-hover:text-red-500 transition-colors">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Footer: End-to-End Encryption Message & Version Note -->
+<footer class="pt-6 pb-2 flex flex-col items-center justify-center text-center mt-auto">
+<div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-200/50 text-slate-600 text-[12px] font-normal max-w-[340px] text-center justify-center leading-snug">
+<span class="material-symbols-outlined text-[15px] text-slate-500 shrink-0">lock</span>
+<span class="">End-to-end encrypted</span>
+</div>
+<p class="text-[11px] text-slate-400 mt-2.5 font-mono">PhoneMail v2.4.1 (Build 408)</p>
+</footer>
+</div>
+</main>
+
+
+</body></html>

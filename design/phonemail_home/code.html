@@ -1,0 +1,114 @@
+<!DOCTYPE html><html lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><meta content="mobile_blank" name="shell-type"><title>Welcome Screen</title><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "tertiary-fixed": "#ffdbd0", "secondary-container": "#5dfd8a", "tertiary-container": "#7e4330", "secondary": "#006d2f", "surface": "#ffffff", "tertiary": "#622d1b", "on-tertiary": "#ffffff", "primary-fixed": "#a8f0e3", "on-primary": "#ffffff", "on-primary-fixed": "#00201c", "on-secondary-fixed-variant": "#005322", "surface-container-highest": "#d9e4ec", "surface-tint": "#1c695f", "tertiary-fixed-dim": "#ffb59e", "error-container": "#ffdad6", "surface-container-high": "#dfeaf2", "on-secondary-fixed": "#002109", "surface-container-lowest": "#ffffff", "on-tertiary-fixed-variant": "#6f3725", "secondary-fixed-dim": "#3de273", "surface-bright": "#f5faff", "background": "#ffffff", "primary-container": "#075e54", "inverse-primary": "#8cd4c7", "on-secondary": "#ffffff", "primary": "#00453d", "on-secondary-container": "#007232", "surface-dim": "#d1dbe4", "on-primary-fixed-variant": "#005047", "on-surface-variant": "#3f4946", "on-error-container": "#93000a", "inverse-surface": "#283238", "on-primary-container": "#8dd5c8", "on-error": "#ffffff", "primary-fixed-dim": "#8cd4c7", "surface-variant": "#d9e4ec", "outline": "#6f7976", "error": "#ba1a1a", "inverse-on-surface": "#e8f2fb", "surface-container": "#e5eff8", "outline-variant": "#bec9c5", "on-surface": "#131d23", "on-background": "#131d23", "on-tertiary-container": "#ffb69f", "secondary-fixed": "#66ff8e", "on-tertiary-fixed": "#380d02", "surface-container-low": "#eaf5fe" }, borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" }, spacing: { "space-md": "1rem", "margin": "1.25rem", "space-xl": "2rem", "margin-mobile": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "gutter": "1rem", "space-xs": "0.25rem" }, fontFamily: { "body-md": ["Inter"], "body-sm": ["Inter"], "headline-md": ["Plus Jakarta Sans"], "headline-lg-mobile": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-lg": ["Inter"], "body-lg": ["Inter"], "label-sm": ["Inter"], "label-md": ["Inter"], "headline-sm": ["Plus Jakarta Sans"] }, fontSize: { "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.015em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-lg": ["16px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{min-height:100%;width:100%;margin:0;padding:0;background-color:#ffffff;}body{overscroll-behavior:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="bg-surface-container-lowest font-body-md text-body-md text-on-surface min-h-screen flex flex-col pt-safe pb-safe selection:bg-secondary-container selection:text-on-secondary-container"><main class="flex-1 flex flex-col relative w-full max-w-[480px] mx-auto bg-surface-container-lowest"><div class="flex flex-col w-full relative bg-surface-container-lowest min-h-screen">
+<!-- 1. Top Bar -->
+<header class="w-full h-[60px] bg-primary-container px-margin flex items-center justify-between shrink-0 select-none">
+<button aria-label="Open Menu" class="w-10 h-10 flex items-center justify-center -ml-2 text-on-primary active:opacity-75" type="button">
+<svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+<path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path>
+</svg>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-primary tracking-tight font-bold">
+      PhoneMail
+    </h1>
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-sm text-headline-sm font-bold shrink-0">
+      R
+    </div>
+</header>
+<!-- 2. Search Bar -->
+<div class="w-full px-4 py-3 bg-surface-container-lowest">
+<div class="w-full h-11 bg-surface-container-high rounded-full flex items-center px-4">
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0 mr-3">
+        search
+      </span>
+<input class="w-full bg-transparent border-0 p-0 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none" placeholder="Search" type="text">
+</div>
+</div>
+<!-- 3. Pill Filter Chips -->
+<div class="w-full px-4 pb-2 flex gap-2 overflow-x-auto bg-surface-container-lowest" style="scrollbar-width: none; -ms-overflow-style: none;">
+<button class="px-4 py-1.5 rounded-full bg-primary-container text-on-primary font-label-md text-label-md shrink-0" type="button">
+      All
+    </button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md shrink-0" type="button">
+      Unread
+    </button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md shrink-0" type="button">
+      Favorites
+    </button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md shrink-0" type="button">
+      Attachments
+    </button>
+</div>
+<!-- 4. Conversation Rows -->
+<div class="w-full flex flex-col bg-surface-container-lowest pb-28">
+<!-- Row 1: PM Kisan Scheme -->
+<div class="w-full h-[76px] flex items-center px-4 border-b border-surface-container-high cursor-pointer active:bg-surface-container-high/40">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm shrink-0">
+        P
+      </div>
+<div class="flex-1 min-w-0 ml-3 flex flex-col justify-center">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">
+          PM Kisan Scheme
+        </span>
+<span class="font-body-md text-body-md text-on-surface-variant truncate mt-0.5">
+          Your 19th installment has been…
+        </span>
+</div>
+<div class="flex flex-col items-end justify-center ml-2 shrink-0">
+<span class="font-body-sm text-body-sm text-outline mb-1">
+          10:24 AM
+        </span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold flex items-center justify-center">
+          2
+        </span>
+</div>
+</div>
+<!-- Row 2: High Court Registry -->
+<div class="w-full h-[76px] flex items-center px-4 border-b border-surface-container-high cursor-pointer active:bg-surface-container-high/40">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm shrink-0">
+        H
+      </div>
+<div class="flex-1 min-w-0 ml-3 flex flex-col justify-center">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">
+          High Court Registry
+        </span>
+<span class="font-body-md text-body-md text-on-surface-variant truncate mt-0.5">
+          Hearing date updated for…
+        </span>
+</div>
+<div class="flex flex-col items-end justify-center ml-2 shrink-0">
+<span class="font-body-sm text-body-sm text-outline">
+          Yesterday
+        </span>
+</div>
+</div>
+<!-- Row 3: Rita Farm Supplies -->
+<div class="w-full h-[76px] flex items-center px-4 border-b border-surface-container-high cursor-pointer active:bg-surface-container-high/40">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm shrink-0">
+        R
+      </div>
+<div class="flex-1 min-w-0 ml-3 flex flex-col justify-center">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">
+          Rita Farm Supplies
+        </span>
+<span class="font-body-md text-body-md text-on-surface-variant truncate mt-0.5">
+          The seeds have arrived…
+        </span>
+</div>
+<div class="flex flex-col items-end justify-center ml-2 shrink-0">
+<span class="font-body-sm text-body-sm text-outline">
+          Monday
+        </span>
+</div>
+</div>
+<div class="w-full py-8 px-6 flex items-center justify-center gap-1.5 text-outline text-body-sm font-body-sm select-none"><span class="material-symbols-outlined text-[15px] shrink-0 text-outline">lock</span><span class="">Your personal emails are end-to-end encrypted</span></div></div>
+<!-- 5. Floating Compose Button -->
+<div class="fixed bottom-6 right-6 z-10">
+<button aria-label="Compose Email" class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center active:opacity-90 transition-opacity" type="button">
+<span class="material-symbols-outlined text-[24px]">
+        edit
+      </span>
+</button>
+</div>
+</div></main>
+
+</body></html>
