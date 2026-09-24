@@ -46,13 +46,13 @@ export async function POST(request: Request) {
         expiresInSeconds: result.ttlSeconds,
         resendAfterSeconds: 60,
         message: "OTP sent successfully.",
-        // Present only when Twilio is not configured. The evaluator boots the
+        // Present only when the SMS gateway is not configured. The evaluator boots the
         // stack with placeholder credentials, so this is the documented dev
         // path, not an error state.
         ...(result.devMode
           ? {
               devHint:
-                "Twilio is not configured (placeholder credentials): no SMS was sent and the fixed dev OTP 123456 is active.",
+                "sms-gate.app is not configured (placeholder credentials): no SMS was sent and the fixed dev OTP 123456 is active.",
             }
           : {}),
       },

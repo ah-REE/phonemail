@@ -1,9 +1,9 @@
-# PhoneMail — Day 2 stack (OTP transport: Twilio).
+# PhoneMail — Day 2 stack (OTP transport: sms-gate.app).
 #
 # Evaluator flow:  git clone <repo>  &&  docker compose up -d
 # No .env file and no manual setup are required: every variable both sides need
 # is set below, and any value that is still a PLACEHOLDER degrades gracefully
-# (see the TWILIO_* block: without real credentials the API uses a fixed dev OTP).
+# (see the SMS_GATE_* block: without real credentials the API uses a fixed dev OTP).
 # Real credentials belong in docker-compose.override.yml, which is gitignored —
 # see docker-compose.override.yml.example.
 #
@@ -58,15 +58,15 @@ services:
       PORT: "3000"
 
       # ---------------------------------------------------------------
-      # PLACEHOLDER SMS TRANSPORT — fill all three (in an override file) to
-      # enable real SMS. While any of them is still the value below, the API
-      # uses the fixed dev OTP 123456 and reports devHint, so the whole flow
-      # still works for an evaluator who never edits anything.
-      # Replaced Fast2SMS, which requires KYC before any send.
+      # PLACEHOLDER SMS TRANSPORT — fill both (in an override file) to enable
+      # real SMS. While either is still the value below, the API uses the fixed
+      # dev OTP 123456 and reports devHint, so the whole flow still works for an
+      # evaluator who never edits anything.
+      # Real sends go through a self-hosted Android SMS gateway (sms-gate.app):
+      # the gateway phone must be online with the app logged in.
       # ---------------------------------------------------------------
-      TWILIO_ACCOUNT_SID: "replace-with-real-twilio-account-sid"
-      TWILIO_AUTH_TOKEN: "replace-with-real-twilio-auth-token"
-      TWILIO_FROM_NUMBER: "replace-with-real-twilio-from-number"
+      SMS_GATE_LOGIN: "replace-with-real-sms-gate-login"
+      SMS_GATE_PASSWORD: "replace-with-real-sms-gate-password"
 
       # Internal Compose DNS names; no host ports are published.
       REDIS_URL: "redis://redis:6379"

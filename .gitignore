@@ -19,3 +19,4 @@ Thumbs.db
 .vercel
 # local override carrying real secrets — never commit this
 docker-compose.override.yml
+docker-compose.override.yml.disabled

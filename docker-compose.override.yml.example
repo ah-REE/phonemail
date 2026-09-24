@@ -5,15 +5,13 @@
 # Compose merges the override over docker-compose.yml automatically, so
 # `docker compose up -d` needs no extra flags.
 #
-# Twilio trial accounts can only deliver to numbers verified in the Twilio
-# console, so add the phone you intend to test with there first.
+# sms-gate.app is a self-hosted Android SMS gateway: the phone running the app
+# (logged into your account) carries the SIM that sends the messages, so the
+# gateway phone must be online for a real send to arrive.
 
 services:
   app:
     environment:
-      # Twilio Console -> Account Info
-      TWILIO_ACCOUNT_SID: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      TWILIO_AUTH_TOKEN: "your-auth-token-here"
-      # A Twilio phone number in E.164 form, e.g. "+14155550123".
-      # The recipient is always built as +91<10-digit Indian mobile>.
-      TWILIO_FROM_NUMBER: "+14155550123"
+      # Credentials you created in the sms-gate.app web console.
+      SMS_GATE_LOGIN: "your-sms-gate-login"
+      SMS_GATE_PASSWORD: "your-sms-gate-password"
