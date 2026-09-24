@@ -42,3 +42,11 @@ gateway phone must be online. The evaluated flow never depends on real SMS.
 
 **d. REALTIME.** Socket.io on a custom Node server; JWT-authenticated
 connections; per-user rooms.
+
+## Known platform limitation
+
+**Phone pre-fill.** The spec asks for the caller's number to be "automatically
+detected and pre-filled". A web app cannot read the SIM, so that is impossible in
+a browser. The onboarding screen instead pre-fills the last number that signed up
+on this device (localStorage, independent of the session) — the honest web
+equivalent, and the closest thing to the spec's intent that the platform allows.

@@ -1,6 +1,6 @@
 # PhoneMail — AlphaStack 7-Day Buildathon
 
-**Deadline:** Wednesday, Sep 30, 2026, 11:59 PM
+**Deadline:** Tuesday, Sep 29, 2026, 11:59 PM
 **Today:** Wednesday, Sep 23, 2026 (Day 1)
 **Team:** Solo build
 
@@ -167,7 +167,7 @@ know how to use WhatsApp.
 MVP — both interfaces, OTP auth, SMTP, IVR or SMS. Everything from
 here is enhancement, not core function.
 
-### Day 6 — Mon Sep 28: Buffer 1 — Remaining Features + Performance
+### Day 6 — Mon Sep 28: Buffer 1 — Remaining Features + Performance — documentation + rehearsal must be COMPLETE by EOD
 - [ ] Group chat logic (2+ recipients → group; future 1:1 stays separate)
 - [ ] Drafts, Spam, Trash; alias ID management in settings
 - [ ] k6/autocannon load test on login — fix anything over 500ms
@@ -178,7 +178,7 @@ here is enhancement, not core function.
       encryption, i18next language support, custom SMS via alternate
       provider, Oracle Cloud + DuckDNS live hosting
 
-### Day 7 — Tue Sep 29: Buffer 2 — Documentation & Rehearsal
+### Day 7 - Tue Sep 29: SUBMISSION ONLY (final green run, no new work)
 - [ ] Write README.md: what it does, exact 2 commands, full feature
       list mapped to spec, architecture explanation, known limitations
 - [ ] Fresh-machine test: clone repo, `docker compose up -d` only,
@@ -186,7 +186,7 @@ here is enhancement, not core function.
 - [ ] Full demo rehearsal: mobile flow, desktop flow, IVR call, SMS
 - [ ] Fix whatever breaks
 
-### Wed Sep 30, 11:59 PM — SUBMIT
+### Tue Sep 29, 11:59 PM - SUBMIT
 
 ---
 

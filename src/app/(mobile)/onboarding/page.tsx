@@ -41,6 +41,17 @@ const LANGUAGES = [
 
 const OTP_LENGTH = 6;
 
+/**
+ * Last number used on THIS DEVICE.
+ *
+ * The spec asks for the number to be "automatically detected and pre-filled".
+ * A browser cannot read the SIM, so that is impossible on the web — this is the
+ * honest equivalent: the last number that successfully signed up here is
+ * remembered in localStorage (deliberately NOT the session store, so it
+ * survives closing the tab and is unrelated to being signed in).
+ */
+const LAST_PHONE_KEY = "phonemail.lastPhone";
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { status, token, signIn } = useAuth();
@@ -61,6 +72,18 @@ export default function OnboardingPage() {
   const [countdown, setCountdown] = useState(0);
 
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+
+  // Pre-fill the last number used on this device, if any.
+  useEffect(() => {
+    try {
+      const remembered = window.localStorage.getItem(LAST_PHONE_KEY);
+      if (remembered && /^[6-9]\d{9}$/.test(remembered)) {
+        setPhoneNumber(remembered);
+      }
+    } catch {
+      // storage unavailable (private mode): silently skip the convenience
+    }
+  }, []);
 
   // Already signed in? The app shell is where you belong.
   // Only bounce a CONFIRMED session; never act while the phase is unknown.
@@ -146,6 +169,11 @@ export default function OnboardingPage() {
           return;
         }
 
+        try {
+          window.localStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
+        } catch {
+          // storage unavailable: the signup itself must not fail for this
+        }
         signIn(body.token, body.user);
         router.replace("/");
       } catch {
