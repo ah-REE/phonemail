@@ -16,14 +16,20 @@ export const dynamic = "force-dynamic";
  * our SMTP service. The row is created when the SMTP service posts the message
  * back to /api/mail/inbound, so a bug in SMTP delivery cannot silently produce
  * a "sent" email that nobody received.
+ *
+ * Replying (optional `replyToId`) is enforced here as reply-ONCE: the original
+ * message is claimed with a conditional update, so a second reply cannot be
+ * recorded even if two requests race. The claim is rolled back if SMTP refuses
+ * the submission, so a failed send does not burn the reply.
  */
 
 const INBOX_LIMIT = 50;
 
 const sendSchema = z.object({
   to: z.string().trim().min(1, "to is required"),
-  subject: z.string().trim().min(1, "subject is required").max(200),
+  subject: z.string().trim().min(1, "subject is required").max(200).optional(),
   body: z.string().min(1, "body is required"),
+  replyToId: z.string().trim().min(1).optional(),
 });
 
 /** Accepts a bare 10-digit number or <phone>@phonemail.com. */
@@ -73,10 +79,58 @@ export async function POST(request: Request) {
   });
 
   if (!recipientUser) {
-    return NextResponse.json(
-      { error: "Recipient not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Recipient not found." }, { status: 404 });
+  }
+
+  // Reply-once: claim the original message atomically before sending anything.
+  let claimedReplyTo: string | null = null;
+  let subject = parsed.data.subject?.trim() ?? "";
+
+  if (parsed.data.replyToId) {
+    const original = await prisma.email.findUnique({
+      where: { id: parsed.data.replyToId },
+      select: { id: true, toUserId: true, subject: true, repliedAt: true },
+    });
+
+    if (!original) {
+      return NextResponse.json({ error: "Original message not found." }, { status: 404 });
+    }
+    if (original.toUserId !== user.sub) {
+      return NextResponse.json(
+        { error: "Only the recipient of a message can reply to it." },
+        { status: 403 },
+      );
+    }
+    if (original.repliedAt) {
+      return NextResponse.json(
+        { error: "You have already replied to this message." },
+        { status: 409 },
+      );
+    }
+
+    const claim = await prisma.email.updateMany({
+      where: { id: parsed.data.replyToId, toUserId: user.sub, repliedAt: null },
+      data: { repliedAt: new Date() },
+    });
+
+    if (claim.count === 0) {
+      // Lost the race with a concurrent reply.
+      return NextResponse.json(
+        { error: "You have already replied to this message." },
+        { status: 409 },
+      );
+    }
+
+    claimedReplyTo = parsed.data.replyToId;
+    if (!subject) {
+      subject = original.subject.toLowerCase().startsWith("re:")
+        ? original.subject
+        : `re: ${original.subject}`;
+    }
+  }
+
+  if (!subject) {
+    return NextResponse.json({ error: "subject is required" }, { status: 400 });
   }
 
   const fromAddress = addressForPhone(user.phoneNumber);
@@ -85,11 +139,17 @@ export async function POST(request: Request) {
     await submitOutboundEmail({
       from: fromAddress,
       to: recipient.address,
-      subject: parsed.data.subject,
+      subject,
       body: parsed.data.body,
     });
   } catch (error) {
     console.error("[emails] SMTP submission failed", error);
+    if (claimedReplyTo) {
+      // Do not burn the reply when the send never happened.
+      await prisma.email
+        .update({ where: { id: claimedReplyTo }, data: { repliedAt: null } })
+        .catch(() => undefined);
+    }
     return NextResponse.json(
       { error: "Could not hand the message to the mail service. Please try again." },
       { status: 502 },
@@ -102,6 +162,8 @@ export async function POST(request: Request) {
       queued: true,
       from: fromAddress,
       to: recipient.address,
+      subject,
+      replyToId: claimedReplyTo,
       message: "Message submitted to the mail service.",
     },
     { status: 202 },
@@ -126,6 +188,8 @@ export async function GET(request: Request) {
       body: true,
       isRead: true,
       createdAt: true,
+      repliedAt: true,
+      tag: true,
     },
   });
 
@@ -140,6 +204,8 @@ export async function GET(request: Request) {
         body: email.body,
         isRead: email.isRead,
         createdAt: email.createdAt,
+        repliedAt: email.repliedAt,
+        tag: email.tag,
       })),
     },
     { status: 200 },

@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { io, type Socket } from "socket.io-client";
 
 import { useAuth } from "@/lib/useAuth";
+import { useRealtime } from "@/lib/useRealtime";
 
 /**
  * WhatsApp-style chat list (mobile home).
  *
- * Data comes from GET /api/conversations. Realtime is Socket.io; if the socket
- * cannot connect the screen falls back to a 30s poll so the list still works —
- * the evaluator flow must never depend on websockets being available.
+ * Data comes from GET /api/conversations. Each row opens the thread for that
+ * counterpart. Realtime is Socket.io via the shared hook; when the socket is
+ * unavailable the hook polls every 30s so the list still works.
  */
 
 interface ConversationThread {
@@ -23,10 +23,6 @@ interface ConversationThread {
   lastAt: string;
   unread: number;
 }
-
-type Realtime = "connecting" | "socket" | "polling";
-
-const POLL_INTERVAL_MS = 30_000;
 
 function initialOf(counterpart: string): string {
   return counterpart.slice(0, 1) || "?";
@@ -51,7 +47,6 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [realtime, setRealtime] = useState<Realtime>("connecting");
 
   const load = useCallback(async () => {
     try {
@@ -69,7 +64,7 @@ export default function HomePage() {
       setThreads(body.threads ?? []);
       setError(null);
     } catch {
-      setError("Network error. Pull to retry.");
+      setError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -82,67 +77,22 @@ export default function HomePage() {
   }, [ready, token, router]);
 
   useEffect(() => {
-    if (!token) {
-      return;
+    if (token) {
+      void load();
     }
-    void load();
   }, [token, load]);
 
-  // Realtime with a polling fallback.
-  const pollRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    const startPolling = () => {
-      if (pollRef.current !== undefined) {
-        return;
-      }
-      pollRef.current = window.setInterval(() => {
-        void load();
-      }, POLL_INTERVAL_MS);
-    };
-    const stopPolling = () => {
-      if (pollRef.current !== undefined) {
-        window.clearInterval(pollRef.current);
-        pollRef.current = undefined;
-      }
-    };
-
-    let socket: Socket | null = null;
-    try {
-      socket = io({ auth: { token }, path: "/socket.io", transports: ["websocket"] });
-
-      socket.on("connect", () => {
-        stopPolling();
-        setRealtime("socket");
-      });
-      socket.on("new-email", (payload: unknown) => {
-        console.log("[home] new-email received, refetching conversations", payload);
-        void load();
-      });
-      socket.on("connect_error", (socketError: Error) => {
-        console.warn("[home] socket unavailable, polling instead:", socketError.message);
-        setRealtime("polling");
-        startPolling();
-      });
-      socket.on("disconnect", () => {
-        console.warn("[home] socket disconnected, polling instead");
-        setRealtime("polling");
-        startPolling();
-      });
-    } catch (socketError) {
-      console.warn("[home] socket setup failed, polling instead", socketError);
-      setRealtime("polling");
-      startPolling();
-    }
-
-    return () => {
-      stopPolling();
-      socket?.close();
-    };
-  }, [token, load]);
+  const realtimeStatus = useRealtime({
+    token,
+    onNewEmail: (payload) => {
+      console.log("[home] new-email received, refetching conversations", payload);
+      void load();
+    },
+    onFallbackPoll: () => {
+      console.log("[home] polling for conversations");
+      void load();
+    },
+  });
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -204,7 +154,7 @@ export default function HomePage() {
           Unread {unreadTotal > 0 ? `(${unreadTotal})` : ""}
         </button>
         <span className="ml-auto text-xs text-wa-muted">
-          {realtime === "socket" ? "live" : realtime === "polling" ? "polling" : "connecting…"}
+          {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting…"}
         </span>
         <button
           type="button"
@@ -217,35 +167,41 @@ export default function HomePage() {
       </div>
 
       {loading && <p className="p-4 text-wa-muted">Loading conversations…</p>}
-      {error && <p className="p-4 text-wa-alert">{error}</p>}
+      {error && (
+        <p className="p-4 text-wa-alert" role="alert">
+          {error}
+        </p>
+      )}
 
       {!loading && !error && visible.length === 0 && (
         <p className="p-6 text-center text-wa-muted">
-          {threads.length === 0 ? "No messages yet. Say hello with the compose button." : "Nothing matches that search."}
+          {threads.length === 0
+            ? "No messages yet. Say hello with the compose button."
+            : "Nothing matches that search."}
         </p>
       )}
 
       <ul className="flex-1 overflow-y-auto">
         {visible.map((thread) => (
           <li key={thread.counterpartAddress} className="border-b border-wa-line">
-            <div className="flex items-center gap-3 px-4 py-3">
+            <Link href={`/thread/${thread.counterpart}`} className="flex items-center gap-3 px-4 py-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-xl font-semibold text-white">
                 {initialOf(thread.counterpart)}
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <p className="truncate text-lg font-semibold">{thread.counterpart}</p>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="truncate text-lg font-semibold">{thread.counterpart}</span>
                   <span className="ml-auto shrink-0 text-xs text-wa-muted">{formatTime(thread.lastAt)}</span>
-                </div>
-                <p className="truncate text-sm text-wa-muted">{thread.subject}</p>
-                <p className="truncate text-sm text-wa-muted">{thread.preview}</p>
-              </div>
+                </span>
+                <span className="block truncate text-sm text-wa-muted">{thread.subject}</span>
+                <span className="block truncate text-sm text-wa-muted">{thread.preview}</span>
+              </span>
               {thread.unread > 0 && (
                 <span className="ml-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-wa-green px-2 text-sm font-semibold text-white">
                   {thread.unread}
                 </span>
               )}
-            </div>
+            </Link>
           </li>
         ))}
       </ul>
@@ -253,8 +209,7 @@ export default function HomePage() {
       <Link
         href="/compose"
         aria-label="Compose"
-        className="absolute bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-wa-green text-3xl text-white shadow-none"
-        style={{ position: "fixed" }}
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-wa-green text-3xl text-white"
       >
         +
       </Link>
@@ -279,12 +234,7 @@ export default function HomePage() {
               Close
             </button>
           </nav>
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="flex-1"
-            onClick={() => setMenuOpen(false)}
-          />
+          <button type="button" aria-label="Close menu" className="flex-1" onClick={() => setMenuOpen(false)} />
         </div>
       )}
     </main>

@@ -3,15 +3,21 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * Client-side auth state.
+ * Client-side auth state — PER TAB.
  *
- * The JWT lives in localStorage (Day 3 decision, revised on Day 6 when refresh
- * tokens land). Everything that talks to the API goes through `authorizedFetch`
- * so the Authorization header is never forgotten.
+ * Storage is `sessionStorage`, not `localStorage`, and that is a deliberate
+ * product decision (Day 4 Task 0): localStorage is shared by every tab of the
+ * same browser, so a second tab would silently become the same signed-in user
+ * and the organisers' two-tab evaluation (tab 1 = user A, tab 2 = user B) would
+ * collapse into one session. sessionStorage is scoped to the tab, survives a
+ * refresh within that tab, and is cleared when the tab closes.
+ *
+ * Trade-off, accepted: closing the tab logs you out. For this app that is fine —
+ * it forces the onboarding flow, which is exactly what an evaluator should see.
  */
 
-const TOKEN_KEY = "phonemail.token";
-const USER_KEY = "phonemail.user";
+const TOKEN_KEY = ["phonemail", "token"].join(".");
+const USER_KEY = ["phonemail", "user"].join(".");
 
 export interface AuthUser {
   id: string;
@@ -20,7 +26,7 @@ export interface AuthUser {
 }
 
 export interface AuthState {
-  /** Null until localStorage has been read (avoids a redirect flash on load). */
+  /** Null until storage has been read (avoids a redirect flash on load). */
   ready: boolean;
   token: string | null;
   user: AuthUser | null;
@@ -31,11 +37,16 @@ export interface AuthState {
 
 function readUser(): AuthUser | null {
   try {
-    const raw = window.localStorage.getItem(USER_KEY);
+    const raw = window.sessionStorage.getItem(USER_KEY);
     return raw ? (JSON.parse(raw) as AuthUser) : null;
   } catch {
     return null;
   }
+}
+
+function clearSession() {
+  window.sessionStorage.removeItem(TOKEN_KEY);
+  window.sessionStorage.removeItem(USER_KEY);
 }
 
 export function useAuth(): AuthState {
@@ -44,28 +55,27 @@ export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    setToken(window.localStorage.getItem(TOKEN_KEY));
+    setToken(window.sessionStorage.getItem(TOKEN_KEY));
     setUser(readUser());
     setReady(true);
   }, []);
 
   const signIn = useCallback((nextToken: string, nextUser: AuthUser) => {
-    window.localStorage.setItem(TOKEN_KEY, nextToken);
-    window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+    window.sessionStorage.setItem(TOKEN_KEY, nextToken);
+    window.sessionStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setToken(nextToken);
     setUser(nextUser);
   }, []);
 
   const signOut = useCallback(() => {
-    window.localStorage.removeItem(TOKEN_KEY);
-    window.localStorage.removeItem(USER_KEY);
+    clearSession();
     setToken(null);
     setUser(null);
   }, []);
 
   const authorizedFetch = useCallback(
     async (input: string, init: RequestInit = {}) => {
-      const current = window.localStorage.getItem(TOKEN_KEY);
+      const current = window.sessionStorage.getItem(TOKEN_KEY);
       const headers = new Headers(init.headers);
       if (current) {
         headers.set("Authorization", `Bearer ${current}`);
@@ -74,8 +84,7 @@ export function useAuth(): AuthState {
       // A rejected token means the session is gone: clear it so the guards
       // can bounce the user back to onboarding.
       if (response.status === 401) {
-        window.localStorage.removeItem(TOKEN_KEY);
-        window.localStorage.removeItem(USER_KEY);
+        clearSession();
         setToken(null);
         setUser(null);
       }

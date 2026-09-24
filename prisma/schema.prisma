@@ -1,5 +1,5 @@
 // PhoneMail — Prisma schema
-// Day 1: auth identity. Day 2: the email core.
+// Day 1: auth identity. Day 2: the email core. Day 4: thread state (reply-once + tags).
 
 generator client {
   provider = "prisma-client-js"
@@ -44,9 +44,20 @@ model Email {
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  /// Reply-once (PROJECT.md §5: "reply-once"). Set on the message that was
+  /// replied to, the moment a reply is submitted — the affordance disappears
+  /// afterwards and the server refuses a second reply.
+  repliedAt DateTime?
+
+  /// Swipe-to-tag. Free-form but written from a small fixed set by the UI;
+  /// Day 6's folders (Drafts/Spam/Trash) build on this field.
+  tag String?
+
   fromUser User @relation("SentEmails", fields: [fromUserId], references: [id])
   toUser   User @relation("ReceivedEmails", fields: [toUserId], references: [id])
 
   /// Serves the inbox query: WHERE toUserId = ? ORDER BY createdAt DESC.
   @@index([toUserId, createdAt])
+  /// Serves the thread query: WHERE (fromUserId = ? AND toUserId = ?) OR vice versa.
+  @@index([fromUserId, toUserId, createdAt])
 }
