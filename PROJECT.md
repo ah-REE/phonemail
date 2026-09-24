@@ -220,12 +220,17 @@ README quality, core chat-style mobile inbox (this is the "wow" feature).
 
 ### Testing conventions (permanent)
 
-**Test accounts are exactly two real numbers owned by the developer:
-8870313035 and 6381195975.** Agent verification runs MUST switch to dev mode
-first (rename the override away) and restore the prior mode after. Real mode is
-used only for user-driven demos, and only with these numbers. Reserved
-unregistered number for 404 tests (dev mode only): 9999999999. A third user
-requires an explicit decision — never invent numbers.
+**Agent test accounts are exactly two real numbers owned by the developer:
+8870313035 and 6381195975** — this rule binds agent-created and agent-operated
+accounts only: agent runs use these two numbers and invent nothing. Two further
+accounts are settled, documented exceptions — 9500089722 and 8072788917, the
+developer's friend's first and second test logins, user-created through the real
+portal (not agent artifacts) and user-confirmed. Agent verification runs MUST
+switch to dev mode first (rename the override away) and restore the prior mode
+after. Real mode is used only for user-driven demos, and only with the numbers
+listed above. Reserved unregistered number for 404 tests (dev mode only):
+9999999999. Any account beyond these requires an explicit decision — never invent
+numbers.
 
 The mechanics, in order:
 
@@ -234,8 +239,10 @@ The mechanics, in order:
    SIM (this went wrong once: two OTPs reached strangers on Day 4). Rename the
    override away and `docker compose up -d` before the first OTP request, then
    confirm the response carries `devHint` — that is the proof no SMS was sent.
-2. **Only these two numbers** may be signed up or sent to: 8870313035 (SIM
-   slot 0) and 6381195975 (SIM slot 1). Nothing else, ever, without asking.
+2. **Agent runs may sign up or send to only these two numbers**: 8870313035 (SIM
+   slot 0) and 6381195975 (SIM slot 1). The two exception accounts above are
+   user-created logins, not agent-created, so they sit outside this rule. Nothing
+   else, ever, without asking.
 3. **9999999999** is reserved for negative-path tests (unknown recipient →
    404). It is never signed up, never appears in the database, never receives
    anything, and is only used while dev mode is active.
