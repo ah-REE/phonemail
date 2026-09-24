@@ -60,7 +60,7 @@ know how to use WhatsApp.
 | Styling | **Tailwind CSS + shadcn/ui** | Prebuilt accessible components, speeds up all 9–10 unique screens |
 | Chat encryption | RSA (public-key) | End-to-end encryption of email/chat content — *stretch* |
 | Email transport | Self-hosted SMTP (Postfix/Haraka) | Required by spec as "SMTP (local)" — do not replace with a 3rd-party email API |
-| OTP + SMS | **Twilio (Messages REST API)** ✅ done | Trial account delivers only to numbers verified in the Twilio console — the real-SMS demo is limited to those. Fast2SMS was dropped in the Day 2 hotfix because it requires KYC before any send; fallback mode keeps the evaluator flow working with no credentials at all |
+| OTP + SMS | **sms-gate.app** (self-hosted Android SMS gateway) ✅ done | Sends through the developer's own phone + SIM via a self-hosted gateway: free, no KYC, no DLT. Real sends require the gateway phone to be online with the app logged in; with the committed placeholder credentials the API runs documented dev-OTP mode (fixed 123456 + devHint) |
 | IVR ("press 1" signup) | Exotel (free trial) 🔜 **current focus** | Open inbound calls without per-caller verification |
 | Mobile interface | Next.js route/layout, PWA (manifest + service worker) | WhatsApp-style UI, same codebase as desktop |
 | Desktop interface | Next.js route/layout | Gmail-style UI, same codebase as mobile |
@@ -344,6 +344,38 @@ context instantly)*
     dev fallback, so the stack runs with no credentials at all; that a trial account
     only messages numbers verified in the Twilio console; and that each send
     consumes one trial SMS credit.
+
+- Day 2 hotfix 3: OTP SMS transport swapped to **sms-gate.app** — a self-hosted
+  Android SMS gateway that sends through the developer's own phone + SIM — and
+  local random OTP generation is RESTORED: we author the message text again, so
+  the Twilio trial-template parsing is deleted outright (Twilio history lives
+  here and in section 10, not in live code).
+  - Transport: `POST https://api.sms-gate.app/3rdparty/v1/message` with Basic
+    auth from `SMS_GATE_LOGIN`/`SMS_GATE_PASSWORD` and body
+    `{ textMessage: { text }, phoneNumbers: ["+91<canonical>"] }`. Success is
+    HTTP 2xx (the gateway queues to the paired phone; delivery is
+    asynchronous). Non-2xx throws, logs the status and the gateway's own
+    payload, and consumes no cooldown — the send is attempted before any Redis
+    write, unchanged from Day 2.
+  - Security: the code now comes from `crypto.randomInt(100000, 1000000)`, not
+    `Math.random` — uniform and unpredictable (evaluators asked about this).
+    Issuing a new code also resets the 5-strike counter, so a fresh code always
+    comes with five fresh attempts. Logs never contain the Authorization header,
+    the credentials or the message text (which carries the OTP); failures log
+    only the HTTP status and the gateway's response payload.
+  - Message text: "Your PhoneMail verification code is {otp}. It expires in 5
+    minutes. Do not share it with anyone."
+  - Evidence: 19/19 unit assertions against the real module (mocked fetch,
+    stubbed Redis) covering URL, Basic auth, JSON body shape, the exact message
+    text, stored-and-verified random code, rotation (superseded code rejected),
+    attempt reset, TTLs, cooldown, burn, failure-leaves-zero-state, logging
+    hygiene and fallback-never-touches-the-network; 6/6 live regression checks;
+    fresh-clone evaluation green on a cold volume. Commit: 02ee742.
+  - Config: compose now ships `SMS_GATE_LOGIN`/`SMS_GATE_PASSWORD` placeholders;
+    the real values go in the gitignored `docker-compose.override.yml` (see
+    `docker-compose.override.yml.example`).
+  - REAL SEND IS USER-VERIFIED: the gateway phone must be online with the app
+    logged in; the user tests through /portal with their own number.
 
 - Day 3:
 - Day 4:
