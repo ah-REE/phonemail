@@ -725,6 +725,53 @@ context instantly)*
     Attachments filter chips; Drafts/Spam/Trash folders plus swipe-to-move.
     Nothing was begun for these, so no half-built code sits in the tree.
 
+- Day 6: VISUAL REFRESH step 1 - the token layer (screens follow).
+  - What moved: tailwind.config.ts (the colour scale, the type scale, the radii,
+    the touch floor, the content width) and src/app/globals.css (canvas and ink
+    defaults, the focus ring, .btn-primary / .btn-quiet / .field / .surface /
+    .row / .skeleton), plus next/font in src/app/layout.tsx.
+  - VALUES ACTUALLY ADOPTED from the mockup markup (the brief's rule: the
+    mockups win over any other description): canvas #f5faff; surface #ffffff;
+    fills #eaf5fe / #e5eff8 / #dfeaf2 / #d9e4ec; ink #131d23; muted #3f4946;
+    outline #6f7976; outline-variant #bec9c5; primary #00453d;
+    primary-container #075e54; secondary #006d2f; secondary-container #5dfd8a;
+    surface-tint #1c695f; action green #25d366; error #ba1a1a.
+  - NOTE - the design source contradicts itself, and this is the decision that
+    matters most to review: design/safe_clean_messenger/DESIGN.md's front-matter
+    and the mockup markup carry the tone set above, while its PROSE section
+    describes an older WhatsApp-like palette (#EFEAE2 canvas, #111B21 ink,
+    #DAE1E3 borders, #667781 muted, #D9FDD3 bubbles). The mockups were followed,
+    so the prose values are NOT in the app. If the prose is what was intended,
+    only tailwind.config.ts has to change.
+  - Shape and elevation per the design: pill controls (rounded-pill), 16px cards,
+    24px sheets, and strictly flat - no drop shadows, no blur, no gradients.
+    Touch floor raised 48px -> 56px and content width 430px -> 480px.
+  - Typography: Plus Jakarta Sans (headlines) + Inter (body/labels) through
+    next/font, which downloads and SELF-HOSTS the files at build time (11 woff2
+    files in the build output) - no runtime font CDN, so the offline
+    `docker compose up -d` guarantee is intact.
+  - DEVIATION (reported): the root font size stays 18px rather than the mockups'
+    16px body text, because 18px is the elder-friendly floor agreed in section 3.
+  - Verified: build green with the fonts self-hosted; the compiled CSS carries
+    the new palette (canvas, ink, teal, action green, outline-variant, error all
+    present, every old value gone); .btn-primary compiles to a 56px pill on
+    rgb(37 211 102) with rgb(19 29 35) text and .field to a 56px, 16px-radius
+    white field with a 1px rgb(190 201 197) border; all 14 routes answer 200 in
+    dev mode; the served /sw.js cache stamp rotated (phonemail-shell-
+    RXLe344GFdCqQPDZWC8IC -> phonemail-shell-TFQzCc7Ddl75emLNKIss8), so returning
+    users and installed PWAs receive the new shell; and the 74-assertion dev-mode
+    regression (43 group + 31 alias/403) is still green - which is the evidence
+    that this changed presentation and nothing else.
+  - NOT DONE - the session ran out of budget here, and no half-restyled screen is
+    in the tree: screen-order items 1-8 (onboarding x3, home, thread pairwise +
+    group, compose, traditional full view, settings/profile, drawer + /terms +
+    /portal, the desktop route group). Because the token layer moved first, every
+    untouched screen is ALREADY on the new palette; what is missing is each
+    screen's own designed layout and the per-screen linking audit.
+  - UNVERIFIED: how any of it LOOKS. There is no browser in this session, so the
+    visual result is the user's click-through - including whether the 56px touch
+    floor and the new header/CTA treatment sit well on the existing screens.
+
 - Day 7:
 
 ---
