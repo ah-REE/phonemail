@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -15,7 +17,7 @@ import { useAuth } from "@/lib/useAuth";
  *  - five wrong codes lock the pending OTP (429) and a new code is required
  */
 
-type Step = "language" | "terms" | "phone" | "otp";
+type Step = "language" | "phone" | "otp";
 
 interface SendOtpResponse {
   success?: boolean;
@@ -58,7 +60,7 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState<Step>("language");
   const [language, setLanguage] = useState("en");
-  const [agreed, setAgreed] = useState(false);
+
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -245,55 +247,9 @@ export default function OnboardingPage() {
               </li>
             ))}
           </ul>
-          <button type="button" className="btn-primary mt-auto" onClick={() => setStep("terms")}>
+          <button type="button" className="btn-primary mt-auto" onClick={() => setStep("phone")}>
             Continue
           </button>
-        </section>
-      )}
-
-      {step === "terms" && (
-        <section className="flex flex-1 flex-col gap-4 p-4">
-          <h2 className="text-lg font-semibold">Terms &amp; conditions</h2>
-          <div className="surface h-72 overflow-y-auto p-4 text-sm leading-relaxed">
-            <p>
-              PhoneMail gives you an email address built from your phone number, for example
-              9876543210@phonemail.com. Messages you receive are delivered to this app.
-            </p>
-            <p className="mt-3">
-              We store your phone number and the messages you send and receive so the service can
-              work. Your number is verified with a one-time code. Do not share that code.
-            </p>
-            <p className="mt-3">
-              This is a student buildathon project: the service is provided as-is, without
-              warranty, and may be reset or taken offline.
-            </p>
-            <p className="mt-3">
-              By continuing you agree that your phone number identifies your account and that you
-              will use the service lawfully.
-            </p>
-          </div>
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1 h-6 w-6"
-              checked={agreed}
-              onChange={(event) => setAgreed(event.target.checked)}
-            />
-            <span>I have read and agree to the terms and conditions.</span>
-          </label>
-          <div className="mt-auto flex gap-3">
-            <button type="button" className="btn-quiet flex-1" onClick={() => setStep("language")}>
-              Back
-            </button>
-            <button
-              type="button"
-              className="btn-primary flex-1"
-              disabled={!agreed}
-              onClick={() => setStep("phone")}
-            >
-              Agree &amp; continue
-            </button>
-          </div>
         </section>
       )}
 
@@ -333,7 +289,7 @@ export default function OnboardingPage() {
           )}
 
           <div className="mt-auto flex gap-3">
-            <button type="button" className="btn-quiet flex-1" onClick={() => setStep("terms")}>
+            <button type="button" className="btn-quiet flex-1" onClick={() => setStep("language")}>
               Back
             </button>
             <button
@@ -352,6 +308,13 @@ export default function OnboardingPage() {
               {sending ? "Sending…" : "Send code"}
             </button>
           </div>
+
+          <p className="text-center text-sm text-wa-muted">
+            By continuing, you agree to the{' '}
+            <Link href="/terms" className="font-semibold text-wa-teal underline">
+              Terms &amp; Conditions
+            </Link>
+          </p>
         </section>
       )}
 

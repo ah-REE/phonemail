@@ -616,6 +616,11 @@ context instantly)*
     and ivr recipients take the SMS path (dev-mode, so no network). Both
     convention accounts were set to 'portal', which is how they were actually
     created, so the notification demo behaves correctly.
+
+- Day 6: onboarding per spec — the separate T&C screen is gone. The flow is now
+  Language -> Phone -> OTP, with the acknowledgement as a consent line under the
+  Send OTP button ("By continuing, you agree to the Terms & Conditions", teal
+  link) that opens a plain /terms view. The phone pre-fill is untouched.
 - Day 7:
 
 ---
