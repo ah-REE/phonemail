@@ -313,6 +313,38 @@ context instantly)*
   - REAL TWILIO SEND IS UNVERIFIED: no credentials exist on the build machine.
     Commit: eba6d9a.
 
+- Day 2 hotfix 2: trial template `sms_2fa` returns the generated OTP in the API
+  response body; real mode parses it, stores it in Redis, verifies locally — live
+  OTP on a free Twilio trial. Each send consumes one trial SMS; trials message
+  only console-verified numbers.
+  - `src/lib/otp.ts` real mode: POST with `Body=sms_2fa` (no custom text and no
+    extra parameters — trials reject them). Success requires HTTP 2xx AND a `sid`
+    AND `errorCode` null AND a 6-digit code parseable from the response `body`
+    (strict `/verification code is (\d{6})/i` first, then the first standalone
+    6-digit run). Anything else throws `OtpSendError`.
+  - The stored value is TWILIO's code, not one we generated: the local
+    `generateOtp()` path is removed in real mode. Fallback mode is unchanged
+    (fixed `123456`, `devHint`, no network).
+  - Ordering contract kept: nothing is written to Redis unless Twilio accepted the
+    message AND a code was parsed, so a rejection leaves no OTP behind and does not
+    consume the resend cooldown. Unchanged: key names, TTLs, cooldown, 5-strike
+    burn, verify-otp, JWT, response shapes.
+  - Evidence: 22/22 unit assertions against the real module (mocked fetch, stubbed
+    Redis) covering the template body, code parsing (strict/loose/unparseable),
+    errorCode, missing sid, non-2xx, retry-then-cooldown, and the stored code being
+    Twilio's; 6/6 live fallback regression checks; fresh-clone evaluation green on a
+    cold volume. Commit: 28565c0.
+  - Local config note: `docker-compose.override.yml` (gitignored) now holds real
+    Twilio values, so the running stack is in REAL mode. Twilio currently rejects
+    that auth token for that account SID (HTTP 401, 'auth token is not valid for
+    account ...'), so real sends fail with 503 until the token is corrected in the
+    override file. Fallback can be exercised with
+    `docker compose -f docker-compose.yml up -d` (bypasses the override).
+  - README guidance (for the Day 7 README): state that OTP is Twilio-based with a
+    dev fallback, so the stack runs with no credentials at all; that a trial account
+    only messages numbers verified in the Twilio console; and that each send
+    consumes one trial SMS credit.
+
 - Day 3:
 - Day 4:
 - Day 5: IVR (Exotel) is next up
