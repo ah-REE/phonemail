@@ -1,22 +1,26 @@
 import { getRedis } from "@/lib/redis";
 
 /**
- * OTP issuing and verification (PROJECT.md §10, transport swapped to Twilio).
+ * OTP issuing and verification (PROJECT.md §10, transport: Twilio).
  *
  * Two modes, chosen automatically:
- *  - REAL SMS   : Twilio credentials are configured, so a random 6-digit code is
- *                 sent through the Messages REST API.
+ *  - REAL SMS   : Twilio credentials are configured. The message is sent with
+ *                 the trial template name, and Twilio GENERATES the code — the
+ *                 6-digit value comes back in the API response body, so we parse
+ *                 it, store it in Redis and verify locally. Nothing is written
+ *                 unless Twilio accepted the message and a code could be parsed.
  *  - DEV FALLBACK: credentials are missing or still the committed placeholders,
  *                 so the fixed code below is used and no SMS is sent. This is
  *                 what keeps `git clone` + `docker compose up -d` fully
  *                 functional for someone booting the stack with placeholders.
  *
- * Transport history: this used Fast2SMS, which requires KYC before any send.
- * Only the transport call and its configuration changed — key names, TTLs, the
- * cooldown, the brute-force guard and every response shape are untouched.
+ * Transport history: this used Fast2SMS (dropped: KYC required before any send).
+ * Key names, TTLs, the cooldown and the brute-force guard are unchanged
+ * throughout — only the transport call, the code source and the configuration
+ * changed.
  */
 
-/** OTP lifetime in Redis (5 minutes). */
+/** OTP lifetime in Redis (5 minutes — matches the Twilio template's expiry). */
 export const OTP_TTL_SECONDS = 300;
 /** Minimum gap between two OTP requests for the same number. */
 export const OTP_COOLDOWN_SECONDS = 60;
@@ -24,6 +28,13 @@ export const OTP_COOLDOWN_SECONDS = 60;
 export const OTP_MAX_ATTEMPTS = 5;
 /** Code used in fallback mode; also the value the evaluator test uses. */
 export const DEV_FALLBACK_OTP = "123456";
+
+/**
+ * Twilio trial template name. Trial accounts reject custom text and extra
+ * parameters, so the template is named here and Twilio supplies the wording —
+ * which is also why the generated code has to be read back from the response.
+ */
+const TRIAL_TEMPLATE_BODY = "sms_2fa";
 
 /**
  * The literal placeholder values committed in docker-compose.yml. Treating them
@@ -81,15 +92,6 @@ export function isSmsConfigured(): boolean {
   return twilioConfig() !== null;
 }
 
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-/** The exact SMS body. Twilio appends its own trial banner; that is expected. */
-export function otpMessage(otp: string): string {
-  return `Your PhoneMail verification code is ${otp}. It expires in 5 minutes.`;
-}
-
 /** Raised when a second OTP is requested inside the cooldown window. */
 export class OtpCooldownError extends Error {
   readonly retryAfterSeconds: number;
@@ -101,7 +103,7 @@ export class OtpCooldownError extends Error {
   }
 }
 
-/** Raised when the SMS transport could not accept the message. */
+/** Raised when the SMS transport could not accept the message or yield a code. */
 export class OtpSendError extends Error {
   constructor(message: string) {
     super(message);
@@ -110,11 +112,40 @@ export class OtpSendError extends Error {
 }
 
 /**
- * Sends the OTP through Twilio's Messages REST API using plain fetch (no SDK,
- * matching the existing style). Throws OtpSendError on any non-2xx response or
- * when the success payload has no `sid`.
+ * Pulls the generated code out of the template's response body.
+ * Strict form first ("...verification code is 482913..."), then the first
+ * standalone 6-digit run, so a template wording change does not silently break
+ * real mode.
  */
-export async function sendOtpSms(phoneNumber: string, otp: string): Promise<void> {
+export function parseCodeFromBody(body: unknown): string | null {
+  if (typeof body !== "string") {
+    return null;
+  }
+
+  const strict = body.match(/verification code is (\d{6})/i);
+  if (strict) {
+    return strict[1];
+  }
+
+  const loose = body.match(/(?:^|\D)(\d{6})(?:\D|$)/);
+  return loose ? loose[1] : null;
+}
+
+export interface TwilioSendResult {
+  /** The 6-digit code Twilio generated for this message. */
+  code: string;
+}
+
+/**
+ * Sends the OTP with the trial template via Twilio's Messages REST API using
+ * plain fetch (no SDK, matching the existing style) and returns the code Twilio
+ * generated.
+ *
+ * Success requires all of: HTTP 2xx, a `sid`, no `errorCode`, and a 6-digit code
+ * parseable from the response body. Anything else throws OtpSendError, so the
+ * caller writes nothing and does not consume the resend cooldown.
+ */
+export async function sendOtpSms(phoneNumber: string): Promise<TwilioSendResult> {
   const config = twilioConfig();
   if (!config) {
     throw new OtpSendError("Twilio is not configured.");
@@ -127,7 +158,8 @@ export async function sendOtpSms(phoneNumber: string, otp: string): Promise<void
     // input is normalized long before it gets here.
     To: `+91${phoneNumber}`,
     From: config.from,
-    Body: otpMessage(otp),
+    // Trial template name: no custom text, no extra parameters.
+    Body: TRIAL_TEMPLATE_BODY,
   });
 
   const response = await fetch(url, {
@@ -140,20 +172,27 @@ export async function sendOtpSms(phoneNumber: string, otp: string): Promise<void
   });
 
   const payload = (await response.json().catch(() => null)) as
-    | { sid?: unknown; code?: unknown; message?: unknown }
+    | { sid?: unknown; errorCode?: unknown; body?: unknown; code?: unknown; message?: unknown }
     | null;
 
-  const succeeded = response.ok && typeof payload?.sid === "string";
-  if (!succeeded) {
-    console.error("[otp] Twilio rejected the message:", {
+  const accepted =
+    response.ok && typeof payload?.sid === "string" && payload?.errorCode == null;
+  const code = parseCodeFromBody(payload?.body);
+
+  if (!accepted || !code) {
+    console.error("[otp] Twilio did not yield a usable OTP:", {
       status: response.status,
-      code: payload?.code,
+      sid: payload?.sid,
+      errorCode: payload?.errorCode,
       message: payload?.message,
+      codeParsed: code !== null,
     });
     throw new OtpSendError(
-      `Twilio rejected the OTP message (${payload?.code ?? response.status}).`,
+      `Twilio did not return a usable OTP (${payload?.errorCode ?? response.status}).`,
     );
   }
+
+  return { code };
 }
 
 export interface RequestOtpResult {
@@ -165,9 +204,12 @@ export interface RequestOtpResult {
 /**
  * Stores an OTP for the number and (in real mode) sends it by SMS.
  *
- * Ordering matters: the SMS is attempted BEFORE anything is written to Redis,
- * so a transport failure leaves no OTP behind and does not consume the resend
- * cooldown — the caller can simply retry.
+ * Ordering matters and is unchanged: the transport is attempted BEFORE anything
+ * is written to Redis, so a rejection leaves no OTP behind and does not consume
+ * the resend cooldown — the caller can simply retry.
+ *
+ * In real mode the stored value is the code Twilio generated (parsed from the
+ * response), in fallback mode it is the fixed dev code.
  *
  * Throws OtpCooldownError when called again inside the cooldown window.
  */
@@ -179,11 +221,7 @@ export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult>
   }
 
   const devMode = !isSmsConfigured();
-  const otp = devMode ? DEV_FALLBACK_OTP : generateOtp();
-
-  if (!devMode) {
-    await sendOtpSms(phoneNumber, otp);
-  }
+  const otp = devMode ? DEV_FALLBACK_OTP : (await sendOtpSms(phoneNumber)).code;
 
   await redis.set(otpKey(phoneNumber), otp, { EX: OTP_TTL_SECONDS });
   await redis.del(otpAttemptsKey(phoneNumber));
