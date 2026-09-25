@@ -157,6 +157,108 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
   );
 }
 
+/**
+ * The welcome hero, recreated from the owner's design: a dotted ring, six grey
+ * line icons sitting on it, two green dots at 12 and 6 o'clock, faint side dots,
+ * and an open envelope with its flap folded down over the body at the centre.
+ *
+ * Drawn rather than cropped, so it stays crisp at any size and can breathe.
+ */
+function HeroMark() {
+  const origin = { transformBox: "view-box" as const, transformOrigin: "150px 150px" };
+  return (
+    <svg viewBox="0 0 300 300" className="h-full w-full" role="img" aria-label="PhoneMail">
+      <defs>
+        <radialGradient id="hero-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#e8f1fb" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#e8f1fb" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="hero-body" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#60a5fa" />
+          <stop offset="100%" stopColor="#1e40af" />
+        </linearGradient>
+        <linearGradient id="hero-flap" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#dbeafe" />
+        </linearGradient>
+      </defs>
+
+      <circle cx="150" cy="150" r="149" fill="url(#hero-glow)" />
+
+      <g className="hero-ring" style={origin}>
+        <circle
+          cx="150"
+          cy="150"
+          r="130"
+          fill="none"
+          stroke="#e2e8f0"
+          strokeWidth="1.2"
+          strokeDasharray="1.5 7"
+          strokeLinecap="round"
+        />
+      </g>
+
+      <g
+        className="hero-ring-reverse"
+        style={origin}
+        fill="none"
+        stroke="#cbd5e1"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* chat bubble - 10:30 */}
+        <g transform="translate(48 48)">
+          <path d="M10 3.5h-5A1.5 1.5 0 0 0 3.5 5v6A1.5 1.5 0 0 0 5 12.5h1v3l3-3h6A1.5 1.5 0 0 0 16.5 11V5A1.5 1.5 0 0 0 15 3.5z" />
+          <circle cx="7" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
+          <circle cx="10" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
+          <circle cx="13" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
+        </g>
+        {/* plus - 1:30 */}
+        <g transform="translate(232 48)">
+          <path d="M10 4v12M4 10h12" />
+        </g>
+        {/* at - 9:00 */}
+        <g transform="translate(10 140)">
+          <circle cx="10" cy="10" r="6" />
+          <circle cx="10" cy="10" r="2.3" />
+          <path d="M16 10v1.4a2 2 0 0 0 3.6 0V10" />
+        </g>
+        {/* phone - 3:00 */}
+        <g transform="translate(270 140)">
+          <rect x="6" y="2.5" width="8" height="15" rx="2" />
+          <path d="M8.6 5.6h2.8M9.4 15.4h1.2" />
+        </g>
+        {/* camera - 7:30 */}
+        <g transform="translate(48 232)">
+          <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
+          <path d="M7 6l1.2-2h3.6L13 6" />
+          <circle cx="10" cy="11.5" r="2.8" />
+        </g>
+        {/* bell - 4:30 */}
+        <g transform="translate(232 232)">
+          <path d="M6 14.5V9.5a4 4 0 0 1 8 0v5" />
+          <path d="M4.5 14.5h11" />
+          <path d="M8.6 17.2a1.6 1.6 0 0 0 2.8 0" />
+        </g>
+      </g>
+
+      {/* the accents that never rotate */}
+      <circle cx="150" cy="20" r="3" fill="#22c55e" />
+      <circle cx="150" cy="280" r="3" fill="#22c55e" />
+      <circle cx="20" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
+      <circle cx="280" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
+
+      {/* the open envelope, resting on a soft shadow and floating */}
+      <g className="hero-float">
+        <ellipse cx="150" cy="193" rx="44" ry="7" fill="#dbeafe" opacity="0.75" />
+        <path d="M112 152H188V192a8 8 0 0 1-8 8H120a8 8 0 0 1-8-8z" fill="url(#hero-body)" />
+        <path d="M112 152H188L150 180z" fill="url(#hero-flap)" />
+      </g>
+    </svg>
+  );
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { status, signIn } = useAuth();
@@ -327,45 +429,37 @@ export default function OnboardingPage() {
       <div className="mx-auto flex w-full max-w-phone flex-1 flex-col px-4">
 
                 {step === "welcome" && (
-          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col justify-between px-6 pb-6 pt-4">
-            <div className="mb-2 mt-4 w-full text-center">
-              <h1 className="font-headline text-[26px] font-bold tracking-tight text-[#111B21]">
-                Welcome to PhoneMail
-              </h1>
-            </div>
+          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-4">
+            {/* The screen's own rhythm, from the owner's design: title, a wide gap,
+                the hero, the caption, a wide gap, then the legal line and the CTA.
+                One staggered entrance covers all four blocks. */}
+            <h1 className="enter enter-1 mt-4 w-full text-center font-display text-[26px] font-bold tracking-tight text-on-surface">
+              Welcome to PhoneMail
+            </h1>
 
-            <div className="my-auto flex w-full flex-col items-center justify-center py-4">
-              <div className="relative mx-auto flex h-[290px] w-[290px] items-center justify-center">
-                {/* The illustration itself, cropped from the owner's design: an exact
-                    match beats a redrawing, and the crop carries the artwork's own
-                    soft background so it sits on the page without a seam. */}
-                <img
-                  src="/brand/onboarding-centre.png"
-                  alt=""
-                  width={290}
-                  height={290}
-                  className="h-full w-full select-none object-contain"
-                />
+            <div className="my-auto flex w-full flex-col items-center justify-center py-6">
+              <div className="enter enter-2 relative mx-auto flex h-[300px] w-[300px] items-center justify-center">
+                <HeroMark />
               </div>
-              <p className="mx-auto mt-5 max-w-[290px] text-center text-[16px] font-normal leading-snug text-[#5A6675]">
+              <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
                 Your phone number is your email address.
               </p>
             </div>
 
-            <div className="mb-2 flex w-full flex-col items-center gap-4">
+            <div className="enter enter-4 flex w-full flex-col items-center gap-5">
               {/* The design names a Privacy Policy and a Terms of Service; only the
                   terms have a route, so that is the one link - a dead link is worse
                   than one honest link, the same call as on the phone step. */}
-              <p className="px-4 text-center text-[13px] leading-relaxed text-[#6B7280]">
+              <p className="px-4 text-center text-[13px] leading-relaxed text-outline">
                 Read our Privacy Policy. Tap &ldquo;Agree and continue&rdquo; to accept the{" "}
-                <Link href="/terms" className="font-medium text-[#17A589]">
+                <Link href="/terms" className="font-semibold text-accent">
                   Terms of Service
                 </Link>
                 .
               </p>
               <button
                 type="button"
-                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-full bg-[#17A589] text-[16px] font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 hover:bg-[#14907A] active:scale-[0.98]"
+                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-pill bg-[#00a98f] text-[16px] font-bold uppercase tracking-wider text-white shadow-raised transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985]"
                 onClick={() => setStep("phone")}
               >
                 Agree and continue

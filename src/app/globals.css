@@ -103,6 +103,25 @@
   .enter-4 { animation-delay: 190ms; }
 }
 
+/* The hero's idle loop: the ring turns once every 90 seconds, the icons counter
+   it so they stay upright, and the envelope floats a few pixels. These are loops,
+   not interaction easings - the two defined easings still govern every
+   transition - and the global reduced-motion rule stops all three. */
+@keyframes hero-turn {
+  to { transform: rotate(360deg); }
+}
+@keyframes hero-turn-back {
+  to { transform: rotate(-360deg); }
+}
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.hero-ring { animation: hero-turn 90s linear infinite; }
+.hero-ring-reverse { animation: hero-turn-back 90s linear infinite; }
+.hero-float { animation: hero-float 5s ease-in-out infinite; }
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
