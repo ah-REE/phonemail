@@ -173,19 +173,19 @@ here is enhancement, not core function.
 - [x] Group chat logic (2+ recipients → group; future 1:1 stays separate) *(shipped Day 6: the DERIVED thread key - see the Day 6 group-chat entry below)*
 - [x] Drafts, Spam, Trash; alias ID management in settings *(both shipped Day 6 - the folders on 2026-09-25, see the two Section 9 entries)*
 - [ ] k6/autocannon load test on login — fix anything over 500ms
-- [ ] Postgres connection pooling, response compression
-- [ ] Docker network hardening: only expose the `app` and `smtp` ports;
+- [ ] Postgres connection pooling, response compression *(not done: Prisma's own pool is what runs, and no compression layer was added. Neither was needed to hold the 500 ms target - see the measured numbers above)*
+- [x] Docker network hardening: only expose the `app` and `smtp` ports; *(actually stricter than asked: postgres, redis AND smtp publish nothing, and only `app:3000` is reachable from the host)*
       keep Postgres/Redis internal-only
 - [ ] *Stretch, only if the above is done early:* RSA end-to-end
       encryption, i18next language support, custom SMS via alternate
       provider, Oracle Cloud + DuckDNS live hosting
 
 ### Day 7 - Tue Sep 29: SUBMISSION ONLY (final green run, no new work)
-- [ ] Write README.md: what it does, exact 2 commands, full feature
-      list mapped to spec, architecture explanation, known limitations
-- [ ] Fresh-machine test: clone repo, `docker compose up -d` only,
-      confirm zero manual steps needed
-- [ ] Full demo rehearsal: mobile flow, desktop flow, IVR call, SMS
+- [x] Write README.md: what it does, exact 2 commands, full feature
+      list mapped to spec, architecture explanation, known limitations *(done - a line-by-line spec mapping with the honest rows for attachments, phone auto-detection, WebOTP, IVR, the swipe-right alternative and desktop, plus load numbers and the npm advisory count)*
+- [x] Fresh-machine test: clone repo, `docker compose up -d` only,
+      confirm zero manual steps needed *(done repeatedly, most recently by cloning from GitHub at b07db59 onto a clean volume: all 7 migrations applied and 116 assertions passed with no manual step)*
+- [ ] Full demo rehearsal: mobile flow, desktop flow, IVR call, SMS *(NOT done - the flows are verified programmatically, but the IVR call needs the Exotel console wired and a real call, and the SMS leg needs the gateway phone online. Both are operator-side and were never performed here.)*
 - [ ] Fix whatever breaks
 
 ### Tue Sep 29, 11:59 PM - SUBMIT
@@ -984,6 +984,53 @@ context instantly)*
     pass, left rather than half-converted.
   - UNVERIFIED: the visual result, as always - no browser in this session, and
     these are client components, so the served HTML is the loading skeleton.
+
+- Day 7: the README and the closing verification. No new features.
+  - README.md rewritten as the primary deliverable: what it is, the exact two
+    commands, the four services, how to test with the committed placeholders
+    (dev OTP 123456 + devHint, and why the placeholder credentials are what make
+    that safe), a demo script for the two-tab test and the group/alias/chips
+    flows, a line-by-line spec mapping with an honest status on every row, the
+    architecture (Node runtime only, the SMTP round trip as the only row writer,
+    derived group keys, recipient-scoped folders, the registeredVia gate, the
+    unified alias lookup, per-tab sessions, the build-stamped worker, committed
+    migrations, the OTP transport history), the limitations, and the evidence.
+  - The spec rows that are NOT a plain yes are stated as such rather than
+    smoothed over: attachments (affordance + empty state, no backend), phone
+    auto-detection (a browser cannot read the SIM - last-number pre-fill), OTP
+    auto-detection (auto-submit only, no WebOTP), the separate Terms screen (the
+    amended spec replaced it with a consent line), the hidden Subject field on
+    reply (the app keeps it visible and pre-fills `re:`), the swipe-right
+    traditional reply (the spec's own alternative is what ships), the one-screen
+    portal (two steps here), personal details and profile picture (not built),
+    and the IVR call itself (operator-side).
+  - Repository hygiene: the tracked tree carries no scratch files, temp scripts
+    or stray binaries - the only large files are the design exports (kept, and
+    referenced by the README's design story) and the two PWA icons. .gitignore
+    was re-read and still covers node_modules, .next, next-env.d.ts, .env* and
+    both override variants. DELIVERY/ deliberately stays OUT of the repository:
+    it is where the session reports live, it is not part of the product, and an
+    evaluator cloning the repo should not receive a folder of AI session
+    artefacts. The reports live in the AutoCoder workspace instead.
+  - Load numbers (one run, dev mode, this machine, Node HTTP client, recorded in
+    the README): /api/health p50 5.7 ms / p95 7.6 ms over 30 sequential requests;
+    send-otp 13.3 ms and verify-otp 13.7 ms as round trips; and a 50-way
+    concurrent burst returning all 200s at p95 315 ms. The OTP endpoints are
+    cooldown-guarded by design, so they are measured as round trips rather than
+    under load - which is why a k6/autocannon run would have measured the guard,
+    not the login.
+  - npm audit --omit=dev reports 5 advisories (1 moderate, 4 high) in the
+    transitive tree. Recorded in the README's limitations rather than quietly, and
+    deliberately not fixed during the build: the verified artefact is the
+    committed one, and an upgrade would invalidate every verification in this log.
+  - Closing verification: 116 assertions (43 group + 42 final items + 31
+    alias/403) green on the working stack AND on a fresh clone from GitHub at
+    b07db59, with all 7 migrations applying on a clean volume and all four
+    services healthy - the two-command promise, re-proved against the remote.
+  - Still outstanding, and unchanged: the demo rehearsal needs the Exotel console
+    and a real call, plus the gateway phone online for the SMS leg - both
+    operator-side. /portal keeps its original inline styling, and the settings
+    mockup's personal-details and profile-picture rows are not built.
 
 - Day 7:
 
