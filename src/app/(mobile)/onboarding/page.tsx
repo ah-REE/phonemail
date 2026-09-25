@@ -445,7 +445,7 @@ export default function OnboardingPage() {
                   alt="PhoneMail"
                   width={104}
                   height={104}
-                  className="pointer-events-none absolute h-[104px] w-[104px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
+                  className="hero-float pointer-events-none absolute h-[104px] w-[104px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
                 />
               </div>
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
