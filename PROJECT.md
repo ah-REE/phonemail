@@ -819,6 +819,50 @@ context instantly)*
     Reply - already exists), and the per-screen visual layouts, which are the next
     session's job. No half-built code for either.
 
+- Day 6: VISUAL RESTYLE, screen 1 of 9 - onboarding (language, phone, OTP).
+  - Source of truth: design/choose_your_language, design/phone_verification and
+    design/otp_verification code.html. The screen.png pictures could NOT be
+    cross-checked (this environment's image model fails), so the markup alone is
+    authoritative - and the user grades the result against the pictures in a
+    browser, which is the part no session can do for them.
+  - Layout follows the mockups' order and proportions: progress row (back button,
+    centred brand, "N of 3", step dots where the active step is an elongated
+    pill), the PhoneMail mark, a 26px/34 bold heading with its subtitle, 56px
+    rounded-xl rows, the security badge, and a pinned bottom CTA. The language
+    rows are a real radio fieldset; the selected row carries the check, and
+    "Hindi"/"Tamil" are plain words with "coming soon" - the design's wording,
+    where the app's earlier labels used native script the mockups do not show.
+  - The PhoneMail mark is reproduced EXACTLY as inline SVG from
+    design/phonemail_logo/code.html (teal rounded square, white envelope, green
+    handset), so no binary asset had to be added and the mockups' icon slots use
+    it too.
+  - The phone screen keeps every real behaviour and gains the mockup's elements:
+    the +91 field with an internal divider and a clear button, the live
+    <number>@phonemail.com address preview (the app's real domain, not the
+    mockup's @phonemail.me sample), the lock helper, and the consent line with
+    the /terms link.
+  - The OTP screen: centred heading, "OTP sent to +91 <number>" with an inline
+    Edit (the same action as the back button), the secure-channel badge, six
+    rounded digit boxes, a Verify button (a real fallback for the auto-submit),
+    and the resend countdown driven by the server's own retryAfterSeconds.
+  - Deliberately NOT implemented, with reasons: the mockup's "Check Messages" /
+    "Call me" pills are OS-level actions a web app cannot perform; "Code expires
+    in ..." would need client-side expiry tracking the app does not keep (the
+    server owns the 5-minute TTL); and the mockup's second legal link (Privacy
+    Policy) has no route - a dead link is worse than one honest link.
+  - Verified: build green; /onboarding answers 200; and the full dev-mode
+    regression is still green (43 + 33 + 31 = 107 assertions across the group,
+    final-items and alias/403 suites), which doubles as this screen's functional
+    check - the restyle changed markup and classes only, no logic.
+  - NOT DONE: screens 2-9 of the brief (home, pairwise thread, group thread,
+    compose, traditional full view, settings/profile, drawer + /terms + /portal,
+    desktop) and the group-folder add-on that was scoped to screens 3-4. No
+    half-restyled screen is in the tree.
+  - UNVERIFIED: the visual result itself. The onboarding page is a client
+    component, so the HTML the server returns is the loading skeleton - the new
+    layout is confirmed by building it and by reading the source, not by
+    observing a browser render.
+
 - Day 7:
 
 ---
