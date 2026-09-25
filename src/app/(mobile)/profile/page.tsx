@@ -209,7 +209,7 @@ export default function ProfilePage() {
 
   return (
     <main className="flex flex-1 flex-col bg-[#F8FAFC]">
-      <header className="relative z-10 flex w-full flex-col bg-[#075e54] text-white">
+      <header className="relative z-10 flex w-full flex-col bg-pine text-white">
         <div className="relative flex h-14 items-center justify-between px-3">
           <Link
             href="/"
@@ -226,18 +226,18 @@ export default function ProfilePage() {
 
         <div className="flex flex-col items-center px-5 pb-8 pt-2 text-center">
           <div className="relative">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00453d] ring-4 ring-white/15">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-pine-deep ring-4 ring-white/15">
               <span className="select-none font-headline text-3xl font-bold text-white">{initial}</span>
             </div>
-            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#075e54] bg-[#25D366] text-white">
+            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-pine bg-success text-white">
               <Icon name="check" size={14} />
             </div>
           </div>
           <h2 className="mt-3.5 font-headline text-[22px] font-extrabold leading-tight tracking-tight text-white">
             {user?.phoneNumber ?? "Unknown"}
           </h2>
-          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#00453d]/80 px-4 py-1.5">
-            <span className="select-all text-[13px] font-semibold tracking-wide text-[#25D366]">
+          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-pine-deep/80 px-4 py-1.5">
+            <span className="select-all text-[13px] font-semibold tracking-wide text-success">
               {address}
             </span>
           </div>
@@ -253,7 +253,7 @@ export default function ProfilePage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
             <form className="flex min-h-[64px] w-full items-center gap-2 px-4 py-4" onSubmit={saveName}>
               <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[#075e54]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-pine">
                   <Icon name="globe" size={20} />
                 </div>
                 <span className="text-[15px] font-medium text-slate-900">Name</span>
@@ -268,7 +268,7 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-[#25D366] px-4 py-1.5 text-[14px] font-semibold text-[#075e54] disabled:opacity-60"
+                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-pine disabled:opacity-60"
                 disabled={nameSaving}
               >
                 {nameSaving ? "Saving" : "Save"}
@@ -278,7 +278,7 @@ export default function ProfilePage() {
           <p className="mt-2 px-1 text-[12px] text-slate-500">
             Shown to people you write to. Leave it empty to show your number instead.
           </p>
-          {nameNotice && <p className="mt-2 px-1 text-[14px] text-[#075e54]">{nameNotice}</p>}
+          {nameNotice && <p className="mt-2 px-1 text-[14px] text-pine">{nameNotice}</p>}
         </section>
 
         <section>
@@ -301,7 +301,7 @@ export default function ProfilePage() {
                   </span>
                   <button
                     type="button"
-                    className="shrink-0 text-[14px] font-semibold text-red-500"
+                    className="shrink-0 text-[14px] font-semibold text-danger"
                     aria-label={`Remove alias ${alias.localPart}`}
                     onClick={() => void removeAlias(alias.localPart)}
                   >
@@ -324,7 +324,7 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-[#25D366] px-4 py-1.5 text-[14px] font-semibold text-[#075e54] disabled:opacity-60"
+                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-pine disabled:opacity-60"
                 disabled={busy || draft.trim().length === 0}
               >
                 {busy ? "Adding" : "Add"}
@@ -335,9 +335,9 @@ export default function ProfilePage() {
             3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
             account exactly like mail sent to the number.
           </p>
-          {notice && <p className="mt-2 px-1 text-[14px] text-[#075e54]">{notice}</p>}
+          {notice && <p className="mt-2 px-1 text-[14px] text-pine">{notice}</p>}
           {error && (
-            <p className="mt-2 px-1 text-[14px] text-red-500" role="alert">
+            <p className="mt-2 px-1 text-[14px] text-danger" role="alert">
               {error}
             </p>
           )}
@@ -350,7 +350,7 @@ export default function ProfilePage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
             <div className="flex min-h-[64px] w-full items-center justify-between bg-white px-4 py-4">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[#075e54]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-pine">
                   <Icon name="globe" size={20} />
                 </div>
                 <span className="text-[15px] font-medium text-slate-900">Language</span>
@@ -379,7 +379,7 @@ export default function ProfilePage() {
               }}
             >
               <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
                   <Icon name="logout" size={20} />
                 </div>
                 <span className="text-[15px] font-medium text-slate-900">Sign out</span>

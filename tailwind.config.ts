@@ -1,111 +1,121 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Design system (PROJECT.md section 3: Tailwind + a tokens layer).
+ * Design system.
  *
- * Tokens are semantic, not decorative: the designed palette and the
- * elder-friendly sizing live here, so screens never hard-code a colour or size.
+ * Redesign (Refinement): the structure, flows and content are untouched; the
+ * visual system is rebuilt. The previous layer was a correct but characterless
+ * Material/WhatsApp pastiche - a cool blue-white canvas, mid-teal chrome, one
+ * type size and no depth. This one is built around a single idea: digital mail
+ * that feels like paper.
  *
- * Day 6 visual refresh: the token layer moved FIRST, before any screen, so every
- * screen adopts the designed language the moment it is styled and an untouched
- * screen is already on-colour.
+ *   canvas   warm paper, not a cool white
+ *   chrome   deep pine, so the bars read as ink on paper rather than plastic
+ *   accent   ONE electric violet, reserved for the action the screen wants
+ *   type     a characterful display face over a very legible body face
+ *   depth    three warm-tinted shadows instead of none
  *
- * Source of truth: the Stitch export itself - design/safe_clean_messenger/
- * DESIGN.md (front-matter) and the mockup markup under design/<screen>/code.html.
- * Where DESIGN.md's PROSE disagrees with the mockup markup (the prose carries an
- * older WhatsApp-like palette: #EFEAE2 canvas, #DAE1E3 borders, #667781 muted),
- * the MOCKUP MARKUP WINS. Recorded in PROJECT.md section 9.
- *
- * Two deliberate deviations, both reported:
- *  - the root font size stays 18px (the elder-friendly floor agreed in
- *    PROJECT.md section 3) instead of the mockups' 16px body text
- *  - the `wa-*` names survive as aliases pointing at the new palette, so screens
- *    can migrate one at a time without a flag day
+ * Token NAMES are unchanged (and the wa-* aliases repointed), so every screen
+ * adopts the new system the moment this file changes - which is what makes a
+ * Refinement safe across a whole app.
  */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        /* ---------------- designed palette (mockup-derived) ---------------- */
+        /* ---------- the new system ---------- */
+        paper: { DEFAULT: "#faf7f3", sunken: "#f4efe8" },
+        pine: { DEFAULT: "#0c3b36", deep: "#082926", soft: "#14514a" },
+        accent: { DEFAULT: "#4b3df5", soft: "#edebff", ink: "#ffffff" },
+        success: { DEFAULT: "#12b76a", soft: "#d6f5e5" },
+        warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
+        danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },
+
+        /* ---------- the semantic set (names kept) ---------- */
         surface: {
           DEFAULT: "#ffffff",
-          dim: "#d1dbe4",
-          bright: "#f5faff",
-          variant: "#d9e4ec",
+          dim: "#ded7cb",
+          bright: "#faf7f3",
+          variant: "#e7dfd4",
           container: {
             lowest: "#ffffff",
-            low: "#eaf5fe",
-            DEFAULT: "#e5eff8",
-            high: "#dfeaf2",
-            highest: "#d9e4ec",
+            low: "#f6f1ea",
+            DEFAULT: "#f2ece4",
+            high: "#efe8df",
+            highest: "#e7dfd4",
           },
         },
-        "on-surface": { DEFAULT: "#131d23", variant: "#3f4946" },
-        outline: { DEFAULT: "#6f7976", variant: "#bec9c5" },
-        primary: { DEFAULT: "#00453d", container: "#075e54" },
-        "on-primary": { DEFAULT: "#ffffff", container: "#8dd5c8" },
-        "primary-fixed": { DEFAULT: "#a8f0e3", dim: "#8cd4c7" },
-        secondary: { DEFAULT: "#006d2f", container: "#5dfd8a" },
-        "on-secondary": { DEFAULT: "#ffffff", container: "#007232" },
-        "surface-tint": "#1c695f",
-        error: { DEFAULT: "#ba1a1a", container: "#ffdad6" },
-        "on-error": { DEFAULT: "#ffffff", container: "#93000a" },
+        "on-surface": { DEFAULT: "#101a17", variant: "#4c5a55" },
+        outline: { DEFAULT: "#8a8279", variant: "#dcd5cc" },
+        primary: { DEFAULT: "#0c3b36", container: "#14514a" },
+        "on-primary": { DEFAULT: "#f3fbf8", container: "#a8e0d2" },
+        "primary-fixed": { DEFAULT: "#a8e0d2", dim: "#7cc4b3" },
+        secondary: { DEFAULT: "#12b76a", container: "#c9f5de" },
+        "on-secondary": { DEFAULT: "#ffffff", container: "#065f36" },
+        "surface-tint": "#0c3b36",
+        error: { DEFAULT: "#e5484d", container: "#ffe6e6" },
+        "on-error": { DEFAULT: "#ffffff", container: "#8c1d22" },
 
-        /* ------------- legacy aliases, repointed at that palette ------------- */
+        /* ---------- legacy aliases, repointed ---------- */
         wa: {
-          bg: "#f5faff",
+          bg: "#faf7f3",
           panel: "#ffffff",
-          ink: "#131d23",
-          // Muted text must still clear 4.5:1 on white and on #f5faff.
-          muted: "#3f4946",
-          // Soft divider; input outlines use wa-outline (#bec9c5) as the design does.
-          line: "#dfeaf2",
-          outline: "#bec9c5",
-          teal: "#075e54",
-          green: "#25d366",
-          bubble: "#d9fdd3",
-          alert: "#ba1a1a",
+          ink: "#101a17",
+          muted: "#4c5a55",
+          line: "#efe8df",
+          outline: "#dcd5cc",
+          teal: "#0c3b36",
+          green: "#12b76a",
+          bubble: "#eef7f1",
+          alert: "#e5484d",
         },
       },
       fontFamily: {
-        // Wired through next/font in app/layout.tsx, which self-hosts the files:
-        // no runtime CDN, so the app still works offline.
-        headline: ["var(--font-headline)", "Inter", "system-ui", "sans-serif"],
-        body: ["var(--font-body)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Bricolage Grotesque", "Georgia", "serif"],
+        headline: ["var(--font-display)", "Bricolage Grotesque", "Georgia", "serif"],
+        body: ["var(--font-body)", "Figtree", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
       },
       fontSize: {
-        /* the app's own scale - elder-friendly, driven by the 18px root */
+        /* the elder-friendly floor stays: root 18px, base 18px */
         base: ["18px", { lineHeight: "1.55" }],
         sm: ["16px", { lineHeight: "1.5" }],
         lg: ["20px", { lineHeight: "1.5" }],
         xl: ["24px", { lineHeight: "1.35" }],
-        /* the designed scale (DESIGN.md typography), mobile sizes */
-        "headline-lg": ["26px", { lineHeight: "34px", letterSpacing: "-0.015em" }],
-        "headline-md": ["22px", { lineHeight: "28px", letterSpacing: "-0.01em" }],
-        "headline-sm": ["18px", { lineHeight: "24px" }],
+        /* the display scale */
+        "display-lg": ["34px", { lineHeight: "38px", letterSpacing: "-0.022em", fontWeight: "700" }],
+        "display-md": ["27px", { lineHeight: "32px", letterSpacing: "-0.018em", fontWeight: "700" }],
+        "display-sm": ["22px", { lineHeight: "28px", letterSpacing: "-0.012em", fontWeight: "600" }],
+        "headline-lg": ["26px", { lineHeight: "34px", letterSpacing: "-0.015em", fontWeight: "700" }],
+        "headline-md": ["22px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+        "headline-sm": ["18px", { lineHeight: "24px", fontWeight: "600" }],
         "body-lg": ["16px", { lineHeight: "24px" }],
         "body-md": ["14px", { lineHeight: "20px" }],
         "body-sm": ["12px", { lineHeight: "16px" }],
-        "label-lg": ["16px", { lineHeight: "20px", letterSpacing: "0.01em" }],
-        "label-md": ["14px", { lineHeight: "18px", letterSpacing: "0.01em" }],
-        "label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.04em" }],
+        "label-lg": ["16px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600" }],
+        "label-md": ["14px", { lineHeight: "18px", letterSpacing: "0.01em", fontWeight: "600" }],
+        "label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.08em", fontWeight: "600" }],
       },
-      // Pill controls, 16px cards, 24px sheets: the design's shape language.
-      borderRadius: {
-        card: "16px",
-        bubble: "10px",
-        sheet: "24px",
-        pill: "9999px",
-      },
-      // The design's touch floor is 56px (the app's was 48px).
+      borderRadius: { card: "14px", bubble: "14px", sheet: "22px", pill: "9999px" },
       minHeight: { tap: "56px" },
       minWidth: { tap: "56px" },
-      // DESIGN.md: fluid single column, max content width 480px.
       maxWidth: { phone: "480px" },
-      // Restrained motion only: 150-200ms, nothing bouncing.
-      transitionDuration: { ui: "180ms" },
-      spacing: { row: "14px" },
+      /* Three warm-tinted shadows. Depth is the thing the old system lacked
+         entirely; these are deliberate, not decorative. */
+      boxShadow: {
+        card: "0 1px 2px rgba(16,26,23,0.04), 0 6px 18px -12px rgba(16,26,23,0.16)",
+        raised: "0 2px 6px rgba(16,26,23,0.06), 0 16px 32px -18px rgba(16,26,23,0.22)",
+        overlay: "0 24px 60px -24px rgba(16,26,23,0.34)",
+        "inset-line": "inset 0 1px 0 rgba(255,255,255,0.6)",
+      },
+      transitionDuration: { ui: "220ms", fast: "140ms", slow: "380ms" },
+      /* Two easings, as the brief requires. */
+      transitionTimingFunction: {
+        "out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "soft-spring": "cubic-bezier(0.34, 1.24, 0.64, 1)",
+      },
+      spacing: { row: "16px" },
     },
   },
   plugins: [],

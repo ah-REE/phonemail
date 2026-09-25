@@ -3,29 +3,38 @@
 @tailwind utilities;
 
 /*
- * Global hooks for the design system. Kept deliberately small: tokens live in
- * tailwind.config.ts, screens compose utilities from them.
+ * Global hooks for the design system. Tokens live in tailwind.config.ts.
  *
- * Day 6 visual refresh: the canvas, the focus treatment and the component
- * classes below moved to the designed language (design/safe_clean_messenger/
- * DESIGN.md + the mockup markup). Shape and elevation follow its two hard
- * rules: pill controls, and strictly flat - no drop shadows, no blur, no
- * gradients anywhere. Separation is a 1px hairline.
+ * Redesign (Refinement): the canvas is warm paper, the chrome is deep pine, one
+ * electric violet carries every action, and there are three deliberate shadows
+ * instead of none. The elder-friendly floor is unchanged: the root stays 18px
+ * and every tap target stays at least 56px. Motion uses the two easings defined
+ * in the config, and nothing else.
  */
 @layer base {
   html {
-    /* Root font size drives every rem-based size. 18px - NOT the mockups' 16px
-       body text - is the elder-friendly floor agreed in PROJECT.md section 3;
-       this is a reported deviation from the design. */
+    /* 18px root - the elder-friendly floor agreed in PROJECT.md section 3. */
     font-size: 18px;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-surface-bright font-body text-on-surface antialiased;
+    @apply bg-paper font-body text-on-surface antialiased;
+    /* A faint paper grain, drawn with gradients so nothing is fetched. */
+    background-image:
+      radial-gradient(120% 80% at 12% -10%, rgba(75, 61, 245, 0.05) 0%, transparent 60%),
+      radial-gradient(100% 70% at 100% 0%, rgba(12, 59, 54, 0.05) 0%, transparent 55%);
+    background-attachment: fixed;
   }
 
-  /* Never let a tap target shrink below the design's 56px floor. */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    letter-spacing: -0.014em;
+  }
+
+  /* Never let a tap target shrink below the 56px floor. */
   button,
   a[role="button"],
   input,
@@ -34,11 +43,13 @@
     @apply min-h-tap;
   }
 
-  /* One visible focus treatment for keyboard and switch users.
-     The design's rule: an inner/outer 2px ring in the brand colours, never a
-     diffused halo. */
+  /* One focus treatment, in the accent, visible on paper and on pine. */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-container ring-offset-2 ring-offset-surface;
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
+  }
+
+  ::selection {
+    @apply bg-accent-soft text-on-surface;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -52,43 +63,58 @@
 }
 
 @layer components {
-  /* Primary CTA: full pill, solid action green, dark charcoal label
-     (DESIGN.md "Components / Buttons"). */
+  /* The action: a 56px accent pill with real depth. */
   .btn-primary {
-    @apply inline-flex min-h-tap items-center justify-center rounded-pill bg-wa-green px-6 text-lg font-semibold text-on-surface transition-colors duration-ui hover:bg-[#20ba5a] active:bg-[#1eab53] disabled:opacity-60;
+    @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-pill bg-accent px-6 text-label-lg text-accent-ink shadow-raised transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985] active:brightness-95 disabled:opacity-55 disabled:shadow-none;
   }
 
-  /* Secondary: white surface, 1px hairline, teal label. */
+  /* The quieter choice: paper, a hairline, ink. */
   .btn-quiet {
-    @apply inline-flex min-h-tap items-center justify-center rounded-pill border border-wa-outline bg-surface px-6 text-lg font-semibold text-primary-container transition-colors duration-ui hover:bg-surface-container-low active:bg-surface-container disabled:opacity-60;
+    @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-pill border border-outline-variant bg-surface px-6 text-label-lg text-on-surface transition-all duration-fast ease-out-quint hover:border-outline hover:bg-surface-container-low active:scale-[0.985] disabled:opacity-55;
   }
 
   .field {
-    @apply min-h-tap w-full rounded-card border border-wa-outline bg-surface px-4 text-lg text-on-surface outline-none transition-colors duration-ui focus:border-2 focus:border-primary-container;
+    @apply min-h-tap w-full rounded-card border border-outline-variant bg-surface px-4 text-base text-on-surface shadow-card outline-none transition-all duration-ui ease-out-quint placeholder:text-outline focus:border-accent focus:shadow-raised;
   }
 
+  /* A sheet of paper: the app's core container. */
   .surface {
-    @apply rounded-card border border-wa-outline bg-surface;
+    @apply rounded-card border border-outline-variant/70 bg-surface shadow-card;
   }
 
-  /* A chat-list / thread row: even padding, flat press feedback. */
   .row {
-    @apply flex items-center gap-3 px-4 py-row transition-colors duration-ui active:bg-surface-container-low;
+    @apply flex items-center gap-3 px-4 py-row transition-colors duration-fast ease-out-quint active:bg-surface-container-low;
   }
 
-  /* Loading placeholder. Static tint at rest; a slow pulse when motion is OK. */
   .skeleton {
-    @apply block bg-surface-container-high;
+    @apply block rounded-card bg-surface-container;
     animation: skeleton-pulse 1.6s ease-in-out infinite;
   }
 }
 
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
+@layer utilities {
+  /* One entrance, used once per screen, on the two easings above. */
+  .enter {
+    animation: enter-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  50% {
+  .enter-1 { animation-delay: 40ms; }
+  .enter-2 { animation-delay: 90ms; }
+  .enter-3 { animation-delay: 140ms; }
+  .enter-4 { animation-delay: 190ms; }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
     opacity: 1;
+    transform: none;
   }
 }
