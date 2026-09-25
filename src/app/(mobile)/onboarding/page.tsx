@@ -29,7 +29,7 @@ import { useAuth } from "@/lib/useAuth";
  * privacy route to point at (a dead link is worse than one link).
  */
 
-type Step = "language" | "phone" | "otp";
+type Step = "welcome" | "phone" | "otp";
 
 interface SendOtpResponse {
   success?: boolean;
@@ -46,16 +46,6 @@ interface VerifyOtpResponse {
   error?: string;
   attemptsLeft?: number;
 }
-
-/**
- * The mockup's wording, not the app's earlier labels: the design shows plain
- * "Hindi" and "Tamil" with a "coming soon" note, and English marked (Default).
- */
-const LANGUAGES = [
-  { code: "en", label: "English", note: "(Default)", ready: true },
-  { code: "hi", label: "Hindi", note: "coming soon", ready: false },
-  { code: "ta", label: "Tamil", note: "coming soon", ready: false },
-];
 
 const OTP_LENGTH = 6;
 
@@ -189,12 +179,41 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
   );
 }
 
+/**
+ * The design's circular "doodle aura", drawn inline. The mockup points at two
+ * Google-hosted PNGs for this illustration; the app fetches nothing remote (the
+ * whole project runs offline from `docker compose up -d`), so the aura is
+ * reproduced as SVG in the design's own tones and the envelope is the app's real
+ * PhoneMail mark.
+ */
+function AuraMark() {
+  return (
+    <svg viewBox="0 0 290 290" className="h-full w-full" aria-hidden="true">
+      <circle cx="145" cy="145" r="138" fill="#f0f7fd" />
+      <circle cx="145" cy="145" r="138" fill="none" stroke="#dfeaf2" strokeWidth="2" />
+      <circle cx="145" cy="145" r="124" fill="none" stroke="#d9e4ec" strokeWidth="1.5" strokeDasharray="7 11" />
+      <circle cx="145" cy="145" r="104" fill="none" stroke="#e5eff8" strokeWidth="1.5" />
+      <g stroke="#c7d7e3" strokeWidth="2" strokeLinecap="round">
+        <path d="M232 74l6 10-10 4" />
+        <path d="M58 96l10 4-4 10" />
+        <path d="M66 220l10-4 2 10" />
+        <path d="M226 208l-8 6 6 8" />
+      </g>
+      <g fill="#dfeaf2">
+        <circle cx="145" cy="14" r="3" />
+        <circle cx="145" cy="276" r="3" />
+        <circle cx="14" cy="145" r="3" />
+        <circle cx="276" cy="145" r="3" />
+      </g>
+    </svg>
+  );
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { status, signIn } = useAuth();
 
-  const [step, setStep] = useState<Step>("language");
-  const [language, setLanguage] = useState("en");
+  const [step, setStep] = useState<Step>("welcome");
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -353,103 +372,60 @@ export default function OnboardingPage() {
     );
   }
 
-  const stepNumber = step === "language" ? 1 : step === "phone" ? 2 : 3;
+  const stepNumber = step === "welcome" ? 1 : step === "phone" ? 2 : 3;
 
   return (
     <main className="flex flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-phone flex-1 flex-col px-4">
 
-        {step === "language" && (
-          <>
-            <TopBar step={stepNumber} total={3} brand={false} />
-
-            <div className="flex flex-col items-center">
-              <div className="mb-6 flex flex-col items-center justify-center">
-                <LogoMark size={80} />
-              </div>
-
-              <div className="mb-8 px-2 text-center">
-                <h1 className="font-headline text-[26px] font-bold leading-[34px] tracking-[-0.015em]">
-                  Choose your language
-                </h1>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Select your preferred language to set up PhoneMail
-                </p>
-              </div>
-
-              <fieldset className="flex w-full flex-col space-y-2.5">
-                <legend className="sr-only">Available languages</legend>
-                {LANGUAGES.map((entry) =>
-                  entry.ready ? (
-                    <label
-                      key={entry.code}
-                      className={`flex h-14 w-full cursor-pointer select-none items-center justify-between rounded-xl px-4 ${
-                        language === entry.code
-                          ? "border-2 border-primary-container bg-surface-container-low"
-                          : "border border-wa-outline bg-surface"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="language"
-                        className="sr-only"
-                        checked={language === entry.code}
-                        onChange={() => setLanguage(entry.code)}
-                      />
-                      <span className="flex items-center gap-3">
-                        <span className="text-base font-semibold">{entry.label}</span>
-                        <span className="text-xs text-on-surface-variant">{entry.note}</span>
-                      </span>
-                      <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                          language === entry.code ? "bg-wa-green text-on-surface" : "border border-wa-outline"
-                        }`}
-                      >
-                        {language === entry.code && <Icon name="check" size={16} />}
-                      </span>
-                    </label>
-                  ) : (
-                    <div
-                      key={entry.code}
-                      aria-disabled="true"
-                      className="flex h-14 w-full cursor-not-allowed select-none items-center justify-between rounded-xl border border-wa-outline bg-surface-container-low px-4 opacity-75"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-base">{entry.label}</span>
-                        <span className="text-on-surface-variant">—</span>
-                        <span className="text-sm text-on-surface-variant">{entry.note}</span>
-                      </span>
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center text-on-surface-variant">
-                        <Icon name="clock" size={18} />
-                      </span>
-                    </div>
-                  ),
-                )}
-              </fieldset>
-
-              <div className="mt-8 flex items-center justify-center gap-1.5">
-                <span className="text-on-surface-variant">
-                  <Icon name="lock" size={14} />
-                </span>
-                <span className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">
-                  End-to-end encrypted setup
-                </span>
+                {step === "welcome" && (
+          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col justify-between px-6 pb-6 pt-4">
+            <div className="mb-2 mt-4 w-full text-center">
+              <h1 className="font-headline text-[26px] font-bold tracking-tight text-[#111B21]">
+                Welcome to PhoneMail
+              </h1>
+              {/* The new design carries no step indicator, but the real flow has
+                  three steps and the phone and OTP screens both show one - so it
+                  stays, accurate, rather than leaving step 1 unlabelled. */}
+              <div className="mt-4 flex items-center justify-center">
+                <StepDots total={3} active={1} />
               </div>
             </div>
 
-            {/* The design leaves clear space under the pinned CTA - the button
-                must not sit on the bottom edge. */}
-            <div className="mt-auto w-full pb-12 pt-8">
-              <button type="button" className="btn-primary w-full" onClick={() => setStep("phone")}>
-                Continue
+            <div className="my-auto flex w-full flex-col items-center justify-center py-4">
+              <div className="relative mx-auto flex h-[290px] w-[290px] items-center justify-center">
+                <AuraMark />
+                <span className="pointer-events-none absolute">
+                  <LogoMark size={112} />
+                </span>
+              </div>
+              <p className="mx-auto mt-5 max-w-[290px] text-center text-[15px] font-medium leading-snug text-[#54656F]">
+                Your phone number is your email address.
+              </p>
+            </div>
+
+            <div className="mb-2 flex w-full flex-col items-center gap-4">
+              <p className="px-4 text-center text-[13px] leading-relaxed text-[#54656F]">
+                Tap &ldquo;Agree and continue&rdquo; to accept the{" "}
+                <Link href="/terms" className="font-medium text-[#027EB5] hover:underline">
+                  Terms of Service
+                </Link>
+                .
+              </p>
+              <button
+                type="button"
+                className="flex h-[52px] w-full cursor-pointer items-center justify-center rounded-full bg-[#00A884] text-[14px] font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 hover:bg-[#008F6F] active:scale-[0.98]"
+                onClick={() => setStep("phone")}
+              >
+                Agree and continue
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {step === "phone" && (
           <>
-            <TopBar step={stepNumber} total={3} onBack={() => setStep("language")} brand />
+            <TopBar step={stepNumber} total={3} onBack={() => setStep("welcome")} brand />
 
             <div className="flex w-full flex-col pt-4">
               <div className="flex flex-col">

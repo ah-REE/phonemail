@@ -1173,6 +1173,38 @@ context instantly)*
     the flow to see it is: send a message from another number to an account you
     have never written to, then open that thread.
 
+- Day 7: THE ONBOARDING FIRST SCREEN REPLACED with the owner's new design
+  (design/onboarding_new, read in full - it is the source of truth for this
+  screen).
+  - What it is now: a welcome screen - "Welcome to PhoneMail" at 26px bold in
+    #111B21, a 290px circular aura with the PhoneMail mark at 112px inside it, the
+    tagline "Your phone number is your email address." at 15px/#54656F, the consent
+    line, and one CTA: a 52px pill in #00A884, white, bold, uppercase, wide tracking
+    with the mockup's subtle shadow and its 0.98 active-scale.
+  - The superseded screen: the language picker. Language is a setting on the profile
+    screen, so nothing was lost; the phone step's back button now lands on the new
+    welcome screen, and the step indicator still counts the real three steps.
+  - DEVIATIONS FROM THE MOCKUP, each deliberate:
+    1. the illustration is drawn as inline SVG. The mockup points at two
+       Google-hosted PNGs, and the app fetches NOTHING remote (that is what keeps
+       `docker compose up -d` honest offline), so the aura is reproduced in the
+       design's own tones and the envelope is the app's real mark.
+    2. the step indicator is present. The new design shows none, but the real flow
+       has three steps and the phone and OTP screens both show one - leaving step 1
+       unlabelled would be the inconsistent choice, so it stays (dots under the
+       title, the same treatment as the other two steps).
+    3. the consent line keeps only the Terms link. The mockup also names a Privacy
+       Policy and there is no such route; a dead link is worse than one honest link,
+       which is the same call made on the phone step.
+  - Animation: none, matching the screen it replaced - the onboarding has no
+    entrance choreography to inherit, so nothing new was invented.
+  - Verified: build green; /onboarding 200; the flow completes in dev mode (welcome
+    -> phone -> OTP -> home) with devHint confirmed before any OTP request; the
+    assertions below; and the full dev-mode regression plus an origin evaluator
+    simulation. README's spec mapping and demo script were updated with it.
+  - UNVERIFIED: the visual result - the user's click-through against the design
+    picture in design/onboarding_new.
+
 - Day 7:
 
 ---

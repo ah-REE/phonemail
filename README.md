@@ -60,8 +60,8 @@ Two browser tabs, side by side, is the clearest demonstration — sessions are
 **per tab** (`sessionStorage`), so the two tabs can be two different accounts.
 
 1. **Sign up twice.** In tab A sign in as `8870313035`; in tab B as
-   `6381195975`. Each tab runs its own OTP step, and the dev code `123456` is
-   shown on screen via `devHint`.
+   `6381195975`. The welcome screen leads to the number, then to its own OTP step
+   in each tab, and the dev code `123456` is shown on screen via `devHint`.
 2. **Two-way live chat.** In tab A tap the compose button (bottom right) and send
    to `6381195975`. Tab B's list updates **live** over the socket, with an unread
    badge.
@@ -98,7 +98,7 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | SMS notification, exact template, only for non-mobile registrants | `src/lib/notify.ts`, gate on `User.registeredVia` | Done — the text is the spec's exactly: `You have received an email from <sender>. Subject: <subject>.` Gated to `portal`/`desktop`/`ivr`, 60s per-recipient throttle, can never fail a delivery |
 | Use free trial providers (Twilio et al.) | `src/lib/otp.ts`, PROJECT.md §9 | Superseded — trial accounts hit KYC/trial walls; the shipped transport is a self-hosted gateway through the developer's own phone. History in PROJECT.md §9 |
 | Mobile: WhatsApp design language | `src/app/(mobile)`, tokens in `tailwind.config.ts` | Done — from the Stitch exports in `design/` |
-| Screen 1: language selection | `/onboarding` step 1 | Done (English live; Hindi/Tamil shown as coming soon) |
+| Screen 1: language selection | `/onboarding` step 1 | **Superseded** - the owner's new welcome screen replaced it ("Welcome to PhoneMail", a 290px aura with the mark, the tagline, the consent line and one "Agree and continue" CTA). Language is now a setting on the profile screen rather than an onboarding step |
 | Screen 2: Terms & Conditions | consent line + `/terms` | Deliberate change: the organiser's amended spec replaced the separate screen with an acknowledgement line under the send button — which is what ships |
 | Screen 3: phone verification, auto-detected and pre-filled | `/onboarding` step 2 | **Partial, platform-limited** — a web page cannot read the SIM; the last number that signed up on this device is pre-filled instead, and it stays editable |
 | Screen 4: OTP auto-detected and verified | `/onboarding` step 3 | **Partial** — the code auto-submits on the sixth digit; WebOTP (SMS Retriever) is not implemented |
