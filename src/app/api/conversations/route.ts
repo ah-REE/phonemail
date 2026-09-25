@@ -218,12 +218,38 @@ export async function GET(request: Request) {
       attachments: 0,
     }));
 
+  // Day 7: hand each thread the name to show for its counterpart, and each group
+  // the names of its members, so no client invents a fallback of its own.
+  const counterpartPhones = [...new Set(ordered.map((thread) => thread.counterpart))];
+  const memberPhones = [...new Set(orderedGroups.flatMap((group) => group.members))];
+  const allPhones = [...new Set([...counterpartPhones, ...memberPhones])];
+
+  const namedUsers =
+    allPhones.length > 0
+      ? await prisma.user.findMany({
+          where: { phoneNumber: { in: allPhones } },
+          select: { phoneNumber: true, displayName: true },
+        })
+      : [];
+
+  const nameByPhone = new Map(namedUsers.map((entry) => [entry.phoneNumber, entry.displayName]));
+
+  const namedThreads = ordered.map((thread) => ({
+    ...thread,
+    counterpartName: nameByPhone.get(thread.counterpart) ?? null,
+  }));
+
+  const namedGroups = orderedGroups.map((group) => ({
+    ...group,
+    memberNames: group.members.map((member) => nameByPhone.get(member) ?? null),
+  }));
+
   return NextResponse.json(
     {
-      count: ordered.length,
-      threads: ordered,
+      count: namedThreads.length,
+      threads: namedThreads,
       groupCount: orderedGroups.length,
-      groupThreads: orderedGroups,
+      groupThreads: namedGroups,
     },
     { status: 200 },
   );

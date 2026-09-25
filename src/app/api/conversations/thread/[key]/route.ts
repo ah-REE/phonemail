@@ -85,6 +85,15 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   const memberAddresses = [...new Set(messages.flatMap((m) => [m.fromAddress, m.toAddress]))].sort();
   const members = memberAddresses.map(phoneOf);
 
+  // Day 7: each member's chosen name, aligned with `members`, plus the sender name
+  // on every row so the client can label bubbles without guessing.
+  const memberUsers = await prisma.user.findMany({
+    where: { phoneNumber: { in: members } },
+    select: { phoneNumber: true, displayName: true },
+  });
+  const nameByPhone = new Map(memberUsers.map((entry) => [entry.phoneNumber, entry.displayName]));
+  const memberNames = members.map((member) => nameByPhone.get(member) ?? null);
+
   const unread = messages.filter((message) => message.toUserId === user.sub && !message.isRead).length;
   const latest = messages[messages.length - 1];
 
@@ -92,6 +101,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
     {
       threadKey,
       members,
+      memberNames,
       memberAddresses,
       subject: latest?.subject ?? "",
       count: messages.length,
@@ -99,6 +109,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       messages: messages.map((message) => ({
         id: message.id,
         mine: message.fromUserId === user.sub,
+        fromName: nameByPhone.get(phoneOf(message.fromAddress)) ?? null,
         from: message.fromAddress,
         to: message.toAddress,
         subject: message.subject,

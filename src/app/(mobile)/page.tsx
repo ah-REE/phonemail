@@ -29,6 +29,7 @@ import { useRealtime } from "@/lib/useRealtime";
 
 interface ConversationThread {
   counterpart: string;
+  counterpartName?: string | null;
   counterpartAddress: string;
   subject: string;
   preview: string;
@@ -42,6 +43,7 @@ interface ConversationThread {
 interface ConversationGroup {
   threadKey: string;
   members: string[];
+  memberNames?: (string | null)[];
   memberAddresses: string[];
   subject: string;
   preview: string;
@@ -354,7 +356,12 @@ export default function HomePage() {
                 {group.members.length}
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
-                <span className="truncate text-base font-bold">Group - {group.members.join(", ")}</span>
+                <span className="truncate text-base font-bold">
+                  Group -{" "}
+                  {group.members
+                    .map((member, index) => group.memberNames?.[index]?.trim() || member)
+                    .join(", ")}
+                </span>
                 <span className="mt-1 truncate text-sm text-on-surface-variant">{group.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
@@ -374,7 +381,9 @@ export default function HomePage() {
                 {initialOf(thread.counterpart)}
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
-                <span className="truncate text-base font-bold">{thread.counterpart}</span>
+                <span className="truncate text-base font-bold">
+                  {thread.counterpartName?.trim() || thread.counterpart}
+                </span>
                 <span className="mt-1 truncate text-sm text-on-surface-variant">{thread.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">

@@ -26,6 +26,18 @@ model User {
   phoneNumber String   @unique
   createdAt   DateTime @default(now())
 
+  /// Day 7 display name. NULL means "show the number" - every reader falls back
+  /// to the phone number through labelFor(), so nobody is ever nameless.
+  displayName String?
+
+  /// Day 7 profile picture, kept IN POSTGRES: the container filesystem is not
+  /// durable, so a file on disk would not survive a rebuild. avatarMime is what
+  /// the serving route returns as the content type and avatarUpdatedAt doubles
+  /// as the cache key.
+  avatarBytes     Bytes?
+  avatarMime      String?
+  avatarUpdatedAt DateTime?
+
   /// How the account was first created. The spec sends the "you have new mail"
   /// SMS only to people who registered somewhere OTHER than the mobile app, so
   /// this field is what makes that gate possible. Missing/unknown is treated as

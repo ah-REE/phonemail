@@ -76,6 +76,10 @@ export default function ProfilePage() {
   const { status, token, user, signOut, authorizedFetch } = useAuth();
 
   const [aliases, setAliases] = useState<Alias[]>([]);
+  // Day 7: the display name, loaded from /api/me and saved back to it.
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameNotice, setNameNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,15 +94,48 @@ export default function ProfilePage() {
   const load = useCallback(async () => {
     try {
       const response = await authorizedFetch("/api/aliases");
-      if (!response.ok) {
-        return;
+      if (response.ok) {
+        const body = (await response.json()) as { aliases?: Alias[] };
+        setAliases(body.aliases ?? []);
       }
-      const body = (await response.json()) as { aliases?: Alias[] };
-      setAliases(body.aliases ?? []);
     } catch {
       // The list stays empty; adding reports its own error.
     }
+
+    try {
+      const me = await authorizedFetch("/api/me");
+      if (me.ok) {
+        const body = (await me.json()) as { user?: { displayName?: string | null } };
+        setNameDraft(body.user?.displayName ?? "");
+      }
+    } catch {
+      // The name row simply stays empty; saving reports its own error.
+    }
   }, [authorizedFetch]);
+
+  async function saveName(event: React.FormEvent) {
+    event.preventDefault();
+    setNameNotice(null);
+    setNameSaving(true);
+    try {
+      const response = await authorizedFetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: nameDraft.trim() === "" ? null : nameDraft.trim() }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string; user?: { displayName?: string | null } };
+      if (!response.ok) {
+        setNameNotice(body.error ?? "Could not save your name.");
+        return;
+      }
+      setNameDraft(body.user?.displayName ?? "");
+      setNameNotice(body.user?.displayName ? "Name saved." : "Name cleared - your number will be shown.");
+    } catch {
+      setNameNotice("Network error. Please try again.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (token) {
@@ -208,6 +245,41 @@ export default function ProfilePage() {
       </header>
 
       <div className="flex flex-1 flex-col space-y-6 px-4 pb-6 pt-6">
+
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Personal details
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+            <form className="flex min-h-[64px] w-full items-center gap-2 px-4 py-4" onSubmit={saveName}>
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[#075e54]">
+                  <Icon name="globe" size={20} />
+                </div>
+                <span className="text-[15px] font-medium text-slate-900">Name</span>
+              </div>
+              <input
+                className="min-w-0 flex-1 bg-transparent text-right text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
+                placeholder="Your name"
+                maxLength={40}
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                aria-label="Your display name"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-full bg-[#25D366] px-4 py-1.5 text-[14px] font-semibold text-[#075e54] disabled:opacity-60"
+                disabled={nameSaving}
+              >
+                {nameSaving ? "Saving" : "Save"}
+              </button>
+            </form>
+          </div>
+          <p className="mt-2 px-1 text-[12px] text-slate-500">
+            Shown to people you write to. Leave it empty to show your number instead.
+          </p>
+          {nameNotice && <p className="mt-2 px-1 text-[14px] text-[#075e54]">{nameNotice}</p>}
+        </section>
 
         <section>
           <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">

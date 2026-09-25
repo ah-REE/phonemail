@@ -31,9 +31,10 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
     return NextResponse.json({ error: "Invalid counterpart number." }, { status: 400 });
   }
 
+  // Day 7: the counterpart's chosen name rides along with the thread.
   const counterpart = await prisma.user.findUnique({
     where: { phoneNumber: counterpartPhone },
-    select: { id: true, phoneNumber: true },
+    select: { id: true, phoneNumber: true, displayName: true },
   });
 
   if (!counterpart) {
@@ -72,6 +73,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
   return NextResponse.json(
     {
       counterpart: counterpart.phoneNumber,
+      counterpartName: counterpart.displayName ?? null,
       counterpartAddress: addressForPhone(counterpart.phoneNumber),
       subject: latest?.subject ?? "",
       count: messages.length,
@@ -79,6 +81,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
       messages: messages.map((message) => ({
         id: message.id,
         mine: message.fromUserId === user.sub,
+        fromName: message.fromUserId === counterpart.id ? counterpart.displayName ?? null : null,
         from: message.fromAddress,
         to: message.toAddress,
         subject: message.subject,

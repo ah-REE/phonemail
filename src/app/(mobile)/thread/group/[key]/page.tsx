@@ -32,6 +32,7 @@ const LONG_MESSAGE_CHARS = 180;
 interface GroupMessage {
   id: string;
   mine: boolean;
+  fromName?: string | null;
   from: string;
   to: string;
   subject: string;
@@ -47,6 +48,7 @@ interface GroupMessage {
 interface GroupThreadBody {
   threadKey?: string;
   members?: string[];
+  memberNames?: (string | null)[];
   subject?: string;
   unread?: number;
   messages?: GroupMessage[];
@@ -74,6 +76,7 @@ export default function GroupThreadPage() {
 
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [members, setMembers] = useState<string[]>([]);
+  const [memberNames, setMemberNames] = useState<(string | null)[]>([]);
   const [subject, setSubject] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +118,7 @@ export default function GroupThreadPage() {
 
         setMessages(incoming);
         setMembers(body?.members ?? []);
+        setMemberNames(body?.memberNames ?? []);
         setSubject(body?.subject ?? "");
         setError(null);
         setLoading(false);
@@ -226,7 +230,11 @@ export default function GroupThreadPage() {
                 Group ({members.length || others.length + 1})
               </h1>
               <span className="truncate text-xs leading-tight opacity-90" title={members.join(", ")}>
-                {members.length > 0 ? members.join(", ") : subject || "Loading members"}
+                {members.length > 0
+                  ? members
+                      .map((member, index) => memberNames[index]?.trim() || member)
+                      .join(", ")
+                  : subject || "Loading members"}
               </span>
             </div>
           </div>
@@ -264,9 +272,22 @@ export default function GroupThreadPage() {
                   )}
                   {/* The sender matters in a group: name it on incoming bubbles. */}
                   {!message.mine && (
-                    <span className="text-xs font-semibold">{phoneOf(message.from)}</span>
+                    <span className="text-xs font-semibold">
+                      {message.fromName?.trim() || phoneOf(message.from)}
+                    </span>
                   )}
                   <span className="text-xs text-wa-muted">{formatWhen(message.createdAt)}</span>
+                  {message.mine && (
+                    <span
+                      className="text-primary-container"
+                      title="Sent - the mail service accepted this message"
+                      aria-label="Sent"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                    </span>
+                  )}
                 </div>
 
                 {expanded ? (

@@ -1095,6 +1095,46 @@ context instantly)*
     are Home, the pairwise and group threads, compose, the traditional full view,
     Settings/profile and the drawer.
 
+- Day 7: FINAL FEATURE PASS, part 1 of 2 - display names and the sent tick.
+  Profile pictures (the brief's Task 3) are NOT started; the columns for them are
+  already migrated, so only the routes and the UI remain.
+  - DISPLAY NAMES (brief Task 1, HIGH): `User.displayName` (nullable TEXT) with
+    migration 20260925170000_add_display_name_and_avatar. NULL is meaningful - it
+    means "show the number" - and every surface goes through one helper
+    (src/lib/names.ts labelFor) so no screen invents a fallback of its own.
+  - API: GET /api/me returns the profile (id, phone, displayName, createdAt,
+    hasAvatar); PATCH /api/me sets or clears the name. Both are JWT-only - the
+    token's sub is the only user they can touch, so an absent token is a 401 and
+    nothing else (asserted). Validation: trimmed, 1-40 characters, blank is 400,
+    null clears. The profile responses carry `hasAvatar` rather than bytes, so the
+    picture can be served and cached as an image separately.
+  - The names travel with the data, so the client never guesses:
+    /api/conversations returns `counterpartName` per thread and `memberNames`
+    aligned with `members` for groups; the pairwise thread endpoint returns
+    `counterpartName` plus `fromName` on every message; the group thread endpoint
+    returns `memberNames` plus `fromName` per message. Displayed on the home rows,
+    the pairwise thread header, the group members header, the group bubbles' sender
+    label, the traditional full view's From block, the settings Name row, and the
+    desktop list and reading pane. The notification SMS template is untouched.
+  - The settings screen gained a "Personal details" section with the editable Name
+    row - which also fills the mockup's Personal-details row for the name part.
+  - SENT TICK (brief Task 2): outgoing bubbles in both threads show ONE check. It
+    is honest rather than decorative - an outgoing row exists only because the SMTP
+    round trip completed, so the row's presence IS "sent". No read states and no
+    double tick exist anywhere: isRead stays the reader's inbox badge and is never
+    surfaced to the sender (asserted at code level).
+  - Verified (dev mode, confirmed devHint=true BEFORE any OTP request): migration 8
+    applied on container start; 142 assertions green = 26 new feature assertions
+    (name set / read / cleared, the number fallback, propagation into the chat list,
+    both thread endpoints and the group member list, the 401 guards, the 40-char and
+    blank-name rejections, and the tick at code level) + 43 group + 42 final items +
+    31 alias/403.
+  - NOT DONE, and next: profile pictures (brief Task 3) - POST /api/me/avatar
+    (image only, 500KB cap, bytes in Postgres) and GET /api/me/avatar with the right
+    content type and cache headers, then the tap-to-upload flow and replacing the
+    letter initial everywhere. The three avatar columns are already migrated.
+  - UNVERIFIED: the visual result (the user's click-through), as always.
+
 - Day 7:
 
 ---

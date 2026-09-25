@@ -16,6 +16,7 @@ import { useRealtime } from "@/lib/useRealtime";
 
 interface Thread {
   counterpart: string;
+  counterpartName?: string | null;
   counterpartAddress: string;
   subject: string;
   preview: string;
@@ -239,7 +240,10 @@ export default function DesktopInboxPage() {
                 >
                   <span className="flex items-baseline gap-2">
                     <span className={`truncate ${group.unread > 0 ? "font-bold" : "font-semibold"}`}>
-                      Group - {group.members.join(", ")}
+                      Group -{" "}
+                      {group.members
+                        .map((member, index) => (group as { memberNames?: (string | null)[] }).memberNames?.[index]?.trim() || member)
+                        .join(", ")}
                     </span>
                     <span className="ml-auto shrink-0 text-xs text-wa-muted">
                       {formatWhen(group.lastAt)}
@@ -266,7 +270,7 @@ export default function DesktopInboxPage() {
               >
                 <span className="flex items-baseline gap-2">
                   <span className={`truncate ${thread.unread > 0 ? "font-bold" : "font-semibold"}`}>
-                    {thread.counterpart}
+                    {thread.counterpartName?.trim() || thread.counterpart}
                   </span>
                   <span className="ml-auto shrink-0 text-xs text-wa-muted">{formatWhen(thread.lastAt)}</span>
                 </span>
@@ -328,7 +332,9 @@ export default function DesktopInboxPage() {
           <>
             <header className="border-b border-wa-line px-6 py-4">
               <h2 className="text-xl font-semibold">
-                {selectedGroup ? `Group - ${selectedGroup.members.join(", ")}` : selected}
+                {selectedGroup
+                  ? `Group - ${selectedGroup.members.join(", ")}`
+                  : selectedThread?.counterpartName?.trim() || selected}
               </h2>
               <p className="text-sm text-wa-muted">{threadSubject || selectedThread?.subject}</p>
             </header>

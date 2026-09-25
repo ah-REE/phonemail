@@ -32,6 +32,7 @@ const SWIPE_REVEAL_PX = 40;
 interface ThreadMessage {
   id: string;
   mine: boolean;
+  fromName?: string | null;
   from: string;
   to: string;
   subject: string;
@@ -64,6 +65,7 @@ export default function ThreadPage() {
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [subject, setSubject] = useState("");
   const [counterpartAddress, setCounterpartAddress] = useState("");
+  const [counterpartName, setCounterpartName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export default function ThreadPage() {
         const body = (await response.json()) as {
           subject?: string;
           counterpartAddress?: string;
+          counterpartName?: string | null;
           messages?: ThreadMessage[];
         };
 
@@ -107,6 +110,7 @@ export default function ThreadPage() {
         setMessages(incoming);
         setSubject(body.subject ?? "");
         setCounterpartAddress(body.counterpartAddress ?? "");
+        setCounterpartName(body.counterpartName ?? null);
         setError(null);
         setLoading(false);
 
@@ -231,7 +235,9 @@ export default function ThreadPage() {
               {phone.slice(0, 1) || "?"}
             </span>
             <div className="flex min-w-0 flex-col">
-              <h1 className="truncate font-headline text-base leading-tight">{phone}</h1>
+              <h1 className="truncate font-headline text-base leading-tight">
+                {counterpartName?.trim() || phone}
+              </h1>
               <span className="truncate text-xs leading-tight opacity-90" title={headerSubject}>
                 {headerSubject}
               </span>
@@ -299,6 +305,17 @@ export default function ThreadPage() {
                     <span className="rounded bg-wa-green px-1 text-xs font-semibold text-white">new</span>
                   )}
                   <span className="text-xs text-wa-muted">{formatWhen(message.createdAt)}</span>
+                  {message.mine && (
+                    <span
+                      className="text-primary-container"
+                      title="Sent - the mail service accepted this message"
+                      aria-label="Sent"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                    </span>
+                  )}
                   {message.tag && (
                     <span className="rounded border border-wa-line px-1 text-xs text-wa-muted">
                       {message.tag}
@@ -318,7 +335,7 @@ export default function ThreadPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-base font-semibold">
-                          {message.from.replace(/@.*$/, "")}
+                          {message.fromName?.trim() || message.from.replace(/@.*$/, "")}
                         </p>
                         <p className="select-all truncate text-xs text-outline">
                           {message.from}
