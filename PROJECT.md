@@ -1135,6 +1135,44 @@ context instantly)*
     letter initial everywhere. The three avatar columns are already migrated.
   - UNVERIFIED: the visual result (the user's click-through), as always.
 
+- Day 7: THE TRADITIONAL READER FOR FIRST CONTACT (user request, with the
+  mockup source pasted in).
+  - Behaviour: a thread whose ONLY message is an incoming one - i.e. a message
+    from a number you have never written to - now opens as the traditional reader
+    instead of a lone chat bubble. First contact reads like a letter; the
+    conversation starts when you reply, and every other thread stays a chat. In
+    reader mode the chat composer is hidden, because the reader's own Reply bar is
+    the action, and that Reply still goes through reply-once (it carries replyTo).
+  - New component src/components/mail-reader.tsx, built element by element from the
+    pasted source: the security strip on surface-container-low; the metadata block
+    (44px avatar on surface-container-high, the name at 18px semibold, the address
+    in body-sm/outline and selectable, the time in 11px outline); the state chip on
+    surface-container at 11px; the subject at 22px bold; the 1px surface-container
+    divider; the body at 20px/30px with paragraph spacing; the reference card on
+    surface-container-low; and the sticky full-width Reply bar on the brand's dark
+    green (bg-secondary #006d2f) with white text.
+  - The reference card shows the message's OWN id - the app has no reference
+    scheme, and its id is the one reference a message really has.
+  - TWO DELIBERATE REWORDINGS, both reported because they are copy decisions
+    rather than layout ones:
+    1. the strip reads "Verified Government Sender • End-to-End Secure" in the
+       mockup. NOTHING in this app verifies who a sender is, so the strip states
+       what IS true and is sender-state aware: "New sender" for exactly the
+       first-contact case this feature is about, "End-to-End secure" otherwise.
+    2. the green verified tick beside the sender name is omitted, for the same
+       reason - it would assert a check that never ran.
+    Both are one-line changes if the owner wants the mockup wording verbatim; they
+    were not made silently, and the reasoning is in the component header.
+  - Verified (dev mode, confirmed devHint=true BEFORE any OTP request): build
+    green; / and /thread both 200; 164 assertions green = 21 new reader assertions
+    (the design's own classes element by element, the first-contact detection, the
+    reader replacing the bubbles, the composer being hidden, reply-once preserved,
+    and the two rewording decisions asserted as such) + 27 names + 43 group + 42
+    final items + 31 alias/403.
+  - UNVERIFIED: the visual result - the reader is the user's to click through, and
+    the flow to see it is: send a message from another number to an account you
+    have never written to, then open that thread.
+
 - Day 7:
 
 ---

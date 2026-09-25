@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { MailReader } from "@/components/mail-reader";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
 import { useAuth } from "@/lib/useAuth";
@@ -221,6 +222,13 @@ export default function ThreadPage() {
     );
   }
 
+  // A message from a number you have never written to opens as the traditional
+  // reader (design/email_reader) instead of a lone chat bubble: first contact
+  // reads like a letter, and the conversation starts when you reply. Everything
+  // else stays a chat.
+  const onlyIncoming =
+    messages.length === 1 && !messages[0].mine && !messages[0].provisional ? messages[0] : null;
+
   return (
     <main className="flex h-screen flex-col">
             <header className="sticky top-0 z-20 flex h-[76px] w-full items-center justify-between bg-primary-container px-4 text-on-primary">
@@ -259,6 +267,25 @@ export default function ThreadPage() {
         <p className="p-6 text-center text-wa-muted">No messages in this conversation yet.</p>
       )}
 
+      {onlyIncoming ? (
+        <div className="flex-1 overflow-y-auto bg-surface-container-lowest">
+          <MailReader
+            name={counterpartName?.trim() || phone}
+            address={counterpartAddress || `${phone}@phonemail.com`}
+            when={formatWhen(onlyIncoming.createdAt)}
+            subject={onlyIncoming.subject || headerSubject}
+            body={onlyIncoming.body}
+            stateLabel={onlyIncoming.tag ? `Inbox • ${onlyIncoming.tag}` : "Inbox"}
+            referenceId={onlyIncoming.id}
+            newSender={!onlyIncoming.repliedAt}
+            replyHref={
+              onlyIncoming.repliedAt
+                ? undefined
+                : `/compose?to=${encodeURIComponent(phone)}&replyTo=${encodeURIComponent(onlyIncoming.id)}`
+            }
+          />
+        </div>
+      ) : (
       <div ref={listRef} className="flex-1 overflow-y-auto bg-surface-container p-4">
         {/* The mockup's date divider, then its subject pill. */}
         <div className="mb-4 flex justify-center">
@@ -456,12 +483,15 @@ export default function ThreadPage() {
           );
         })}
       </div>
+      )}
 
       {/* The mockup's bottom bar: paperclip on the left, the message field, and
           the traditional-compose button in the camera slot on the right. The field
           opens compose - the app has no inline sender - and the paperclip is
           present because the design shows it, reporting honestly that files have
-          no backend yet. */}
+          no backend yet. Hidden while the reader is showing, where the reader's
+          own Reply bar is the action. */}
+      {!onlyIncoming && (
       <footer className="sticky bottom-0 z-20 flex w-full items-center gap-2 bg-surface-container-lowest px-3 py-2.5">
         <button
           type="button"
@@ -497,6 +527,7 @@ export default function ThreadPage() {
           </svg>
         </Link>
       </footer>
+      )}
 
       {attachNotice && (
         <button
