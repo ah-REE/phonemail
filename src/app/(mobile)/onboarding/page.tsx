@@ -60,34 +60,6 @@ const OTP_LENGTH = 6;
  */
 const LAST_PHONE_KEY = "***";
 
-/* ------------------------------------------------------------------ brand art */
-
-/** The PhoneMail mark, reproduced from design/phonemail_logo/code.html. */
-function LogoMark({ size = 32 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 80 80"
-      width={size}
-      height={size}
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect width="80" height="80" rx="20" fill="#075E54" />
-      <path
-        d="M18 26C18 23.7909 19.7909 22 22 22H58C60.2091 22 62 23.7909 62 26V54C62 56.2091 60.2091 58 58 58H22C19.7909 58 18 56.2091 18 54V26Z"
-        fill="#FFFFFF"
-      />
-      <path d="M19 23L40 40L61 23" stroke="#075E54" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="40" cy="45" r="14" fill="#25D366" />
-      <path
-        d="M35.5 41.5C36.2 40.8 37.1 40.8 37.8 41.5L38.8 42.5C39.4 43.1 39.4 44 38.8 44.6L38.1 45.3C38.6 46.4 39.6 47.4 40.7 47.9L41.4 47.2C42 46.6 42.9 46.6 43.5 47.2L44.5 48.2C45.2 48.9 45.2 49.8 44.5 50.5C43.8 51.2 42.5 51.6 40.8 50.4C38.8 49 37 47.2 35.6 45.2C34.4 43.5 34.8 42.2 35.5 41.5Z"
-        fill="#FFFFFF"
-      />
-    </svg>
-  );
-}
-
 function Icon({ name, size = 20 }: { name: "back" | "check" | "clock" | "lock" | "chevron" | "clear" | "mail" | "next"; size?: number }) {
   const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return (
@@ -163,7 +135,13 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
 
         {brand && (
           <div className="flex items-center gap-2 rounded-full px-3 py-1">
-            <LogoMark size={24} />
+            <img
+              src="/brand/phonemail-logo.png"
+              alt=""
+              width={26}
+              height={26}
+              className="h-[26px] w-[26px] shrink-0 rounded-md object-cover"
+            />
             <span className="font-headline text-base font-bold tracking-tight">PhoneMail</span>
           </div>
         )}
@@ -176,80 +154,6 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
       </div>
       <StepDots total={total} active={step} />
     </header>
-  );
-}
-
-/**
- * The design's circular "doodle aura", drawn inline. The mockup points at two
- * Google-hosted PNGs for this illustration; the app fetches nothing remote (the
- * whole project runs offline from `docker compose up -d`), so the aura is
- * reproduced as SVG in the design's own tones and the envelope is the app's real
- * PhoneMail mark.
- */
-function AuraMark() {
-  return (
-    <svg viewBox="0 0 290 290" className="h-full w-full" aria-hidden="true">
-      <defs>
-        <radialGradient id="aura-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#eaf2ff" stopOpacity="1" />
-          <stop offset="100%" stopColor="#f6faff" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="aura-body" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563eb" />
-          <stop offset="100%" stopColor="#1e40af" />
-        </linearGradient>
-        <linearGradient id="aura-flap" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#bfdbfe" />
-          <stop offset="100%" stopColor="#3b82f6" />
-        </linearGradient>
-      </defs>
-
-      <circle cx="145" cy="145" r="140" fill="url(#aura-glow)" />
-      <circle cx="145" cy="145" r="104" fill="none" stroke="#c7d7e8" strokeWidth="1.5" strokeDasharray="4 6" />
-
-      {/* The two filled dots sit on the ring at 12 and 6 o'clock. */}
-      <circle cx="145" cy="41" r="3.4" fill="#22c55e" />
-      <circle cx="145" cy="249" r="3.4" fill="#22c55e" />
-      {/* Small grey dots between the icons. */}
-      <g fill="#9ca3af">
-        <circle cx="235" cy="93" r="1.9" />
-        <circle cx="55" cy="93" r="1.9" />
-        <circle cx="55" cy="197" r="1.9" />
-        <circle cx="235" cy="197" r="1.9" />
-      </g>
-
-      {/* Six outline icons around the ring: chat, plus, at, phone, camera, bell. */}
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(61.5 61.5)">
-        <path d="M10 3.5h-5A1.5 1.5 0 0 0 3.5 5v6A1.5 1.5 0 0 0 5 12.5h1v3l3-3h6A1.5 1.5 0 0 0 16.5 11V5A1.5 1.5 0 0 0 15 3.5z" />
-      </g>
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" transform="translate(208.5 61.5)">
-        <path d="M10 4v12M4 10h12" />
-      </g>
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(31 135)">
-        <circle cx="10" cy="10" r="6" />
-        <circle cx="10" cy="10" r="2.4" />
-        <path d="M16 10v1.5a2 2 0 0 0 3.6 0V10" />
-      </g>
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(239 135)">
-        <rect x="6" y="2.5" width="8" height="15" rx="2" />
-        <path d="M9.4 15.4h1.2" />
-      </g>
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(61.5 208.5)">
-        <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
-        <path d="M7 6l1.2-2h3.6L13 6" />
-        <circle cx="10" cy="11.5" r="2.8" />
-      </g>
-      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(208.5 208.5)">
-        <path d="M6 14.5V9.5a4 4 0 0 1 8 0v5" />
-        <path d="M4.5 14.5h11" />
-        <path d="M8.6 17.2a1.6 1.6 0 0 0 2.8 0" />
-      </g>
-
-      {/* Centre: the glossy blue envelope from the design. */}
-      <rect x="101" y="113" width="88" height="64" rx="9" fill="url(#aura-body)" />
-      <path d="M101 122a9 9 0 0 1 9-9h70a9 9 0 0 1 9 9v1.5l-44 29.5-44-29.5z" fill="url(#aura-flap)" />
-      <path d="M106 117.5l39 27 39-27" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 
@@ -432,7 +336,16 @@ export default function OnboardingPage() {
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-4">
               <div className="relative mx-auto flex h-[290px] w-[290px] items-center justify-center">
-                <AuraMark />
+                {/* The illustration itself, cropped from the owner's design: an exact
+                    match beats a redrawing, and the crop carries the artwork's own
+                    soft background so it sits on the page without a seam. */}
+                <img
+                  src="/brand/onboarding-centre.png"
+                  alt=""
+                  width={290}
+                  height={290}
+                  className="h-full w-full select-none object-contain"
+                />
               </div>
               <p className="mx-auto mt-5 max-w-[290px] text-center text-[16px] font-normal leading-snug text-[#5A6675]">
                 Your phone number is your email address.
