@@ -939,6 +939,21 @@ context instantly)*
     /terms + /portal) and this session's evaluator simulation from a fresh clone.
     Desktop was explicitly deprioritised by the brief and is untouched.
 
+- Day 6: EVALUATOR SIMULATION from origin, on the restyled build.
+  - `git clone https://github.com/ah-REE/phonemail.git` then `docker compose up
+    -d` - the two-command promise, against the REMOTE rather than a local path,
+    which is what makes it an evaluator simulation rather than a smoke test. The
+    clone landed on ea6c277 (origin/main) and all four containers came up healthy
+    on a clean volume, with all 7 migrations applying from scratch.
+  - All three suites are green on that fresh clone: 43 group + 42 final-items
+    (including the 7 group-folder add-on assertions) + 31 alias/403 = 116
+    assertions. The same 116 passed on the working stack at the same commit, so
+    the restyle is verified to change presentation without changing behaviour.
+  - Not run this session, recorded honestly: the stretch items (traditional full
+    view, settings/profile, drawer + /terms + /portal). Desktop was explicitly
+    deprioritised by the brief and keeps its current token-consistent styling. The
+    visual result of every restyled screen remains user-verified in a browser.
+
 - Day 7:
 
 ---
