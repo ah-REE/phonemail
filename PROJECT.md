@@ -1276,6 +1276,39 @@ context instantly)*
     clean clone (185/187 on the loaded dev database, the two failures being
     accumulated-state artifacts that pass on a fresh clone), alias 31/31.
 
+- Day 7 (Fri Sep 25, final session): PHASE 0, BACKEND SLICE LANDED AND VERIFIED.
+  The screens are the remaining half of this phase; the API is complete.
+  - What shipped: `passwordHash String?` on User + migration
+    20260925235000_add_password_hash (nullable, additive - NULL means 'no
+    password yet', which is every existing account); src/lib/password.ts
+    (bcryptjs, no native build; the SAME Redis-counter strike pattern the OTP
+    flow uses, in its own keys because a pending OTP and a login attempt are
+    different states); POST /api/auth/login (bcrypt compare, the lockout, and
+    the same JWT shape verify-otp issues so every downstream guard is
+    untouched); POST /api/auth/set-password (gated by the OTP, so it works for
+    both the new signup flow and an existing account that has never had a
+    password; it returns a session so the client goes straight to the inbox).
+  - Two deliberate behaviours: an account with no password answers 401 with
+    `needsPassword`, and every rejection carries `canUseOtp` - the added path
+    must never be a dead end when OTP is the primary one. Password validation
+    runs BEFORE the OTP is consumed, so a rejected password does not burn the
+    code the user is holding.
+  - Verified: build green; migration 9 applied on container start; both new
+    routes live; 21/21 new auth-split assertions (signup -> set-password ->
+    login; the wrong-password rejection with attemptsLeft; the passwordless
+    account's needsPassword; a short password and a mismatched confirmation
+    both 400; the untouched OTP flow still signing in AFTER those rejections,
+    proving the OTP was not consumed; five wrong passwords locking the number
+    with retryAfterSeconds; the right password still refused while locked). The
+    full prior regression then ran green in dev mode: welcome 23/23, reader
+    21/21, names 27/27, alias 31/31, and group 43/43 + final 42/42 on a clean
+    clone (185/187 on the loaded dev database - the two failures are the known
+    accumulated-state artifacts, not regressions).
+  - REMAINING IN PHASE 0 (the screens): screen 1 becomes Login/Signup with two
+    paths; the signup flow gains the set-password step; a registration-success
+    screen; and the 'set your password' entry for existing accounts. All of it
+    inside the current design system. The OTP flow stays untouched.
+
 - Day 7:
 
 ---

@@ -38,6 +38,11 @@ model User {
   avatarMime      String?
   avatarUpdatedAt DateTime?
 
+  /// Phase 0: bcrypt hash for the ADDED password-login path. NULL means "this
+  /// account has no password yet" - the login screen then offers to set one
+  /// through the OTP flow. OTP login stays primary.
+  passwordHash String?
+
   /// How the account was first created. The spec sends the "you have new mail"
   /// SMS only to people who registered somewhere OTHER than the mobile app, so
   /// this field is what makes that gate possible. Missing/unknown is treated as
