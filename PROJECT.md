@@ -1233,6 +1233,49 @@ context instantly)*
     alias/403. The same suites were re-run on a fresh clone from origin.
   - UNVERIFIED: the visual result - the user's click-through against the pictures.
 
+- Day 7 (Fri Sep 25, late): SUBMISSION FLOOR TAGGED, and the final program
+  scoped. NO feature work landed in this session - recorded plainly so the next
+  session starts in the right place.
+  - SAFETY, done first and verified: tag `submission-fallback` created at HEAD
+    6aa3cb4 and pushed. `git ls-remote --tags origin` dereferences it to
+    6aa3cb4, so the floor is fixed: if the program is not fully green by Mon
+    Sep 28 EOD, that tag is what gets submitted. Nothing below it may be
+    rewritten.
+  - WHY NOTHING ELSE LANDED: the final program (Phases 0-3) was handed over,
+    and Phase 0 alone is four new screens plus auth internals (password hashing,
+    a login route, a set-password route, rate limiting, a registration-success
+    screen). The repository-side executor (ZCode) failed for the sixth time
+    today with `Model request failed` and no file changes, and the session's
+    remaining budget could not cover a native implementation of the whole phase.
+    Per the brief's own rule - land each phase verified or stop clean - the work
+    was NOT started rather than half-done. The tree is clean at 6aa3cb4 and
+    every suite is green at that commit.
+  - PHASE 0 PLAN, session-ready (execute in this order, verifying each slice):
+    1. `passwordHash String?` on User + migration `add_password_hash` (nullable,
+       purely additive) + a bcrypt implementation that needs no native build
+       (bcryptjs).
+    2. POST /api/auth/login: phone + password, bcrypt compare, the EXISTING Redis
+       strike pattern reused for rate limiting, and on success the same JWT shape
+       verify-otp already issues, so every downstream guard is untouched.
+    3. POST /api/auth/set-password: phone + OTP + new password, so an existing
+       account can add a password through the flow it already has. OTP stays
+       primary; all existing OTP endpoints stay untouched.
+    4. Screen 1 becomes Login/Signup with two paths (Create account / Log in),
+       both offering the OTP route, designed inside the CURRENT system (tokens,
+       type, easings, components, the owner's logo and hero).
+    5. Signup gains the set-password step and the registration-success screen
+       (logo/hero animation, 'Your PhoneMail account is ready', the new address,
+       one CTA).
+    6. Assertions for the split + the FULL prior regression + a fresh-clone
+       simulation, then a Section 9 entry for the phase, commit and push.
+  - PHASES 1-3 remain as specified (settings completion incl. avatar upload, a
+    real SMS-notifications toggle and delete-account; contacts; the curated
+    verified-sender registry with an honest badge).
+  - Verified in this session: nothing but the tag. Suite state at 6aa3cb4:
+    welcome 23/23, reader 21/21, names 27/27, group 43/43 and final 42/42 on a
+    clean clone (185/187 on the loaded dev database, the two failures being
+    accumulated-state artifacts that pass on a fresh clone), alias 31/31.
+
 - Day 7:
 
 ---
