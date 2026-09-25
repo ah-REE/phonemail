@@ -189,22 +189,66 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
 function AuraMark() {
   return (
     <svg viewBox="0 0 290 290" className="h-full w-full" aria-hidden="true">
-      <circle cx="145" cy="145" r="138" fill="#f0f7fd" />
-      <circle cx="145" cy="145" r="138" fill="none" stroke="#dfeaf2" strokeWidth="2" />
-      <circle cx="145" cy="145" r="124" fill="none" stroke="#d9e4ec" strokeWidth="1.5" strokeDasharray="7 11" />
-      <circle cx="145" cy="145" r="104" fill="none" stroke="#e5eff8" strokeWidth="1.5" />
-      <g stroke="#c7d7e3" strokeWidth="2" strokeLinecap="round">
-        <path d="M232 74l6 10-10 4" />
-        <path d="M58 96l10 4-4 10" />
-        <path d="M66 220l10-4 2 10" />
-        <path d="M226 208l-8 6 6 8" />
+      <defs>
+        <radialGradient id="aura-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#eaf2ff" stopOpacity="1" />
+          <stop offset="100%" stopColor="#f6faff" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="aura-body" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="100%" stopColor="#1e40af" />
+        </linearGradient>
+        <linearGradient id="aura-flap" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#bfdbfe" />
+          <stop offset="100%" stopColor="#3b82f6" />
+        </linearGradient>
+      </defs>
+
+      <circle cx="145" cy="145" r="140" fill="url(#aura-glow)" />
+      <circle cx="145" cy="145" r="104" fill="none" stroke="#c7d7e8" strokeWidth="1.5" strokeDasharray="4 6" />
+
+      {/* The two filled dots sit on the ring at 12 and 6 o'clock. */}
+      <circle cx="145" cy="41" r="3.4" fill="#22c55e" />
+      <circle cx="145" cy="249" r="3.4" fill="#22c55e" />
+      {/* Small grey dots between the icons. */}
+      <g fill="#9ca3af">
+        <circle cx="235" cy="93" r="1.9" />
+        <circle cx="55" cy="93" r="1.9" />
+        <circle cx="55" cy="197" r="1.9" />
+        <circle cx="235" cy="197" r="1.9" />
       </g>
-      <g fill="#dfeaf2">
-        <circle cx="145" cy="14" r="3" />
-        <circle cx="145" cy="276" r="3" />
-        <circle cx="14" cy="145" r="3" />
-        <circle cx="276" cy="145" r="3" />
+
+      {/* Six outline icons around the ring: chat, plus, at, phone, camera, bell. */}
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(61.5 61.5)">
+        <path d="M10 3.5h-5A1.5 1.5 0 0 0 3.5 5v6A1.5 1.5 0 0 0 5 12.5h1v3l3-3h6A1.5 1.5 0 0 0 16.5 11V5A1.5 1.5 0 0 0 15 3.5z" />
       </g>
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" transform="translate(208.5 61.5)">
+        <path d="M10 4v12M4 10h12" />
+      </g>
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(31 135)">
+        <circle cx="10" cy="10" r="6" />
+        <circle cx="10" cy="10" r="2.4" />
+        <path d="M16 10v1.5a2 2 0 0 0 3.6 0V10" />
+      </g>
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(239 135)">
+        <rect x="6" y="2.5" width="8" height="15" rx="2" />
+        <path d="M9.4 15.4h1.2" />
+      </g>
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(61.5 208.5)">
+        <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
+        <path d="M7 6l1.2-2h3.6L13 6" />
+        <circle cx="10" cy="11.5" r="2.8" />
+      </g>
+      <g fill="none" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" transform="translate(208.5 208.5)">
+        <path d="M6 14.5V9.5a4 4 0 0 1 8 0v5" />
+        <path d="M4.5 14.5h11" />
+        <path d="M8.6 17.2a1.6 1.6 0 0 0 2.8 0" />
+      </g>
+
+      {/* Centre: the glossy blue envelope from the design. */}
+      <rect x="101" y="113" width="88" height="64" rx="9" fill="url(#aura-body)" />
+      <path d="M101 122a9 9 0 0 1 9-9h70a9 9 0 0 1 9 9v1.5l-44 29.5-44-29.5z" fill="url(#aura-flap)" />
+      <path d="M106 117.5l39 27 39-27" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -384,37 +428,31 @@ export default function OnboardingPage() {
               <h1 className="font-headline text-[26px] font-bold tracking-tight text-[#111B21]">
                 Welcome to PhoneMail
               </h1>
-              {/* The new design carries no step indicator, but the real flow has
-                  three steps and the phone and OTP screens both show one - so it
-                  stays, accurate, rather than leaving step 1 unlabelled. */}
-              <div className="mt-4 flex items-center justify-center">
-                <StepDots total={3} active={1} />
-              </div>
             </div>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-4">
               <div className="relative mx-auto flex h-[290px] w-[290px] items-center justify-center">
                 <AuraMark />
-                <span className="pointer-events-none absolute">
-                  <LogoMark size={112} />
-                </span>
               </div>
-              <p className="mx-auto mt-5 max-w-[290px] text-center text-[15px] font-medium leading-snug text-[#54656F]">
+              <p className="mx-auto mt-5 max-w-[290px] text-center text-[16px] font-normal leading-snug text-[#5A6675]">
                 Your phone number is your email address.
               </p>
             </div>
 
             <div className="mb-2 flex w-full flex-col items-center gap-4">
-              <p className="px-4 text-center text-[13px] leading-relaxed text-[#54656F]">
-                Tap &ldquo;Agree and continue&rdquo; to accept the{" "}
-                <Link href="/terms" className="font-medium text-[#027EB5] hover:underline">
+              {/* The design names a Privacy Policy and a Terms of Service; only the
+                  terms have a route, so that is the one link - a dead link is worse
+                  than one honest link, the same call as on the phone step. */}
+              <p className="px-4 text-center text-[13px] leading-relaxed text-[#6B7280]">
+                Read our Privacy Policy. Tap &ldquo;Agree and continue&rdquo; to accept the{" "}
+                <Link href="/terms" className="font-medium text-[#17A589]">
                   Terms of Service
                 </Link>
                 .
               </p>
               <button
                 type="button"
-                className="flex h-[52px] w-full cursor-pointer items-center justify-center rounded-full bg-[#00A884] text-[14px] font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 hover:bg-[#008F6F] active:scale-[0.98]"
+                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-full bg-[#17A589] text-[16px] font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-150 hover:bg-[#14907A] active:scale-[0.98]"
                 onClick={() => setStep("phone")}
               >
                 Agree and continue

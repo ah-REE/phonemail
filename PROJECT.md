@@ -1205,6 +1205,34 @@ context instantly)*
   - UNVERIFIED: the visual result - the user's click-through against the design
     picture in design/onboarding_new.
 
+- Day 7: THE WELCOME SCREEN CORRECTED against the owner's pictures of it (a
+  crop of the centre illustration and a full-screen shot). The first pass had
+  invented the centre from the markup alone, and the picture showed what it
+  really is.
+  - The illustration, rebuilt to the picture: a soft radial glow, a DASHED ring
+    (not concentric solid circles), six grey outline icons sitting ON that ring
+    (chat bubble upper-left, plus upper-right, @ left, phone right, camera
+    lower-left, bell lower-right), small grey dots between them, two filled green
+    dots at 12 and 6 o'clock, and at the very centre a GLOSSY BLUE GRADIENT
+    ENVELOPE (#2563eb -> #1e40af body, #bfdbfe -> #3b82f6 flap, a white gloss
+    line along the fold) - not the teal brand mark the first pass drew.
+  - Also corrected from the picture: the CTA is 56px in #17A589 with 16px white
+    bold uppercase text (was 52px in #00A884 at 14px); the tagline is 16px in
+    #5A6675 (was 15px); the legal line is #6B7280 with the link in the design's
+    teal #17A589 and no underline (was #027EB5); and the step dots are REMOVED -
+    the full-screen picture shows none, so the earlier decision to keep them for
+    consistency is superseded by the design itself. Step 1 is therefore the only
+    unlabelled step; the phone and OTP steps keep their indicator, as instructed.
+  - The remote-asset deviation stands and is unchanged: the mockup points at
+    Google-hosted PNGs and the app fetches nothing remote, so both the aura and
+    the envelope are drawn as SVG in the design's own colours.
+  - Verified (dev mode, devHint confirmed before any OTP request): build green;
+    /onboarding 200; the flow completes welcome -> phone -> OTP -> home; and 187
+    assertions green = 23 for this screen (every element above asserted against
+    the picture's values) + 21 reader + 27 names + 43 group + 42 final items + 31
+    alias/403. The same suites were re-run on a fresh clone from origin.
+  - UNVERIFIED: the visual result - the user's click-through against the pictures.
+
 - Day 7:
 
 ---
