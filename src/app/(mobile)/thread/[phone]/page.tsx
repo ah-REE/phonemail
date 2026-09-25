@@ -304,21 +304,32 @@ export default function ThreadPage() {
                 {expanded ? (
                   // Traditional full view: the complete message plus its header block.
                   <div className="mt-1 border-t border-wa-line pt-2">
-                    <dl className="mb-2 text-xs text-wa-muted">
-                      <div>
-                        <dt className="inline font-semibold">From: </dt>
-                        <dd className="inline">{message.from}</dd>
+                    {/* The email-reader mockup: sender block, subject heading,
+                        hairline, then the body at the mockup's generous leading. */}
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
+                        {message.from.slice(0, 1)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-semibold">
+                          {message.from.replace(/@.*$/, "")}
+                        </p>
+                        <p className="select-all truncate text-xs text-on-surface-variant">
+                          {message.from}
+                        </p>
                       </div>
-                      <div>
-                        <dt className="inline font-semibold">To: </dt>
-                        <dd className="inline">{message.to}</dd>
-                      </div>
-                      <div>
-                        <dt className="inline font-semibold">Subject: </dt>
-                        <dd className="inline">{message.subject}</dd>
-                      </div>
-                    </dl>
-                    <p className="whitespace-pre-wrap text-base">{message.body}</p>
+                      <span className="shrink-0 pt-0.5 text-xs text-on-surface-variant">
+                        {formatWhen(message.createdAt)}
+                      </span>
+                    </div>
+                    <span className="mt-4 inline-block rounded bg-surface-container-low px-2 py-0.5 text-xs font-medium text-on-surface-variant">
+                      To: {message.to}
+                    </span>
+                    <h3 className="mt-2 font-headline text-[22px] font-bold leading-snug">
+                      {message.subject}
+                    </h3>
+                    <div className="my-3 h-[1px] w-full bg-surface-variant" />
+                    <p className="whitespace-pre-wrap text-base leading-[30px]">{message.body}</p>
                     <button
                       type="button"
                       className="mt-2 text-sm font-semibold text-wa-teal"

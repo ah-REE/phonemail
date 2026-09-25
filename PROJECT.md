@@ -954,6 +954,37 @@ context instantly)*
     deprioritised by the brief and keeps its current token-consistent styling. The
     visual result of every restyled screen remains user-verified in a browser.
 
+- Day 6: VISUAL RESTYLE, screens 6-8 - traditional full view, settings/profile,
+  and the drawer + /terms. /portal is the one piece that did not make it.
+  - Traditional full view (design/email_reader): the expanded message now follows
+    the reader mockup - a sender block (avatar, number, address, time), a To chip,
+    the subject as a 22px bold heading, a hairline, then the body at the mockup's
+    30px leading. The mockup's more_vert and its "Verified Government Sender"
+    badge are omitted: the app has no per-message actions and cannot verify who a
+    sender is, and a badge claiming otherwise would be a lie in the UI. Its
+    Reference-ID card has no counterpart in the data model.
+  - Settings/profile (design/profile_settings_minimal_focus): centred title bar, an
+    80px avatar with a verified badge, the phone and the address pill, then
+    uppercase section headings over flat bordered cards - Alias IDs (the app
+    feature the mockup predates: each alias on its own row with Remove, plus an add
+    row), Preferences (Language), Actions (Sign out) - and the encryption footer
+    with the build line.
+  - Three mockup rows are deliberately absent because rendering them would mean
+    inventing a feature rather than restyling one: the "SMS alerts" toggle (the
+    notification gate is server-side `registeredVia` state the client never sees,
+    so a toggle could not be honest about what it controls), "Personal details"
+    (no such screen) and "Delete account" (no endpoint behind it).
+  - Drawer and /terms now use the design language: the drawer is a panel with the
+    brand header and chevroned rows, and /terms has the 56px teal title bar with
+    the back arrow. Neither has a mockup of its own, so both were built from the
+    tokens and the patterns the restyled screens established.
+  - NOT DONE: /portal. It is styled with its own inline `styles` object rather than
+    Tailwind, so bringing it into the token system is a rewrite of that page rather
+    than a restyle of classes - it is one page and the remaining piece of this
+    pass, left rather than half-converted.
+  - UNVERIFIED: the visual result, as always - no browser in this session, and
+    these are client components, so the served HTML is the loading skeleton.
+
 - Day 7:
 
 ---

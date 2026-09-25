@@ -416,24 +416,40 @@ export default function HomePage() {
         </div>
 
         {menuOpen && (
-          <div className="fixed inset-0 z-10 flex bg-black/40" role="dialog" aria-modal="true">
-            <nav className="w-3/4 max-w-xs bg-wa-panel p-4">
-              <p className="mb-2 text-xs uppercase tracking-wide text-on-surface-variant">Menu</p>
-              <Link href="/" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-                Home
-              </Link>
-              <Link href="/drafts" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-                Drafts
-              </Link>
-              <Link href="/spam" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-                Spam
-              </Link>
-              <Link href="/trash" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-                Trash
-              </Link>
-              <Link href="/desktop" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-                Desktop version
-              </Link>
+          <div className="fixed inset-0 z-20 flex bg-black/40" role="dialog" aria-modal="true">
+            <nav className="w-3/4 max-w-xs bg-surface p-4">
+              <div className="mb-4 flex items-center gap-3 border-b border-wa-line pb-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-container font-headline text-lg font-bold text-white">
+                  P
+                </span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="font-headline text-base font-bold leading-tight">PhoneMail</span>
+                  <span className="truncate text-xs text-on-surface-variant">
+                    Your phone number is your email
+                  </span>
+                </div>
+              </div>
+              {[
+                { href: "/", label: "Home" },
+                { href: "/drafts", label: "Drafts" },
+                { href: "/spam", label: "Spam" },
+                { href: "/trash", label: "Trash" },
+                { href: "/desktop", label: "Desktop version" },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex min-h-tap items-center justify-between border-b border-wa-line py-3 text-base font-medium"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                  <span className="text-on-surface-variant">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </Link>
+              ))}
               <button type="button" className="btn-quiet mt-4 w-full" onClick={() => setMenuOpen(false)}>
                 Close
               </button>
