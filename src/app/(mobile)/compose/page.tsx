@@ -66,6 +66,8 @@ function ComposeForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ to?: string; subject?: string; body?: string }>({});
+  // The mockup's paperclip: present per the design, honest about the backend.
+  const [attachNotice, setAttachNotice] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -211,77 +213,92 @@ function ComposeForm() {
     <main className="flex flex-1 flex-col">
       <AppBar title={isReply ? "Reply" : "New message"} backHref="/" />
 
-      <form className="flex flex-1 flex-col gap-3 p-4" onSubmit={handleSend} noValidate>
-        <label className="text-sm text-wa-muted" htmlFor="to">
-          To {isReply && <span className="text-wa-teal">(locked — replying in this thread)</span>}
-        </label>
-        {!isReply && recipients.length > 1 && (
-          <p className="text-sm text-wa-teal">Group: {recipients.length} recipients</p>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {recipients.map((recipient) => (
-            <span
-              key={recipient}
-              className="flex items-center gap-2 rounded-full border border-wa-line bg-wa-panel px-3 py-1 text-sm"
-            >
-              {recipient}
-              {!lockRecipients && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${recipient}`}
-                  className="min-h-tap min-w-tap leading-none text-wa-muted"
-                  onClick={() => removeRecipient(recipient)}
-                >
-                  x
-                </button>
-              )}
-            </span>
-          ))}
+            <form className="flex flex-1 flex-col" onSubmit={handleSend} noValidate>
+        <div className="flex min-h-[56px] w-full items-center px-4">
+          <label className="w-16 shrink-0 text-sm font-semibold text-on-surface-variant" htmlFor="to">
+            To
+          </label>
+          <div className="flex flex-1 flex-wrap items-center gap-2 py-3">
+            {recipients.map((recipient) => (
+              <span
+                key={recipient}
+                className="flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-sm"
+              >
+                {recipient}
+                {!lockRecipients && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${recipient}`}
+                    className="min-h-0 leading-none text-on-surface-variant"
+                    onClick={() => removeRecipient(recipient)}
+                  >
+                    x
+                  </button>
+                )}
+              </span>
+            ))}
+            <input
+              id="to"
+              className="min-w-32 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-on-surface-variant"
+              inputMode="tel"
+              placeholder={lockRecipients ? "" : "9876543210, 9876543211"}
+              value={lockRecipients ? recipients.join(", ") : draftRecipient}
+              readOnly={lockRecipients}
+              aria-readonly={lockRecipients}
+              onChange={(event) => setDraftRecipient(event.target.value)}
+              onBlur={() => addRecipientsFrom(draftRecipient)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === ",") {
+                  event.preventDefault();
+                  addRecipientsFrom(draftRecipient);
+                }
+              }}
+            />
+          </div>
         </div>
-        <input
-          id="to"
-          className={`field ${isReply ? "bg-wa-bg" : ""}`}
-          inputMode="tel"
-          placeholder={lockRecipients ? "" : "9876543210, 9876543211"}
-          value={lockRecipients ? recipients.join(", ") : draftRecipient}
-          readOnly={lockRecipients}
-          aria-readonly={lockRecipients}
-          onChange={(event) => setDraftRecipient(event.target.value)}
-          onBlur={() => addRecipientsFrom(draftRecipient)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === ",") {
-              event.preventDefault();
-              addRecipientsFrom(draftRecipient);
-            }
-          }}
-        />
+        {lockRecipients && (
+          <p className="px-4 pb-2 text-xs text-on-surface-variant">
+            Recipients are locked for this conversation.
+          </p>
+        )}
+        {!lockRecipients && recipients.length > 1 && (
+          <p className="px-4 pb-2 text-xs text-primary-container">
+            Group: {recipients.length} recipients
+          </p>
+        )}
+        <div className="h-[1px] w-full bg-surface-variant" />
         {fieldErrors.to && (
           <p className="text-sm text-wa-alert" role="alert">
             {fieldErrors.to}
           </p>
         )}
 
-        <label className="text-sm text-wa-muted" htmlFor="subject">
-          Subject
-        </label>
-        <input
-          id="subject"
-          className="field"
-          value={subject}
-          onChange={(event) => setSubject(event.target.value)}
-        />
+        <div className="flex min-h-[56px] w-full items-center px-4">
+          <label className="w-16 shrink-0 text-sm font-semibold text-on-surface-variant" htmlFor="subject">
+            Subject
+          </label>
+          <input
+            id="subject"
+            className="flex-1 bg-transparent py-3 text-base font-medium outline-none placeholder:text-on-surface-variant"
+            placeholder="Subject"
+            value={subject}
+            onChange={(event) => setSubject(event.target.value)}
+          />
+        </div>
+        <div className="h-[1px] w-full bg-surface-variant" />
         {fieldErrors.subject && (
           <p className="text-sm text-wa-alert" role="alert">
             {fieldErrors.subject}
           </p>
         )}
 
-        <label className="text-sm text-wa-muted" htmlFor="body">
+        <label className="sr-only" htmlFor="body">
           Message
         </label>
         <textarea
           id="body"
-          className="field min-h-32 flex-1 py-3"
+          className="min-h-[170px] w-full flex-1 resize-none bg-transparent p-4 text-base leading-relaxed outline-none placeholder:text-on-surface-variant"
+          placeholder="Write your message"
           rows={8}
           value={body}
           onChange={(event) => setBody(event.target.value)}
@@ -299,9 +316,45 @@ function ComposeForm() {
           </p>
         )}
 
-        <button type="submit" className="btn-primary" disabled={busy}>
-          {busy ? "Sending…" : isReply ? "Send reply" : "Send"}
-        </button>
+        <div className="flex h-14 w-full shrink-0 items-center justify-between border-t border-wa-line bg-surface-container-lowest px-4">
+          <button
+            type="button"
+            aria-label="Attach file"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant active:bg-surface-variant"
+            onClick={() => setAttachNotice(true)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+            </svg>
+          </button>
+          <button
+            type="submit"
+            aria-label={isReply ? "Send reply" : "Send message"}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-surface disabled:opacity-60"
+            disabled={busy}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 12l16-8-6 8 6 8-16-8z" />
+            </svg>
+          </button>
+        </div>
+        {busy && <p className="px-4 py-2 text-sm text-on-surface-variant">Sending.</p>}
+
+        {attachNotice && (
+          <button
+            type="button"
+            onClick={() => setAttachNotice(false)}
+            aria-label="Dismiss"
+            className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 pb-28"
+          >
+            <span className="surface flex w-full max-w-sm flex-col items-center gap-1 p-4 text-center">
+              <span className="text-base font-semibold">Attachments coming soon</span>
+              <span className="text-sm text-on-surface-variant">
+                PhoneMail cannot carry files yet. Your message text is unaffected.
+              </span>
+            </span>
+          </button>
+        )}
       </form>
     </main>
   );

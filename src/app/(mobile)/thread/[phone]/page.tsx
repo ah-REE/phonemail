@@ -67,6 +67,8 @@ export default function ThreadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // The mockup's paperclip: present per the design, honest about the backend.
+  const [attachNotice, setAttachNotice] = useState(false);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -217,21 +219,28 @@ export default function ThreadPage() {
 
   return (
     <main className="flex h-screen flex-col">
-      <header className="border-b border-wa-line bg-wa-teal text-white">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none" aria-label="Back">
-            ←
+            <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between bg-primary-container px-4 text-on-primary">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label="Back to the chat list">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" />
+            </svg>
           </Link>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{phone}</p>
-            <p className="truncate text-xs opacity-90" title={headerSubject}>
-              {headerSubject}
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
+              {phone.slice(0, 1) || "?"}
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <h1 className="truncate font-headline text-base leading-tight">{phone}</h1>
+              <span className="truncate text-xs leading-tight opacity-90" title={headerSubject}>
+                {headerSubject}
+              </span>
+            </div>
           </div>
-          <span className="text-xs opacity-80" title="connection">
-            {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "…"}
-          </span>
         </div>
+        <span className="shrink-0 text-xs opacity-80" title="connection">
+          {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
+        </span>
       </header>
 
       {loading && <ThreadSkeleton />}
@@ -245,6 +254,14 @@ export default function ThreadPage() {
       )}
 
       <div ref={listRef} className="flex-1 overflow-y-auto p-4">
+        {/* The thread's subject as the mockup's centred pill. */}
+        {headerSubject && headerSubject !== "Conversation" && (
+          <div className="mb-4 flex justify-center">
+            <span className="rounded-full bg-surface-container-low px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
+              {headerSubject}
+            </span>
+          </div>
+        )}
         {messages.map((message) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
@@ -252,8 +269,10 @@ export default function ThreadPage() {
           return (
             <div key={message.id} className={`mb-3 flex ${message.mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[85%] rounded-bubble border px-3 py-2.5 ${
-                  message.mine ? "border-wa-teal/20 bg-wa-bubble" : "border-wa-line bg-wa-panel"
+                className={`max-w-[82%] rounded-2xl px-3.5 py-3 ${
+                  message.mine
+                    ? "ml-auto rounded-tr-sm bg-secondary-container text-on-surface"
+                    : "rounded-tl-sm bg-surface-container text-on-surface"
                 }`}
                 onPointerDown={(event) => {
                   swipeStart.current = { id: message.id, x: event.clientX };
@@ -389,37 +408,55 @@ export default function ThreadPage() {
         })}
       </div>
 
-      {/* Task 4: the input row, with the traditional-compose button in the
-          camera slot on the right. It opens compose with To already filled in
-          and LOCKED - the recipient is the conversation you are already in. */}
-      <div className="flex items-center gap-2 border-t border-wa-line p-3">
+      {/* The mockup's bottom bar: paperclip on the left, the message field, and
+          the traditional-compose button in the camera slot on the right. The field
+          opens compose - the app has no inline sender - and the paperclip is
+          present because the design shows it, reporting honestly that files have
+          no backend yet. */}
+      <footer className="sticky bottom-0 z-20 flex w-full items-center gap-2 bg-surface-container-lowest px-3 py-2.5">
+        <button
+          type="button"
+          aria-label="Attach documents"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container"
+          onClick={() => setAttachNotice(true)}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+          </svg>
+        </button>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}`}
-          className="field flex flex-1 items-center bg-surface-container-low text-wa-muted"
+          className="flex h-12 flex-1 items-center gap-2 rounded-full bg-surface-container px-4 text-sm text-on-surface-variant"
         >
           Message {phone}
         </Link>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
           aria-label={`Write to ${phone} in the traditional view`}
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-wa-green text-on-surface"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-surface"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
             <path d="M13.5 6.5l4 4" />
           </svg>
         </Link>
-      </div>
+      </footer>
+
+      {attachNotice && (
+        <button
+          type="button"
+          onClick={() => setAttachNotice(false)}
+          aria-label="Dismiss"
+          className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 pb-28"
+        >
+          <span className="surface flex w-full max-w-sm flex-col items-center gap-1 p-4 text-center">
+            <span className="text-base font-semibold">Attachments coming soon</span>
+            <span className="text-sm text-on-surface-variant">
+              PhoneMail cannot carry files yet. Your message text is unaffected.
+            </span>
+          </span>
+        </button>
+      )}
     </main>
   );
 }

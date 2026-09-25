@@ -892,6 +892,53 @@ context instantly)*
     home page is a client component, so the served HTML is the loading skeleton;
     the layout is confirmed by compiling it and by reading the source.
 
+- Day 6: VISUAL RESTYLE, screens 3 and 4 - the pairwise thread and the group
+  thread - plus compose and the group-folder add-on. The mandatory core of this
+  session is complete.
+  - Source: design/pm_kisan_scheme_conversation/code.html. Both threads share
+    the design: a sticky bg-primary-container top bar (back, avatar, title, the
+    thread's subject as a centred pill), incoming bubbles bg-surface-container
+    rounded-tl-sm, outgoing bubbles bg-secondary-container rounded-tr-sm, and a
+    sticky bottom bar holding the paperclip, the message field and the
+    traditional-compose button in the camera slot.
+  - The group thread uses the same design with the members header the brief asks
+    for: the member count in the avatar and every member named under the title.
+    Its composer keeps the spec's lock (sends to all OTHER members, no
+    add/remove) and now matches the thread's bottom bar.
+  - Compose follows design/compose_email: 56px label/value rows (To, Subject)
+    with 1px surface-variant hairlines between them, a 170px message area, and a
+    56px function row carrying the paperclip and a round 48px send button in
+    secondary-container. The app's multi-recipient chips and the locked
+    recipient set live in the To row, and the reply/group notes moved to a small
+    line under it rather than being dropped.
+  - The paperclip appears in BOTH the thread bar and compose, per the design, and
+    tapping it reports honestly that attachments have no backend yet - it is not
+    a dead control.
+  - Deliberately omitted, with reasons: the thread mockup's more_vert menu (no
+    per-thread actions exist), its quickreply templates (no template feature),
+    the compose mockup's Cc row (the app has no Cc), its three extra attachment
+    buttons beyond the paperclip (all would open the same empty backend), and its
+    drawn keyboard (not an app feature). The thread keeps no inline sender - its
+    field opens the compose screen, which is the app's real behaviour.
+  - GROUP-FOLDER ADD-ON, done as specified: `folder` is recipient-scoped state, so
+    the group thread endpoint and the chat list's group rows now exclude the
+    reader's OWN spam/trash rows while leaving every other row - and therefore
+    every other member's view and the member list - untouched. Asserted: B moving
+    its own group row to spam takes B's view from 70 rows to 69 while C and A stay
+    at 70, and the member list still names all three.
+  - Verified: build green; all routes 200 (/ , /onboarding, /compose, /thread/[phone],
+    /profile, /spam, /trash, /drafts); the three suites are green at 43 + 42 + 31 =
+    116 assertions. Note the correction recorded in the screen-2 entry was needed
+    again in spirit: two code-level checks had to be re-pointed at structure rather
+    than at an old literal string.
+  - UNVERIFIED: the visual result of every restyled screen - no browser here, and
+    the pages are client components, so the served HTML is the loading skeleton.
+    The layout is confirmed by compiling it and reading the source. The reader
+    grades it against the design pictures.
+  - NOT DONE: the stretch items (traditional full view, settings/profile, drawer +
+    /terms + /portal) and this session's evaluator simulation from a fresh clone.
+    Desktop was explicitly deprioritised by the brief and is untouched.
+
 - Day 7:
 
 ---

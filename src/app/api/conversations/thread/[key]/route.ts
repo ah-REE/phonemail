@@ -41,7 +41,13 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   }
 
   const messages = await prisma.email.findMany({
-    where: { threadKey },
+    where: {
+      threadKey,
+      // A member's folder move applies to group mail too. Rows addressed to ME in
+      // spam/trash leave MY view; everything else stays, so the member list and
+      // every other member's view are untouched.
+      OR: [{ toUserId: user.sub, folder: "inbox" }, { toUserId: { not: user.sub } }],
+    },
     orderBy: { createdAt: "asc" },
     take: THREAD_LIMIT,
     select: {

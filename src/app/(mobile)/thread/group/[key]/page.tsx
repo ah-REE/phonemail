@@ -209,21 +209,29 @@ export default function GroupThreadPage() {
 
   return (
     <main className="flex h-screen flex-col">
-      <header className="border-b border-wa-line bg-wa-teal text-white">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none" aria-label="Back">
-            &lt;
+      {/* The thread design plus the members header the brief asks for. */}
+      <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between bg-primary-container px-4 text-on-primary">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label="Back to the chat list">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" />
+            </svg>
           </Link>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">
-              Group ({members.length || others.length + 1})
-            </p>
-            <p className="truncate text-xs opacity-90" title={members.join(", ")}>
-              {members.length > 0 ? members.join(", ") : subject || "Loading members"}
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
+              {members.length || others.length + 1}
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <h1 className="truncate font-headline text-base leading-tight">
+                Group ({members.length || others.length + 1})
+              </h1>
+              <span className="truncate text-xs leading-tight opacity-90" title={members.join(", ")}>
+                {members.length > 0 ? members.join(", ") : subject || "Loading members"}
+              </span>
+            </div>
           </div>
-          <span className="text-xs opacity-80">group</span>
         </div>
+        <span className="shrink-0 text-xs opacity-80">group</span>
       </header>
 
       {loading && <ThreadSkeleton />}
@@ -244,8 +252,10 @@ export default function GroupThreadPage() {
           return (
             <div key={message.id} className={`mb-3 flex ${message.mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[85%] rounded-bubble border px-3 py-2.5 ${
-                  message.mine ? "border-wa-teal/20 bg-wa-bubble" : "border-wa-line bg-wa-panel"
+                className={`max-w-[82%] rounded-2xl px-3.5 py-3 ${
+                  message.mine
+                    ? "ml-auto rounded-tr-sm bg-secondary-container text-on-surface"
+                    : "rounded-tl-sm bg-surface-container text-on-surface"
                 }`}
               >
                 <div className="flex items-baseline gap-2">
@@ -306,8 +316,8 @@ export default function GroupThreadPage() {
         })}
       </div>
 
-      <form className="border-t border-wa-line p-3" onSubmit={handleSend}>
-        <p className="mb-2 text-xs text-wa-muted">
+      <form className="sticky bottom-0 z-20 border-t border-wa-line bg-surface-container-lowest p-3" onSubmit={handleSend}>
+        <p className="mb-2 text-xs text-on-surface-variant">
           To (locked): {others.length > 0 ? others.join(", ") : "no other members"}
         </p>
         <div className="mb-2 flex flex-wrap gap-2">
@@ -330,7 +340,11 @@ export default function GroupThreadPage() {
           aria-label="Message the group"
         />
         {notice && <p className="mb-2 text-sm text-wa-teal">{notice}</p>}
-        <button type="submit" className="btn-primary w-full" disabled={sending || others.length === 0}>
+        <button
+          type="submit"
+          className="btn-primary w-full"
+          disabled={sending || others.length === 0}
+        >
           {sending ? "Sending." : "Send to group"}
         </button>
       </form>

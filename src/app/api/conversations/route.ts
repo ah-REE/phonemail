@@ -102,7 +102,12 @@ export async function GET(request: Request) {
   const groupRows =
     groupKeys.length > 0
       ? await prisma.email.findMany({
-          where: { threadKey: { in: groupKeys } },
+          where: {
+            threadKey: { in: groupKeys },
+            // Same recipient-scoped rule as the group thread endpoint: my own
+            // spam/trash rows leave my group view, other members' are unaffected.
+            OR: [{ toUserId: user.sub, folder: "inbox" }, { toUserId: { not: user.sub } }],
+          },
           orderBy: { createdAt: "desc" },
           select: {
             threadKey: true,
