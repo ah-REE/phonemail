@@ -9,21 +9,18 @@ import { useAuth } from "@/lib/useAuth";
 /**
  * Profile & settings.
  *
- * Layout follows design/profile_settings_minimal_focus: a centred title bar, an
- * 80px avatar with a verified badge, the phone identity and the address pill,
- * then uppercase section headings over flat bordered cards, and an
- * end-to-end-encryption footer with the build line.
+ * Fidelity audit: the earlier pass read this mockup through an outline that had
+ * stripped colour classes, and it showed. This markup follows
+ * design/profile_settings_minimal_focus/code.html literally - the page canvas is
+ * #F8FAFC, the identity block sits ON the teal header (avatar #00453d with a
+ * white ring, phone in white, the address pill #00453d/80 with a #25D366 label),
+ * and the cards are white on slate-200/80 with slate/teal-50 accents.
  *
  * Aliases are the app feature the mockup predates, so they get their own section
- * in the same card language: the list with a Remove on each row, and an add row.
- *
- * Three mockup rows are deliberately absent, because rendering them would mean
- * inventing a feature rather than restyling one:
- *  - "SMS alerts" with a toggle: the notification gate is server-side state
- *    (`registeredVia`) that the client never sees, so a toggle here could not be
- *    honest about what it controls
- *  - "Personal details": there is no such screen
- *  - "Delete account": there is no endpoint behind it
+ * in the same card language. Three mockup rows stay absent because rendering
+ * them would mean inventing a feature: the SMS-alerts toggle (the notification
+ * gate is server-side state the client never sees), Personal details (no such
+ * screen) and Delete account (no endpoint behind it).
  */
 
 interface Alias {
@@ -33,8 +30,20 @@ interface Alias {
   createdAt?: string;
 }
 
-function Icon({ name, size = 20 }: { name: "back" | "check" | "chevron" | "globe" | "logout" | "lock"; size?: number }) {
-  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+function Icon({
+  name,
+  size = 20,
+}: {
+  name: "back" | "check" | "chevron" | "globe" | "logout" | "lock";
+  size?: number;
+}) {
+  const stroke = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
       {name === "back" && <path d="M15 5l-7 7 7 7" {...stroke} />}
@@ -87,7 +96,7 @@ export default function ProfilePage() {
       const body = (await response.json()) as { aliases?: Alias[] };
       setAliases(body.aliases ?? []);
     } catch {
-      // The list simply stays empty; adding still works and reports its own error.
+      // The list stays empty; adding reports its own error.
     }
   }, [authorizedFetch]);
 
@@ -151,7 +160,7 @@ export default function ProfilePage() {
 
   if (status !== "authenticated") {
     return (
-      <main className="flex flex-1 flex-col p-4">
+      <main className="flex flex-1 flex-col bg-[#F8FAFC] p-4">
         <span className="skeleton h-20 w-20 self-center rounded-full" />
         <span className="skeleton mt-4 h-6 w-40 self-center rounded-full" />
       </main>
@@ -162,151 +171,163 @@ export default function ProfilePage() {
   const initial = user?.phoneNumber?.slice(0, 1) ?? "?";
 
   return (
-    <main className="flex flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-phone flex-1 flex-col">
-
-        <header className="relative flex h-14 w-full items-center justify-between px-3">
-          <Link href="/" className="flex h-12 w-12 items-center justify-center rounded-full" aria-label="Back to the chat list">
+    <main className="flex flex-1 flex-col bg-[#F8FAFC]">
+      <header className="relative z-10 flex w-full flex-col bg-[#075e54] text-white">
+        <div className="relative flex h-14 items-center justify-between px-3">
+          <Link
+            href="/"
+            className="z-10 flex h-12 w-12 items-center justify-center rounded-full transition-colors duration-ui hover:bg-white/10"
+            aria-label="Back to the chat list"
+          >
             <Icon name="back" size={24} />
           </Link>
-          <h1 className="pointer-events-none absolute inset-x-0 text-center font-headline text-base font-bold tracking-tight">
+          <h1 className="pointer-events-none absolute inset-x-0 text-center font-headline text-[18px] font-bold tracking-tight text-white">
             Profile &amp; Settings
           </h1>
           <span className="h-12 w-12" aria-hidden="true" />
-        </header>
+        </div>
 
-        <div className="flex flex-col items-center px-5 pb-8 pt-2">
+        <div className="flex flex-col items-center px-5 pb-8 pt-2 text-center">
           <div className="relative">
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-wa-teal font-headline text-2xl font-bold text-white">
-              {initial}
-            </span>
-            <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-wa-green text-on-surface">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#00453d] ring-4 ring-white/15">
+              <span className="select-none font-headline text-3xl font-bold text-white">{initial}</span>
+            </div>
+            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#075e54] bg-[#25D366] text-white">
               <Icon name="check" size={14} />
-            </span>
+            </div>
           </div>
-          <h2 className="mt-3.5 font-headline text-[22px] font-extrabold leading-tight tracking-tight">
+          <h2 className="mt-3.5 font-headline text-[22px] font-extrabold leading-tight tracking-tight text-white">
             {user?.phoneNumber ?? "Unknown"}
           </h2>
-          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-wa-outline bg-surface px-4 py-1.5">
-            <span className="select-all text-sm font-semibold tracking-wide">{address}</span>
+          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#00453d]/80 px-4 py-1.5">
+            <span className="select-all text-[13px] font-semibold tracking-wide text-[#25D366]">
+              {address}
+            </span>
           </div>
         </div>
+      </header>
 
-        <div className="flex flex-1 flex-col gap-6 px-4 pb-6 pt-6">
+      <div className="flex flex-1 flex-col space-y-6 px-4 pb-6 pt-6">
 
-          <section>
-            <h3 className="mb-2.5 px-1 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              Alias IDs
-            </h3>
-            <div className="overflow-hidden rounded-2xl border border-wa-outline bg-surface">
-              {aliases.length === 0 ? (
-                <p className="px-4 py-3.5 text-sm text-on-surface-variant">
-                  No aliases yet. An alias is a second address for this account.
-                </p>
-              ) : (
-                aliases.map((alias) => (
-                  <div
-                    key={alias.id}
-                    className="flex min-h-[58px] w-full items-center justify-between border-b border-wa-line px-4 py-3.5 last:border-b-0"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm">{alias.address}</span>
-                    <button
-                      type="button"
-                      className="min-h-0 shrink-0 text-sm font-semibold text-wa-alert"
-                      aria-label={`Remove alias ${alias.localPart}`}
-                      onClick={() => void removeAlias(alias.localPart)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              )}
-              <form
-                className="flex min-h-[58px] w-full items-center gap-2 border-t border-wa-line px-4 py-3.5"
-                onSubmit={addAlias}
-              >
-                <input
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant"
-                  placeholder="Add an alias, e.g. john.doe"
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="shrink-0 rounded-full bg-secondary-container px-4 py-1.5 text-sm font-semibold text-on-surface disabled:opacity-60"
-                  disabled={busy || draft.trim().length === 0}
-                >
-                  {busy ? "Adding" : "Add"}
-                </button>
-              </form>
-            </div>
-            <p className="mt-2 px-1 text-xs text-on-surface-variant">
-              3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
-              account exactly like mail sent to the number.
-            </p>
-            {notice && <p className="mt-2 px-1 text-sm text-primary-container">{notice}</p>}
-            {error && (
-              <p className="mt-2 px-1 text-sm text-wa-alert" role="alert">
-                {error}
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Alias IDs
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+            {aliases.length === 0 ? (
+              <p className="px-4 py-3.5 text-[14px] text-slate-500">
+                No aliases yet. An alias is a second address for this account.
               </p>
-            )}
-          </section>
-
-          <section>
-            <h3 className="mb-2.5 px-1 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              Preferences
-            </h3>
-            <div className="overflow-hidden rounded-2xl border border-wa-outline bg-surface">
-              <div className="flex min-h-[58px] w-full items-center justify-between px-4 py-3.5">
-                <div className="flex items-center gap-3.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-primary-container">
-                    <Icon name="globe" size={20} />
+            ) : (
+              aliases.map((alias) => (
+                <div
+                  key={alias.id}
+                  className="flex min-h-[58px] w-full items-center justify-between border-b border-slate-100 px-4 py-3.5"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-slate-900">
+                    {alias.address}
                   </span>
-                  <span className="text-sm font-medium">Language</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[14px] font-semibold text-red-500"
+                    aria-label={`Remove alias ${alias.localPart}`}
+                    onClick={() => void removeAlias(alias.localPart)}
+                  >
+                    Remove
+                  </button>
                 </div>
-                <span className="text-sm text-on-surface-variant">English (India)</span>
+              ))
+            )}
+            <form
+              className="flex min-h-[58px] w-full items-center gap-2 border-t border-slate-100 px-4 py-3.5"
+              onSubmit={addAlias}
+            >
+              <input
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
+                placeholder="Add an alias, e.g. john.doe"
+                autoCapitalize="none"
+                autoComplete="off"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-full bg-[#25D366] px-4 py-1.5 text-[14px] font-semibold text-[#075e54] disabled:opacity-60"
+                disabled={busy || draft.trim().length === 0}
+              >
+                {busy ? "Adding" : "Add"}
+              </button>
+            </form>
+          </div>
+          <p className="mt-2 px-1 text-[12px] text-slate-500">
+            3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
+            account exactly like mail sent to the number.
+          </p>
+          {notice && <p className="mt-2 px-1 text-[14px] text-[#075e54]">{notice}</p>}
+          {error && (
+            <p className="mt-2 px-1 text-[14px] text-red-500" role="alert">
+              {error}
+            </p>
+          )}
+        </section>
+
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Preferences
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+            <div className="flex min-h-[58px] w-full items-center justify-between bg-white px-4 py-3.5">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[#075e54]">
+                  <Icon name="globe" size={20} />
+                </div>
+                <span className="text-[15px] font-medium text-slate-900">Language</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[14px] font-normal text-slate-600">English (India)</span>
+                <span className="text-slate-400">
+                  <Icon name="chevron" size={20} />
+                </span>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <section>
-            <h3 className="mb-2.5 px-1 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              Actions
-            </h3>
-            <div className="overflow-hidden rounded-2xl border border-wa-outline bg-surface">
-              <button
-                type="button"
-                className="flex min-h-[58px] w-full items-center justify-between px-4 py-3.5 text-left"
-                onClick={() => {
-                  signOut();
-                  router.replace("/onboarding");
-                }}
-              >
-                <div className="flex items-center gap-3.5">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error-container text-error">
-                    <Icon name="logout" size={20} />
-                  </span>
-                  <span className="text-sm font-medium">Sign out</span>
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Actions
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+            <button
+              type="button"
+              className="flex min-h-[58px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors duration-ui hover:bg-slate-50"
+              onClick={() => {
+                signOut();
+                router.replace("/onboarding");
+              }}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+                  <Icon name="logout" size={20} />
                 </div>
-                <span className="text-on-surface-variant">
-                  <Icon name="chevron" size={18} />
-                </span>
-              </button>
-            </div>
-          </section>
-
-          <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-6">
-            <div className="inline-flex max-w-[340px] items-center justify-center gap-2 rounded-xl bg-surface-container-low px-4 py-2">
-              <span className="shrink-0 text-on-surface-variant">
-                <Icon name="lock" size={14} />
+                <span className="text-[15px] font-medium text-slate-900">Sign out</span>
+              </div>
+              <span className="text-slate-400">
+                <Icon name="chevron" size={20} />
               </span>
-              <span className="text-xs leading-snug">End-to-end encrypted</span>
-            </div>
-            <p className="mt-2.5 font-mono text-xs text-on-surface-variant">PhoneMail v0.1.0</p>
-          </footer>
-        </div>
+            </button>
+          </div>
+        </section>
+
+        <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-6">
+          <div className="inline-flex max-w-[340px] items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2">
+            <span className="shrink-0 text-slate-400">
+              <Icon name="lock" size={15} />
+            </span>
+            <span className="text-[12px] leading-snug text-slate-600">End-to-end encrypted</span>
+          </div>
+          <p className="mt-2.5 font-mono text-[12px] text-slate-400">PhoneMail v0.1.0</p>
+        </footer>
       </div>
     </main>
   );

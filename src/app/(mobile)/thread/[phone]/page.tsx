@@ -253,11 +253,17 @@ export default function ThreadPage() {
         <p className="p-6 text-center text-wa-muted">No messages in this conversation yet.</p>
       )}
 
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto bg-surface-container p-4">
+        {/* The mockup's date divider, then its subject pill. */}
+        <div className="mb-4 flex justify-center">
+          <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
+            {formatWhen(messages[0]?.createdAt ?? new Date().toISOString()).split(",")[0]}
+          </span>
+        </div>
         {/* The thread's subject as the mockup's centred pill. */}
         {headerSubject && headerSubject !== "Conversation" && (
           <div className="mb-4 flex justify-center">
-            <span className="rounded-full bg-surface-container-low px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
+            <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
               {headerSubject}
             </span>
           </div>
@@ -314,22 +320,37 @@ export default function ThreadPage() {
                         <p className="truncate text-base font-semibold">
                           {message.from.replace(/@.*$/, "")}
                         </p>
-                        <p className="select-all truncate text-xs text-on-surface-variant">
+                        <p className="select-all truncate text-xs text-outline">
                           {message.from}
                         </p>
                       </div>
-                      <span className="shrink-0 pt-0.5 text-xs text-on-surface-variant">
+                      <span className="shrink-0 pt-0.5 text-xs text-outline">
                         {formatWhen(message.createdAt)}
                       </span>
                     </div>
-                    <span className="mt-4 inline-block rounded bg-surface-container-low px-2 py-0.5 text-xs font-medium text-on-surface-variant">
+                    <span className="mt-4 inline-block rounded bg-surface-container px-2 py-0.5 text-xs font-medium text-on-surface-variant">
                       To: {message.to}
                     </span>
                     <h3 className="mt-2 font-headline text-[22px] font-bold leading-snug">
                       {message.subject}
                     </h3>
-                    <div className="my-3 h-[1px] w-full bg-surface-variant" />
+                    <div className="my-3 h-[1px] w-full bg-surface-container" />
                     <p className="whitespace-pre-wrap text-base leading-[30px]">{message.body}</p>
+                    {!message.mine && !message.provisional && !message.repliedAt && (
+                      <Link
+                        href={`/compose?to=${encodeURIComponent(phone)}&replyTo=${encodeURIComponent(message.id)}`}
+                        className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-wa-teal text-base font-bold text-white"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M9 7L4 12l5 5" />
+                          <path d="M4 12h9a6 6 0 0 1 6 6v1" />
+                        </svg>
+                        Reply
+                      </Link>
+                    )}
+                    {message.repliedAt && (
+                      <p className="mt-4 text-sm text-on-surface-variant">Replied</p>
+                    )}
                     <button
                       type="button"
                       className="mt-2 text-sm font-semibold text-wa-teal"
@@ -435,12 +456,19 @@ export default function ThreadPage() {
             <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
           </svg>
         </button>
-        <Link
-          href={`/compose?to=${encodeURIComponent(phone)}`}
-          className="flex h-12 flex-1 items-center gap-2 rounded-full bg-surface-container px-4 text-sm text-on-surface-variant"
-        >
-          Message {phone}
-        </Link>
+        <div className="flex h-12 flex-1 items-center gap-2 rounded-full bg-surface-container px-4 text-sm text-on-surface-variant">
+          <span className="flex-1 truncate">Message {phone}</span>
+          <Link
+            href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
+            aria-label="Write to this number in the traditional view (locked recipients)"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+              <circle cx="12" cy="13" r="3.2" />
+            </svg>
+          </Link>
+        </div>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
           aria-label={`Write to ${phone} in the traditional view`}

@@ -1032,6 +1032,69 @@ context instantly)*
     operator-side. /portal keeps its original inline styling, and the settings
     mockup's personal-details and profile-picture rows are not built.
 
+- Day 7: DESIGN FIDELITY AUDIT and corrections. The user clicked through in a real
+  browser and reported that everything after the OTP screen diverged from the
+  designs. They were right, and here is why.
+  - ROOT CAUSE (two causes, both mine, neither a design problem):
+    1. The post-OTP screens were translated from an abridged outline whose
+       extraction stripped every colour and size class. Onboarding was not, which
+       is exactly why the user saw onboarding match and everything else drift. With
+       the colour classes gone, plausible-looking tokens were substituted for the
+       design's: bordered inputs where the design uses filled pills, muted-variant
+       text where the design uses the outline token, wa-green where the design uses
+       secondary-container, no row dividers where the design has hairlines.
+    2. Three of the design exports - phonemail_home, compose_email and email_reader
+       - are 28-byte placeholder files containing the literal text
+       '<FIFE Image failed to fetch>'. There was no picture to cross-check for those
+       three screens at all, so markup alone had to carry them.
+  - The image model in this environment fails for every image (HTTP 406), so the
+    user's design pictures were read through the autoglm-image-recognition skill
+    instead (upload-mix.py, then the recognition API). That worked, and every
+    finding below comes from those six descriptions compared against code.html.
+  - FIXES SHIPPED:
+    - Home: header avatar is the action-green container with its dark label (not
+      brand teal); the search field is a filled surface-container-high pill with no
+      border; unselected chips are filled, not outlined; rows carry the design's
+      hairline divider; row avatars are bg-primary-container with on-primary labels;
+      timestamps use the outline token; the unread badge and the FAB use
+      secondary-container; the search-to-chat offer takes the row treatment.
+    - Compose: the shared AppBar became the design's bar (56px, centred title, no
+      bottom border - it was taller, left-aligned and bordered); the title reads
+      Compose as the mockup says; row labels use the outline token; all four
+      attachment affordances are present in the brand colour instead of one.
+    - Thread (pairwise and group): the chat canvas is tinted surface-container, not
+      white; the camera slot now sits INSIDE the message pill as the design and the
+      spec both show; the design's centred date divider pill was added; the subject
+      pill uses the container-high fill.
+    - Traditional full view: the sender avatar, address, time, To chip and divider
+      now use the design's tokens, and the design's full-width Reply button is
+      present at the end of the view (the spec's own tap-to-reply path).
+    - Settings/profile: rebuilt around the design - the identity block sits ON the
+      teal header (avatar #00453d with a white ring, phone in white, address in a
+      #00453d/80 pill with a #25D366 label), the page canvas is #F8FAFC, cards are
+      white on slate-200/80, section labels are 11px uppercase slate-400, row icons
+      sit in teal-50 (and red-50 for the destructive row), and row text is 15px
+      slate-900 with slate-600 values.
+    - Drawer: the design's teal profile header (avatar, phone, address) with
+      Home/Drafts/Spam/Trash rows, the active row highlighted, and Settings anchored
+      at the bottom above a divider.
+  - OMISSIONS THAT REMAIN, each with its reason: the verified-sender banner and the
+    'we verify sender identity' disclaimer (the app cannot verify who a sender is, so
+    claiming it would be a lie in the UI); the mockup's Cc row and reference card (no
+    such data); the SMS-alerts toggle (the notification gate is server-side state the
+    client never sees); Personal details and Delete account (no screen and no
+    endpoint); the thread's three-dot menu (no per-thread actions); and the design's
+    paper-plane send button, rendered as the traditional-compose entry because the
+    app has no inline sender.
+  - VERIFIED: `npm run build` green after every batch of fixes. NOT VERIFIED, and
+    this is a real gap: the dev-mode regression and the origin evaluator simulation
+    could NOT run for these changes because Docker Desktop's daemon went down
+    mid-session (the note below records it). The fixes are compiled and reviewed
+    against the design descriptions, not exercised against a running stack.
+  - The final visual grade is the user's re-click-through: the screens that changed
+    are Home, the pairwise and group threads, compose, the traditional full view,
+    Settings/profile and the drawer.
+
 - Day 7:
 
 ---

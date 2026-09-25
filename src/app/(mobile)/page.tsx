@@ -74,7 +74,7 @@ function UnreadBadge({ count }: { count: number }) {
     return null;
   }
   return (
-    <span className="mt-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-wa-green px-1.5 text-[11px] font-bold text-on-surface">
+    <span className="mt-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary-container px-1.5 text-[11px] font-bold text-on-secondary-container">
       {count}
     </span>
   );
@@ -244,7 +244,7 @@ export default function HomePage() {
           <Link
             href="/profile"
             aria-label="Profile and settings"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wa-teal font-headline text-base font-bold text-white"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container font-headline text-base font-bold text-on-secondary-container"
           >
             {initialOf(user?.phoneNumber ?? "")}
           </Link>
@@ -252,8 +252,8 @@ export default function HomePage() {
 
         {/* 2. Search */}
         <div className="w-full px-4 py-3">
-          <div className="flex h-11 w-full items-center rounded-full border border-wa-outline bg-surface px-4">
-            <span className="mr-3 shrink-0 text-on-surface-variant" aria-hidden="true">
+          <div className="flex h-11 w-full items-center rounded-full bg-surface-container-high px-4">
+            <span className="mr-3 shrink-0 text-outline" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                 <circle cx="11" cy="11" r="6.5" />
                 <path d="M16 16l4 4" />
@@ -278,7 +278,7 @@ export default function HomePage() {
               className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-ui ${
                 filter === chip.key
                   ? "bg-wa-teal text-white"
-                  : "border border-wa-outline bg-surface text-on-surface"
+                  : "bg-surface-container-high text-on-surface-variant"
               }`}
               onClick={() => setFilter(chip.key)}
             >
@@ -292,9 +292,9 @@ export default function HomePage() {
           <div className="w-full px-4 pb-2">
             <Link
               href={`/thread/${searchNumber}`}
-              className="flex h-[76px] w-full items-center rounded-2xl border border-wa-outline bg-surface-container-low px-4"
+              className="flex h-[76px] w-full items-center border-b border-surface-container-high bg-surface-container-low px-4"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-green text-on-surface">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -348,9 +348,9 @@ export default function HomePage() {
             <Link
               key={group.threadKey}
               href={`/thread/group/${encodeURIComponent(group.threadKey)}`}
-              className="flex h-[76px] w-full cursor-pointer items-center px-4 active:bg-surface-container-high/40"
+              className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal font-headline text-base font-bold text-white">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-base font-bold text-on-primary">
                 {group.members.length}
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
@@ -359,7 +359,7 @@ export default function HomePage() {
                 <span className="truncate text-sm text-on-surface-variant">{group.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
-                <span className="text-xs text-on-surface-variant">{formatTime(group.lastAt)}</span>
+                <span className="text-xs text-outline">{formatTime(group.lastAt)}</span>
                 <UnreadBadge count={group.unread} />
               </span>
             </Link>
@@ -369,9 +369,9 @@ export default function HomePage() {
             <Link
               key={thread.counterpartAddress}
               href={`/thread/${thread.counterpart}`}
-              className="flex h-[76px] w-full cursor-pointer items-center px-4 active:bg-surface-container-high/40"
+              className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-container-high font-headline text-base font-bold text-primary-container">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-base font-bold text-on-primary">
                 {initialOf(thread.counterpart)}
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
@@ -380,13 +380,13 @@ export default function HomePage() {
                 <span className="truncate text-sm text-on-surface-variant">{thread.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
-                <span className="text-xs text-on-surface-variant">{formatTime(thread.lastAt)}</span>
+                <span className="text-xs text-outline">{formatTime(thread.lastAt)}</span>
                 <UnreadBadge count={thread.unread} />
               </span>
             </Link>
           ))}
 
-          <div className="flex w-full select-none items-center justify-center gap-1.5 px-6 py-8 text-xs text-on-surface-variant">
+          <div className="flex w-full select-none items-center justify-center gap-1.5 px-6 py-8 text-xs text-outline">
             <span className="shrink-0" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                 <rect x="5" y="10.5" width="14" height="9" rx="2" />
@@ -406,7 +406,7 @@ export default function HomePage() {
           <Link
             href="/compose"
             aria-label="Compose email"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-wa-green text-on-surface transition-opacity duration-ui active:opacity-90"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container transition-opacity duration-ui active:opacity-90"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
@@ -417,42 +417,74 @@ export default function HomePage() {
 
         {menuOpen && (
           <div className="fixed inset-0 z-20 flex bg-black/40" role="dialog" aria-modal="true">
-            <nav className="w-3/4 max-w-xs bg-surface p-4">
-              <div className="mb-4 flex items-center gap-3 border-b border-wa-line pb-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-container font-headline text-lg font-bold text-white">
-                  P
+                      <nav className="flex w-4/5 max-w-xs flex-col bg-surface">
+              <div className="flex flex-col bg-primary-container px-5 pb-6 pt-5 text-on-primary">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container font-headline text-xl font-bold text-on-secondary-container">
+                  {initialOf(user?.phoneNumber ?? "")}
                 </span>
-                <div className="flex min-w-0 flex-col">
-                  <span className="font-headline text-base font-bold leading-tight">PhoneMail</span>
-                  <span className="truncate text-xs text-on-surface-variant">
-                    Your phone number is your email
-                  </span>
-                </div>
+                <p className="mt-3 text-lg font-bold">{user?.phoneNumber ?? ""}</p>
+                <p className="truncate text-xs opacity-80">{user?.phoneNumber ?? ""}@phonemail.com</p>
               </div>
-              {[
-                { href: "/", label: "Home" },
-                { href: "/drafts", label: "Drafts" },
-                { href: "/spam", label: "Spam" },
-                { href: "/trash", label: "Trash" },
-                { href: "/desktop", label: "Desktop version" },
-              ].map((item) => (
+
+              <Link
+                href="/"
+                className="flex min-h-[60px] items-center gap-5 bg-surface-container-low px-5 text-base text-on-surface"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20H4z" /></svg></span>
+                <span>Home</span>
+              </Link>
+              <Link
+                href="/drafts"
+                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h5" /></svg></span>
+                <span>Drafts</span>
+              </Link>
+              <Link
+                href="/spam"
+                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z" /></svg></span>
+                <span>Spam</span>
+              </Link>
+              <Link
+                href="/trash"
+                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" /></svg></span>
+                <span>Trash</span>
+              </Link>
+
+              <div className="mt-auto">
+                <div className="h-[1px] w-full bg-surface-variant" />
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex min-h-tap items-center justify-between border-b border-wa-line py-3 text-base font-medium"
+                  href="/profile"
+                  className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {item.label}
-                  <span className="text-on-surface-variant">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
+                  <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" /></svg></span>
+                  <span>Settings</span>
                 </Link>
-              ))}
-              <button type="button" className="btn-quiet mt-4 w-full" onClick={() => setMenuOpen(false)}>
-                Close
-              </button>
+                <Link
+                  href="/desktop"
+                  className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20H4z" /></svg></span>
+                  <span>Desktop version</span>
+                </Link>
+                <button
+                  type="button"
+                  className="btn-quiet m-4 w-[calc(100%-2rem)]"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
             </nav>
             <button type="button" aria-label="Close menu" className="flex-1" onClick={() => setMenuOpen(false)} />
           </div>

@@ -244,7 +244,7 @@ export default function GroupThreadPage() {
         <p className="p-6 text-center text-wa-muted">No messages in this conversation yet.</p>
       )}
 
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto bg-surface-container p-4">
         {messages.map((message) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;

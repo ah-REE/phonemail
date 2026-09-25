@@ -211,11 +211,11 @@ function ComposeForm() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <AppBar title={isReply ? "Reply" : "New message"} backHref="/" />
+      <AppBar title={isReply ? "Reply" : "Compose"} backHref="/" />
 
             <form className="flex flex-1 flex-col" onSubmit={handleSend} noValidate>
         <div className="flex min-h-[56px] w-full items-center px-4">
-          <label className="w-16 shrink-0 text-sm font-semibold text-on-surface-variant" htmlFor="to">
+          <label className="w-16 shrink-0 text-sm font-semibold text-outline" htmlFor="to">
             To
           </label>
           <div className="flex flex-1 flex-wrap items-center gap-2 py-3">
@@ -274,7 +274,7 @@ function ComposeForm() {
         )}
 
         <div className="flex min-h-[56px] w-full items-center px-4">
-          <label className="w-16 shrink-0 text-sm font-semibold text-on-surface-variant" htmlFor="subject">
+          <label className="w-16 shrink-0 text-sm font-semibold text-outline" htmlFor="subject">
             Subject
           </label>
           <input
@@ -317,16 +317,51 @@ function ComposeForm() {
         )}
 
         <div className="flex h-14 w-full shrink-0 items-center justify-between border-t border-wa-line bg-surface-container-lowest px-4">
-          <button
-            type="button"
-            aria-label="Attach file"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant active:bg-surface-variant"
-            onClick={() => setAttachNotice(true)}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Attach file"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => setAttachNotice(true)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Attach document"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => setAttachNotice(true)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 3h7l4 4v14H7z" />
+                <path d="M14 3v5h5M10 13h6M10 17h4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Open camera"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => setAttachNotice(true)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+                <circle cx="12" cy="13" r="3.2" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Attach photo"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => setAttachNotice(true)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="5" width="16" height="14" rx="2" />
+                <path d="M4 16l4.5-4.5L13 16M14 13l2.5-2.5L20 14" />
+              </svg>
+            </button>
+          </div>
           <button
             type="submit"
             aria-label={isReply ? "Send reply" : "Send message"}
