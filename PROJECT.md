@@ -186,7 +186,7 @@ here is enhancement, not core function.
 - [x] Fresh-machine test: clone repo, `docker compose up -d` only,
       confirm zero manual steps needed *(done repeatedly, most recently by cloning from GitHub at b07db59 onto a clean volume: all 7 migrations applied and 116 assertions passed with no manual step)*
 - [ ] Full demo rehearsal: mobile flow, desktop flow, IVR call, SMS *(NOT done - the flows are verified programmatically, but the IVR call needs the Exotel console wired and a real call, and the SMS leg needs the gateway phone online. Both are operator-side and were never performed here.)*
-- [ ] Fix whatever breaks
+- [x] Fix whatever breaks *(nothing broke: the closing runs on the working stack and on a fresh clone from origin were both fully green)*
 
 ### Tue Sep 29, 11:59 PM - SUBMIT
 
