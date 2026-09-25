@@ -355,8 +355,7 @@ export default function HomePage() {
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
                 <span className="truncate text-base font-bold">Group - {group.members.join(", ")}</span>
-                <span className="mt-0.5 truncate text-sm text-on-surface-variant">{group.subject}</span>
-                <span className="truncate text-sm text-on-surface-variant">{group.preview}</span>
+                <span className="mt-1 truncate text-sm text-on-surface-variant">{group.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
                 <span className="text-xs text-outline">{formatTime(group.lastAt)}</span>
@@ -376,8 +375,7 @@ export default function HomePage() {
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
                 <span className="truncate text-base font-bold">{thread.counterpart}</span>
-                <span className="mt-0.5 truncate text-sm text-on-surface-variant">{thread.subject}</span>
-                <span className="truncate text-sm text-on-surface-variant">{thread.preview}</span>
+                <span className="mt-1 truncate text-sm text-on-surface-variant">{thread.preview}</span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
                 <span className="text-xs text-outline">{formatTime(thread.lastAt)}</span>

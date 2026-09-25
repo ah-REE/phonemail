@@ -222,7 +222,7 @@ export default function ProfilePage() {
               aliases.map((alias) => (
                 <div
                   key={alias.id}
-                  className="flex min-h-[58px] w-full items-center justify-between border-b border-slate-100 px-4 py-3.5"
+                  className="flex min-h-[64px] w-full items-center justify-between border-b border-slate-100 px-4 py-4"
                 >
                   <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-slate-900">
                     {alias.address}
@@ -239,7 +239,7 @@ export default function ProfilePage() {
               ))
             )}
             <form
-              className="flex min-h-[58px] w-full items-center gap-2 border-t border-slate-100 px-4 py-3.5"
+              className="flex min-h-[64px] w-full items-center gap-2 border-t border-slate-100 px-4 py-4"
               onSubmit={addAlias}
             >
               <input
@@ -276,7 +276,7 @@ export default function ProfilePage() {
             Preferences
           </h3>
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-            <div className="flex min-h-[58px] w-full items-center justify-between bg-white px-4 py-3.5">
+            <div className="flex min-h-[64px] w-full items-center justify-between bg-white px-4 py-4">
               <div className="flex items-center gap-3.5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[#075e54]">
                   <Icon name="globe" size={20} />
@@ -300,7 +300,7 @@ export default function ProfilePage() {
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
             <button
               type="button"
-              className="flex min-h-[58px] w-full items-center justify-between px-4 py-3.5 text-left transition-colors duration-ui hover:bg-slate-50"
+              className="flex min-h-[64px] w-full items-center justify-between px-4 py-4 text-left transition-colors duration-ui hover:bg-slate-50"
               onClick={() => {
                 signOut();
                 router.replace("/onboarding");

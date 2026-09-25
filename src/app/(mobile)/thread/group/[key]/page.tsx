@@ -210,7 +210,7 @@ export default function GroupThreadPage() {
   return (
     <main className="flex h-screen flex-col">
       {/* The thread design plus the members header the brief asks for. */}
-      <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between bg-primary-container px-4 text-on-primary">
+      <header className="sticky top-0 z-20 flex h-[76px] w-full items-center justify-between bg-primary-container px-4 text-on-primary">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label="Back to the chat list">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -250,7 +250,7 @@ export default function GroupThreadPage() {
           const expanded = expandedId === message.id;
 
           return (
-            <div key={message.id} className={`mb-3 flex ${message.mine ? "justify-end" : "justify-start"}`}>
+            <div key={message.id} className={`mb-5 flex ${message.mine ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[82%] rounded-2xl px-3.5 py-3 ${
                   message.mine

@@ -437,7 +437,9 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            <div className="mt-auto w-full pt-6">
+            {/* The design leaves clear space under the pinned CTA - the button
+                must not sit on the bottom edge. */}
+            <div className="mt-auto w-full pb-12 pt-8">
               <button type="button" className="btn-primary w-full" onClick={() => setStep("phone")}>
                 Continue
               </button>
