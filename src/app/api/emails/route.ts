@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { classifyToken, lookupRecipientUsers, recipientToken } from "@/lib/alias";
+import { EMAIL_FOLDERS, isEmailFolder } from "@/lib/folders";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { deriveThreadKey } from "@/lib/threadKey";
@@ -208,8 +209,18 @@ export async function GET(request: Request) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
+  // Day 6 folders: the same list, one folder at a time. It defaults to the
+  // inbox, so every caller that predates folders keeps its exact behaviour.
+  const requestedFolder = new URL(request.url).searchParams.get("folder") ?? "inbox";
+  if (!isEmailFolder(requestedFolder)) {
+    return NextResponse.json(
+      { error: "Unknown folder.", allowedFolders: EMAIL_FOLDERS },
+      { status: 400 },
+    );
+  }
+
   const emails = await prisma.email.findMany({
-    where: { toUserId: user.sub },
+    where: { toUserId: user.sub, folder: requestedFolder },
     orderBy: { createdAt: "desc" },
     take: INBOX_LIMIT,
     select: {
@@ -222,11 +233,13 @@ export async function GET(request: Request) {
       createdAt: true,
       repliedAt: true,
       tag: true,
+      folder: true,
     },
   });
 
   return NextResponse.json(
     {
+      folder: requestedFolder,
       count: emails.length,
       emails: emails.map((email) => ({
         id: email.id,
@@ -238,6 +251,7 @@ export async function GET(request: Request) {
         createdAt: email.createdAt,
         repliedAt: email.repliedAt,
         tag: email.tag,
+        folder: email.folder,
       })),
     },
     { status: 200 },

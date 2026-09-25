@@ -43,8 +43,10 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
   const messages = await prisma.email.findMany({
     where: {
       OR: [
+        // What I sent stays visible to me; what arrived shows unless I moved it
+        // out of my inbox.
         { fromUserId: user.sub, toUserId: counterpart.id },
-        { fromUserId: counterpart.id, toUserId: user.sub },
+        { fromUserId: counterpart.id, toUserId: user.sub, folder: "inbox" },
       ],
     },
     orderBy: { createdAt: "asc" },

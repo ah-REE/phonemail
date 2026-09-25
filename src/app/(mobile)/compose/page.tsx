@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { clearDraft, readDraft, saveDraft } from "@/lib/folders";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -53,6 +54,9 @@ function ComposeForm() {
   const presetTo = searchParams.get("to") ?? "";
   const replyToId = searchParams.get("replyTo") ?? "";
   const isReply = Boolean(replyToId);
+  // Task 4: the thread's compose button opens this screen with the recipient
+  // already chosen and locked - the same affordance a reply has.
+  const lockRecipients = isReply || searchParams.get("lockTo") === "1";
 
   const [recipients, setRecipients] = useState<string[]>(() => parseRecipients(presetTo));
   const [draftRecipient, setDraftRecipient] = useState("");
@@ -69,6 +73,36 @@ function ComposeForm() {
     }
   }, [status, router]);
 
+  // Resume a draft: /compose?draft=1 fills the form from this device's storage.
+  const resumingDraft = searchParams.get("draft") === "1";
+  useEffect(() => {
+    if (!resumingDraft || isReply) {
+      return;
+    }
+    const draft = readDraft();
+    if (!draft) {
+      return;
+    }
+    if (draft.to) {
+      setRecipients(parseRecipients(draft.to));
+    }
+    setSubject(draft.subject);
+    setBody(draft.body);
+  }, [resumingDraft, isReply]);
+
+  /**
+   * Compose abandonment (Task 3): keep what has been typed on this device, so
+   * leaving the screen does not lose it. A reply is deliberately NOT drafted -
+   * reply-once is enforced against the original message, so a stale reply draft
+   * could only trap the user.
+   */
+  useEffect(() => {
+    if (isReply) {
+      return;
+    }
+    saveDraft({ to: recipients.join(", "), subject, body });
+  }, [recipients, subject, body, isReply]);
+
   function addRecipientsFrom(raw: string) {
     const parsed = parseRecipients(raw);
     if (parsed.length === 0) {
@@ -79,8 +113,8 @@ function ComposeForm() {
   }
 
   function removeRecipient(entry: string) {
-    // The recipient set of a reply is locked (reply-once is server-enforced).
-    if (isReply) {
+    // A reply and an in-thread compose both have a locked recipient set.
+    if (lockRecipients) {
       return;
     }
     setRecipients((current) => current.filter((recipient) => recipient !== entry));
@@ -140,6 +174,8 @@ function ComposeForm() {
         return;
       }
 
+      // The message reached the mail service, so the draft has done its job.
+      clearDraft();
       const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
       setNotice(`Handed to the mail service for ${addresses.join(", ")}.`);
       // Back to the thread so the new message appears when delivery completes.
@@ -189,7 +225,7 @@ function ComposeForm() {
               className="flex items-center gap-2 rounded-full border border-wa-line bg-wa-panel px-3 py-1 text-sm"
             >
               {recipient}
-              {!isReply && (
+              {!lockRecipients && (
                 <button
                   type="button"
                   aria-label={`Remove ${recipient}`}
@@ -206,10 +242,10 @@ function ComposeForm() {
           id="to"
           className={`field ${isReply ? "bg-wa-bg" : ""}`}
           inputMode="tel"
-          placeholder={isReply ? "" : "9876543210, 9876543211"}
-          value={isReply ? recipients.join(", ") : draftRecipient}
-          readOnly={isReply}
-          aria-readonly={isReply}
+          placeholder={lockRecipients ? "" : "9876543210, 9876543211"}
+          value={lockRecipients ? recipients.join(", ") : draftRecipient}
+          readOnly={lockRecipients}
+          aria-readonly={lockRecipients}
           onChange={(event) => setDraftRecipient(event.target.value)}
           onBlur={() => addRecipientsFrom(draftRecipient)}
           onKeyDown={(event) => {

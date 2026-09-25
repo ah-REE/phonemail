@@ -171,7 +171,7 @@ here is enhancement, not core function.
 
 ### Day 6 — Mon Sep 28: Buffer 1 — Remaining Features + Performance — documentation + rehearsal must be COMPLETE by EOD
 - [x] Group chat logic (2+ recipients → group; future 1:1 stays separate) *(shipped Day 6: the DERIVED thread key - see the Day 6 group-chat entry below)*
-- [ ] Drafts, Spam, Trash; alias ID management in settings *(alias ID management shipped Day 6 - see the alias entry in Section 9; Drafts/Spam/Trash are still pending)*
+- [x] Drafts, Spam, Trash; alias ID management in settings *(both shipped Day 6 - the folders on 2026-09-25, see the two Section 9 entries)*
 - [ ] k6/autocannon load test on login — fix anything over 500ms
 - [ ] Postgres connection pooling, response compression
 - [ ] Docker network hardening: only expose the `app` and `smtp` ports;
@@ -771,6 +771,53 @@ context instantly)*
   - UNVERIFIED: how any of it LOOKS. There is no browser in this session, so the
     visual result is the user's click-through - including whether the 56px touch
     floor and the new header/CTA treatment sit well on the existing screens.
+
+- Day 6: the remaining mobile-spec items - search-to-chat, chips, folders,
+  the camera-slot compose button.
+  - Search-to-chat (spec): a COMPLETE 10-digit number typed into the home
+    search box offers "Message <number>" and opens that pairwise thread. Partial
+    or invalid input offers nothing, and the thread's own empty state covers the
+    no-history case.
+  - Chips (spec): Favorites is a `favorite` value on the existing Email.tag field
+    (no migration) and a thread counts as a favourite when ANY of its messages
+    carries it - /api/conversations now reports a `favorite` flag per thread.
+    Attachments is present with a friendly empty state ("No messages with
+    attachments yet"); `attachments` is a constant 0 and that is deliberate -
+    there is no attachment backend in this build, and the chip is honest about it
+    rather than absent.
+  - Folders (spec): `Email.folder` (inbox | spam | trash), migration
+    20260925060000_add_email_folder, default 'inbox' so nothing needed a backfill.
+    folder is RECIPIENT-SCOPED state, exactly like isRead and tag: moving a message
+    takes it out of that reader's inbox and chat list while the sender still sees
+    what they sent. A move is one PATCH on /api/emails/[id]; GET /api/emails takes
+    ?folder= (defaults to inbox, so older callers are unchanged) and an unknown
+    folder is 400. The thread screen's existing reveal panel gained Spam and Trash
+    buttons, and /spam and /trash became real folder screens with a move-back.
+  - Drafts (spec): NOT a folder value, and the reason is structural - an Email row
+    needs BOTH a sender and a recipient, and an abandoned compose has no recipient
+    yet, so a database draft would need a second model for a feature whose whole
+    job is not losing what you typed. Drafts therefore live in this browser's local
+    storage: compose saves as you type, clears the draft once the message reaches
+    the mail service, and /drafts lists it with Resume/Discard. Documented in
+    lib/folders.ts and here, because it is the one menu item whose data never
+    reaches the server.
+  - Camera-slot compose (spec): the pairwise thread's input row now has the
+    traditional-compose button in the camera position, opening /compose with To
+    pre-filled and LOCKED (a new `lockTo` param, the same lock a reply has).
+  - Verified (dev mode, real SMTP round trip): build green; the migration applied
+    on container start ("Applying migration 20260925060000_add_email_folder", the
+    column present with default 'inbox'); all routes 200 including the three
+    folder screens; and 107 assertions across three suites - 43 group, 31
+    alias/403 unchanged, and 33 new ones covering the favourite flag, attachments
+    0, the folder move round trip (spam -> trash -> inbox, leaving and rejoining the
+    chat list with the unread count following), the 400 on an unknown folder, and
+    code-level checks for the search offer, the chips, the locked recipient set, the
+    draft save/clear/resume and the camera-slot button. The client-side behaviour
+    behind those code checks is NOT browser-verified - no browser in this session.
+  - Deferred, explicitly: swipe-right "reply in traditional view" (Task 5 of the
+    brief, the one explicitly marked LOW; its spec alternative - tap, full view,
+    Reply - already exists), and the per-screen visual layouts, which are the next
+    session's job. No half-built code for either.
 
 - Day 7:
 

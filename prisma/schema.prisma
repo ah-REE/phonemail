@@ -69,6 +69,12 @@ model Email {
   /// stored membership (see lib/threadKey.ts).
   threadKey String?
 
+  /// Day 6 folders: which folder the RECIPIENT keeps this message in
+  /// (inbox | spam | trash). Recipient-scoped state, like isRead and tag, so a
+  /// move never affects what the sender sees. 'inbox' is the default, which is
+  /// why no row ever needed a backfill.
+  folder String @default("inbox")
+
   fromUser User @relation("SentEmails", fields: [fromUserId], references: [id])
   toUser   User @relation("ReceivedEmails", fields: [toUserId], references: [id])
 
@@ -78,6 +84,8 @@ model Email {
   @@index([fromUserId, toUserId, createdAt])
   /// Serves the group thread query: WHERE threadKey = ? ORDER BY createdAt.
   @@index([threadKey, createdAt])
+  /// Serves a folder screen: WHERE toUserId = ? AND folder = ? ORDER BY createdAt.
+  @@index([toUserId, folder, createdAt])
 }
 
 /// A second address for one account (Day 6). localPart is unique AND is checked

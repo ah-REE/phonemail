@@ -23,6 +23,8 @@ interface ConversationThread {
   preview: string;
   lastAt: string;
   unread: number;
+  favorite?: boolean;
+  attachments?: number;
 }
 
 /** Day 6: a group conversation, keyed by its DERIVED thread key. */
@@ -34,6 +36,8 @@ interface ConversationGroup {
   preview: string;
   lastAt: string;
   unread: number;
+  favorite?: boolean;
+  attachments?: number;
 }
 
 function initialOf(counterpart: string): string {
@@ -58,7 +62,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "attachments">("all");
   const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -118,6 +122,14 @@ export default function HomePage() {
       if (filter === "unread" && thread.unread === 0) {
         return false;
       }
+      if (filter === "favorites" && !thread.favorite) {
+        return false;
+      }
+      // No attachment backend exists in this build, so this filter is always
+      // empty - that is the point of the chip: a friendly, honest empty state.
+      if (filter === "attachments" && !thread.attachments) {
+        return false;
+      }
       if (!needle) {
         return true;
       }
@@ -137,6 +149,12 @@ export default function HomePage() {
       if (filter === "unread" && group.unread === 0) {
         return false;
       }
+      if (filter === "favorites" && !group.favorite) {
+        return false;
+      }
+      if (filter === "attachments" && !group.attachments) {
+        return false;
+      }
       if (!needle) {
         return true;
       }
@@ -151,6 +169,11 @@ export default function HomePage() {
   const unreadTotal =
     threads.reduce((sum, thread) => sum + thread.unread, 0) +
     groupThreads.reduce((sum, group) => sum + group.unread, 0);
+
+  // Search-to-chat: a COMPLETE 10-digit number in the search box is an
+  // invitation to start a conversation with it. Partial or invalid input offers
+  // nothing - a wrong offer is worse than no offer.
+  const searchNumber = /^[6-9]\d{9}$/.test(query.trim()) ? query.trim() : null;
 
   if (status !== "authenticated") {
     return (
@@ -198,6 +221,20 @@ export default function HomePage() {
         >
           Unread {unreadTotal > 0 ? `(${unreadTotal})` : ""}
         </button>
+        <button
+          type="button"
+          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "favorites" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
+          onClick={() => setFilter("favorites")}
+        >
+          Favorites
+        </button>
+        <button
+          type="button"
+          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "attachments" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
+          onClick={() => setFilter("attachments")}
+        >
+          Attachments
+        </button>
         <span className="ml-auto text-xs text-wa-muted">
           {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting…"}
         </span>
@@ -211,6 +248,23 @@ export default function HomePage() {
         </button>
       </div>
 
+      {searchNumber && (
+        <Link
+          href={`/thread/${searchNumber}`}
+          className="row border-b border-wa-line bg-surface-container-low"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-xl font-semibold text-white">
+            +
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-lg font-semibold">Message {searchNumber}</span>
+            <span className="block truncate text-sm text-wa-muted">
+              Start a conversation with this number
+            </span>
+          </span>
+        </Link>
+      )}
+
       {loading && <ChatListSkeleton rows={4} />}
       {error && (
         <p className="p-4 text-wa-alert" role="alert">
@@ -221,12 +275,20 @@ export default function HomePage() {
       {!loading && !error && visible.length + visibleGroups.length === 0 && (
         <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
           <p className="text-lg font-semibold">
-            {threads.length + groupThreads.length === 0 ? "No messages yet" : "Nothing matches that search"}
+            {filter === "attachments"
+              ? "No messages with attachments yet"
+              : threads.length + groupThreads.length === 0
+                ? "No messages yet"
+                : "Nothing matches that search"}
           </p>
           <p className="text-sm text-wa-muted">
-            {threads.length + groupThreads.length === 0
-              ? "Start a conversation and it will appear here."
-              : "Try a different name, subject or number."}
+            {filter === "attachments"
+              ? "Attachments are not supported yet - this is where they will appear."
+              : filter === "favorites"
+                ? "Open a message and use the tag button to mark it a favorite."
+                : threads.length + groupThreads.length === 0
+                  ? "Start a conversation and it will appear here."
+                  : "Try a different name, subject or number."}
           </p>
           {threads.length + groupThreads.length === 0 && (
             <Link href="/compose" className="btn-primary">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { FAVORITE_TAG } from "@/lib/tags";
 import { phoneOf } from "@/lib/threadKey";
 
 export const runtime = "nodejs";
@@ -45,6 +46,8 @@ interface ThreadAccumulator {
   preview: string;
   lastAt: Date;
   unread: number;
+  /** Day 6: true when ANY message in the thread carries the favorite tag. */
+  favorite: boolean;
 }
 
 interface GroupAccumulator {
@@ -55,6 +58,8 @@ interface GroupAccumulator {
   preview: string;
   lastAt: Date;
   unread: number;
+  /** Day 6: true when ANY message in the group carries the favorite tag. */
+  favorite: boolean;
 }
 
 export async function GET(request: Request) {
@@ -65,7 +70,13 @@ export async function GET(request: Request) {
 
   const emails = await prisma.email.findMany({
     where: {
-      OR: [{ toUserId: user.sub }, { fromUserId: user.sub }],
+      // folder is RECIPIENT state: my own incoming spam/trash leaves the chat
+      // list, while everything I sent stays visible to me regardless of what
+      // the recipient did with it.
+      OR: [
+        { toUserId: user.sub, folder: "inbox" },
+        { fromUserId: user.sub },
+      ],
     },
     orderBy: { createdAt: "desc" },
     take: SCAN_LIMIT,
@@ -79,6 +90,7 @@ export async function GET(request: Request) {
       isRead: true,
       createdAt: true,
       threadKey: true,
+      tag: true,
     },
   });
 
@@ -101,6 +113,7 @@ export async function GET(request: Request) {
             body: true,
             isRead: true,
             createdAt: true,
+            tag: true,
           },
         })
       : [];
@@ -130,12 +143,16 @@ export async function GET(request: Request) {
         preview: previewOf(email.body),
         lastAt: email.createdAt,
         unread: isUnread ? 1 : 0,
+        favorite: email.tag === FAVORITE_TAG,
       });
       continue;
     }
 
     if (isUnread) {
       existing.unread += 1;
+    }
+    if (email.tag === FAVORITE_TAG) {
+      existing.favorite = true;
     }
   }
 
@@ -156,6 +173,7 @@ export async function GET(request: Request) {
         preview: previewOf(row.body),
         lastAt: row.createdAt,
         unread: row.toUserId === user.sub && !row.isRead ? 1 : 0,
+        favorite: row.tag === FAVORITE_TAG,
       });
       continue;
     }
@@ -167,12 +185,18 @@ export async function GET(request: Request) {
     if (row.toUserId === user.sub && !row.isRead) {
       existing.unread += 1;
     }
+    if (row.tag === FAVORITE_TAG) {
+      existing.favorite = true;
+    }
   }
 
   const ordered = [...threads.values()]
     .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
     .slice(0, THREAD_LIMIT)
-    .map((thread) => ({ ...thread, lastAt: thread.lastAt.toISOString() }));
+    // `attachments` is a constant 0 on purpose: there is no attachment backend
+    // in this build, and the chip exists so the empty state is honest rather
+    // than absent.
+    .map((thread) => ({ ...thread, attachments: 0, lastAt: thread.lastAt.toISOString() }));
 
   const orderedGroups = [...groups.values()]
     .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
@@ -185,6 +209,8 @@ export async function GET(request: Request) {
       preview: group.preview,
       lastAt: group.lastAt.toISOString(),
       unread: group.unread,
+      favorite: group.favorite,
+      attachments: 0,
     }));
 
   return NextResponse.json(

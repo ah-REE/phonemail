@@ -1,5 +1,11 @@
-import { ComingSoon } from "@/components/coming-soon";
+import { FolderScreen } from "@/components/folder-screen";
 
 export default function SpamPage() {
-  return <ComingSoon title="Spam" note="Filtered messages will live here. Built on Day 6." />;
+  return (
+    <FolderScreen
+      title="Spam"
+      folder="spam"
+      emptyNote="Messages you move here from a conversation will appear in this list."
+    />
+  );
 }

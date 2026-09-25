@@ -186,6 +186,26 @@ export default function ThreadPage() {
     }
   }
 
+  /**
+   * Day 6 folders: moving a message is one PATCH on its folder, exactly like a
+   * tag. It leaves the conversation (folder is recipient-scoped state) and
+   * appears on the Spam or Trash screen.
+   */
+  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+    setTagOpenId(null);
+    setError(null);
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    if (!response.ok) {
+      setError("Could not move that message.");
+      return;
+    }
+    void load(false);
+  }
+
   if (status !== "authenticated") {
     return (
       <main className="flex h-screen flex-col">
@@ -347,6 +367,20 @@ export default function ThreadPage() {
                     >
                       clear
                     </button>
+                    <button
+                      type="button"
+                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
+                      onClick={() => void moveMessage(message.id, "spam")}
+                    >
+                      Spam
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
+                      onClick={() => void moveMessage(message.id, "trash")}
+                    >
+                      Trash
+                    </button>
                   </div>
                 )}
               </div>
@@ -355,9 +389,35 @@ export default function ThreadPage() {
         })}
       </div>
 
-      <div className="border-t border-wa-line p-3">
-        <Link href={`/compose?to=${encodeURIComponent(phone)}`} className="btn-primary w-full">
+      {/* Task 4: the input row, with the traditional-compose button in the
+          camera slot on the right. It opens compose with To already filled in
+          and LOCKED - the recipient is the conversation you are already in. */}
+      <div className="flex items-center gap-2 border-t border-wa-line p-3">
+        <Link
+          href={`/compose?to=${encodeURIComponent(phone)}`}
+          className="field flex flex-1 items-center bg-surface-container-low text-wa-muted"
+        >
           Message {phone}
+        </Link>
+        <Link
+          href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
+          aria-label={`Write to ${phone} in the traditional view`}
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-wa-green text-on-surface"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
+            <path d="M13.5 6.5l4 4" />
+          </svg>
         </Link>
       </div>
     </main>

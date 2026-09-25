@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { EMAIL_FOLDERS } from "@/lib/folders";
 import { EMAIL_TAGS } from "@/lib/tags";
 
 export const runtime = "nodejs";
@@ -24,10 +25,13 @@ const patchSchema = z
   .object({
     isRead: z.boolean().optional(),
     tag: z.union([z.enum(EMAIL_TAGS), z.null()]).optional(),
+    // Day 6 folders: moving a message is one field change, like a tag.
+    folder: z.enum(EMAIL_FOLDERS).optional(),
   })
-  .refine((value) => value.isRead !== undefined || value.tag !== undefined, {
-    message: "Provide isRead and/or tag.",
-  });
+  .refine(
+    (value) => value.isRead !== undefined || value.tag !== undefined || value.folder !== undefined,
+    { message: "Provide isRead, tag and/or folder." },
+  );
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = requireUser(request);
@@ -78,8 +82,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     data: {
       ...(parsed.data.isRead !== undefined ? { isRead: parsed.data.isRead } : {}),
       ...(parsed.data.tag !== undefined ? { tag: parsed.data.tag } : {}),
+      ...(parsed.data.folder !== undefined ? { folder: parsed.data.folder } : {}),
     },
-    select: { id: true, isRead: true, tag: true },
+    select: { id: true, isRead: true, tag: true, folder: true },
   });
 
   return NextResponse.json(updated, { status: 200 });
