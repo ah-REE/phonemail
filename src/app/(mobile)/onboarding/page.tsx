@@ -173,14 +173,6 @@ function HeroMark() {
           <stop offset="0%" stopColor="#e8f1fb" stopOpacity="0.9" />
           <stop offset="100%" stopColor="#e8f1fb" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="hero-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#60a5fa" />
-          <stop offset="100%" stopColor="#1e40af" />
-        </linearGradient>
-        <linearGradient id="hero-flap" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#dbeafe" />
-        </linearGradient>
       </defs>
 
       <circle cx="150" cy="150" r="149" fill="url(#hero-glow)" />
@@ -249,12 +241,9 @@ function HeroMark() {
       <circle cx="20" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
       <circle cx="280" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
 
-      {/* the open envelope, resting on a soft shadow and floating */}
-      <g className="hero-float">
-        <ellipse cx="150" cy="193" rx="44" ry="7" fill="#dbeafe" opacity="0.75" />
-        <path d="M112 152H188V192a8 8 0 0 1-8 8H120a8 8 0 0 1-8-8z" fill="url(#hero-body)" />
-        <path d="M112 152H188L150 180z" fill="url(#hero-flap)" />
-      </g>
+      {/* The mark itself is the owner's artwork, placed over this ring by the
+          screen - see the welcome step. */}
+
     </svg>
   );
 }
@@ -438,8 +427,26 @@ export default function OnboardingPage() {
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
-              <div className="enter enter-2 relative mx-auto flex h-[300px] w-[300px] items-center justify-center">
+              <div className="enter enter-2 relative mx-auto flex h-[320px] w-[320px] items-center justify-center">
+                {/* A soft accent bloom behind the ring, so the hero sits in light
+                    rather than on the page. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute h-[260px] w-[260px] rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(75,61,245,0.12) 0%, rgba(12,59,54,0.07) 45%, rgba(0,0,0,0) 72%)",
+                  }}
+                />
                 <HeroMark />
+                {/* The owner's own mark, transparent, resting inside the ring. */}
+                <img
+                  src="/brand/phonemail-logo.png"
+                  alt="PhoneMail"
+                  width={104}
+                  height={104}
+                  className="pointer-events-none absolute h-[104px] w-[104px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
+                />
               </div>
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
                 Your phone number is your email address.
