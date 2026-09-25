@@ -863,6 +863,35 @@ context instantly)*
     layout is confirmed by building it and by reading the source, not by
     observing a browser render.
 
+- Day 6: VISUAL RESTYLE, screen 2 of 9 - the home / chat list.
+  - Source: design/phonemail_home/code.html. Layout follows it: a 60px top bar
+    (menu button, wordmark, account avatar that links to the profile), a pill
+    search field, a horizontally scrolling chip row, 76px conversation rows with
+    a 48px avatar, time and unread badge, the encryption footer, and the 48px
+    circular compose button pinned bottom-right. Thread rows now show the
+    counterpart as the title with subject and preview beneath, matching the
+    mockup's rhythm.
+  - Two app features the mockup predates, placed without distorting it: the
+    search-to-chat offer renders as one more row directly under the search field
+    while a complete number is typed, and the live/polling indicator moved down
+    into the encryption footer (the mockup's top bar is a clean three-element
+    row and a fourth item would break its proportions). Group threads keep their
+    member-count avatar and sit with the pairwise rows.
+  - Verified: build green; / answers 200; the three suites are green again
+    (43 + 33 + 31 = 107 assertions). Two assertions in the final-items suite had
+    to be corrected, and this is worth recording: they asserted the literal
+    `setFilter("favorites")` string, which the restyled chips no longer emit
+    because the chip row is now rendered from an array. The check was over-fitted
+    to the old markup - the feature was never at risk - and it now asserts the
+    chip set and labels instead.
+  - NOT DONE: screens 3-9 (pairwise thread, group thread, compose, traditional
+    full view, settings/profile, drawer + /terms + /portal, desktop) and the
+    group-folder add-on scoped to screens 3-4. No half-restyled screen is in the
+    tree.
+  - UNVERIFIED: the visual result, as always - no browser in this session. The
+    home page is a client component, so the served HTML is the loading skeleton;
+    the layout is confirmed by compiling it and by reading the source.
+
 - Day 7:
 
 ---

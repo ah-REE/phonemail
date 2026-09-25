@@ -9,11 +9,22 @@ import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
 /**
- * WhatsApp-style chat list (mobile home).
+ * Chat list (mobile home).
  *
  * Data comes from GET /api/conversations. Each row opens the thread for that
  * counterpart. Realtime is Socket.io via the shared hook; when the socket is
  * unavailable the hook polls every 30s so the list still works.
+ *
+ * Visual refresh: the layout follows design/phonemail_home - 60px top bar with
+ * the menu button, the wordmark and the account avatar; a pill search field; a
+ * horizontally scrolling chip row; 76px conversation rows with a 48px avatar, a
+ * time and an unread badge; the encryption footer; and the 48px circular compose
+ * button pinned bottom-right.
+ *
+ * Two things the mockup predates and that therefore had to be placed WITHOUT
+ * breaking its proportions: the live/polling indicator (moved down to the
+ * encryption footer) and the search-to-chat offer, which renders as one more row
+ * directly under the search field while a complete number is typed.
  */
 
 interface ConversationThread {
@@ -47,15 +58,31 @@ function initialOf(counterpart: string): string {
 function formatTime(iso: string): string {
   const date = new Date(iso);
   const now = new Date();
-  const sameDay = date.toDateString() === now.toDateString();
-  return sameDay
-    ? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) {
+    return null;
+  }
+  return (
+    <span className="mt-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-wa-green px-1.5 text-[11px] font-bold text-on-surface">
+      {count}
+    </span>
+  );
 }
 
 export default function HomePage() {
   const router = useRouter();
-  const { status, token, authorizedFetch } = useAuth();
+  const { status, token, user, authorizedFetch } = useAuth();
 
   const [threads, setThreads] = useState<ConversationThread[]>([]);
   const [groupThreads, setGroupThreads] = useState<ConversationGroup[]>([]);
@@ -91,7 +118,7 @@ export default function HomePage() {
     }
   }, [authorizedFetch, router]);
 
-  // Never redirect while the phase is unknown — that is the refresh-race fix.
+  // Never redirect while the phase is unknown - that is the refresh-race fix.
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/onboarding");
@@ -178,216 +205,243 @@ export default function HomePage() {
   if (status !== "authenticated") {
     return (
       <main className="flex flex-1 flex-col">
-        <header className="bg-wa-teal px-4 py-3 text-white">
-          <h1 className="text-xl font-semibold">PhoneMail</h1>
+        <header className="flex h-[60px] shrink-0 items-center px-4">
+          <span className="skeleton h-6 w-40 rounded-full" />
         </header>
         <ChatListSkeleton />
       </main>
     );
   }
 
+  const chips: Array<{ key: typeof filter; label: string }> = [
+    { key: "all", label: "All" },
+    { key: "unread", label: unreadTotal > 0 ? `Unread (${unreadTotal})` : "Unread" },
+    { key: "favorites", label: "Favorites" },
+    { key: "attachments", label: "Attachments" },
+  ];
+
   return (
     <main className="flex flex-1 flex-col">
-      <header className="bg-wa-teal text-white">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <h1 className="flex-1 text-xl font-semibold">PhoneMail</h1>
-          <Link href="/profile" aria-label="Profile" className="min-h-tap min-w-tap text-2xl leading-none">
-            ◎
+      <div className="relative flex w-full flex-1 flex-col">
+
+        {/* 1. Top bar */}
+        <header className="flex h-[60px] w-full shrink-0 select-none items-center justify-between px-4">
+          <button
+            type="button"
+            aria-label="Open menu"
+            className="-ml-2 flex h-10 w-10 items-center justify-center rounded-full text-on-surface transition-opacity duration-ui active:opacity-75"
+            onClick={() => setMenuOpen(true)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="3" y="6" width="18" height="2" rx="1" />
+              <rect x="3" y="11" width="18" height="2" rx="1" />
+              <rect x="3" y="16" width="18" height="2" rx="1" />
+            </svg>
+          </button>
+
+          <h1 className="font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em]">PhoneMail</h1>
+
+          <Link
+            href="/profile"
+            aria-label="Profile and settings"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wa-teal font-headline text-base font-bold text-white"
+          >
+            {initialOf(user?.phoneNumber ?? "")}
           </Link>
-        </div>
-        <div className="px-4 pb-3">
-          <input
-            className="field bg-white text-wa-ink"
-            placeholder="Search messages"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search messages"
-          />
-        </div>
-      </header>
+        </header>
 
-      <div className="flex items-center gap-2 border-b border-wa-line px-4 py-2">
-        <button
-          type="button"
-          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "all" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
-          onClick={() => setFilter("all")}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "unread" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
-          onClick={() => setFilter("unread")}
-        >
-          Unread {unreadTotal > 0 ? `(${unreadTotal})` : ""}
-        </button>
-        <button
-          type="button"
-          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "favorites" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
-          onClick={() => setFilter("favorites")}
-        >
-          Favorites
-        </button>
-        <button
-          type="button"
-          className={`min-h-tap rounded-full px-4 text-sm font-semibold ${filter === "attachments" ? "bg-wa-teal text-white" : "bg-wa-line text-wa-ink"}`}
-          onClick={() => setFilter("attachments")}
-        >
-          Attachments
-        </button>
-        <span className="ml-auto text-xs text-wa-muted">
-          {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting…"}
-        </span>
-        <button
-          type="button"
-          aria-label="Menu"
-          className="min-h-tap min-w-tap text-xl leading-none"
-          onClick={() => setMenuOpen(true)}
-        >
-          ☰
-        </button>
-      </div>
-
-      {searchNumber && (
-        <Link
-          href={`/thread/${searchNumber}`}
-          className="row border-b border-wa-line bg-surface-container-low"
-        >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-xl font-semibold text-white">
-            +
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-lg font-semibold">Message {searchNumber}</span>
-            <span className="block truncate text-sm text-wa-muted">
-              Start a conversation with this number
+        {/* 2. Search */}
+        <div className="w-full px-4 py-3">
+          <div className="flex h-11 w-full items-center rounded-full border border-wa-outline bg-surface px-4">
+            <span className="mr-3 shrink-0 text-on-surface-variant" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M16 16l4 4" />
+              </svg>
             </span>
-          </span>
-        </Link>
-      )}
-
-      {loading && <ChatListSkeleton rows={4} />}
-      {error && (
-        <p className="p-4 text-wa-alert" role="alert">
-          {error}
-        </p>
-      )}
-
-      {!loading && !error && visible.length + visibleGroups.length === 0 && (
-        <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
-          <p className="text-lg font-semibold">
-            {filter === "attachments"
-              ? "No messages with attachments yet"
-              : threads.length + groupThreads.length === 0
-                ? "No messages yet"
-                : "Nothing matches that search"}
-          </p>
-          <p className="text-sm text-wa-muted">
-            {filter === "attachments"
-              ? "Attachments are not supported yet - this is where they will appear."
-              : filter === "favorites"
-                ? "Open a message and use the tag button to mark it a favorite."
-                : threads.length + groupThreads.length === 0
-                  ? "Start a conversation and it will appear here."
-                  : "Try a different name, subject or number."}
-          </p>
-          {threads.length + groupThreads.length === 0 && (
-            <Link href="/compose" className="btn-primary">
-              Write a message
-            </Link>
-          )}
+            <input
+              className="w-full bg-transparent p-0 text-sm text-on-surface outline-none placeholder:text-outline"
+              placeholder="Search messages or a number"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search messages"
+            />
+          </div>
         </div>
-      )}
 
-      {visibleGroups.length > 0 && (
-        <ul className="border-b-2 border-wa-teal/30">
-          {visibleGroups.map((group) => (
-            <li key={group.threadKey} className="border-b border-wa-line">
-              <Link href={`/thread/group/${encodeURIComponent(group.threadKey)}`} className="row">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-lg font-semibold text-white">
-                  {group.members.length}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline gap-2">
-                    <span className="truncate text-lg font-semibold">
-                      Group - {group.members.join(", ")}
-                    </span>
-                    <span className="ml-auto shrink-0 text-xs text-wa-muted">
-                      {formatTime(group.lastAt)}
-                    </span>
-                  </span>
-                  <span className="block truncate text-sm text-wa-muted">{group.subject}</span>
-                  <span className="block truncate text-sm text-wa-muted">{group.preview}</span>
-                </span>
-                {group.unread > 0 && (
-                  <span className="ml-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-wa-green px-2 text-sm font-semibold text-white">
-                    {group.unread}
-                  </span>
-                )}
-              </Link>
-            </li>
+        {/* 3. Filter chips */}
+        <div className="flex w-full gap-2 overflow-x-auto px-4 pb-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-ui ${
+                filter === chip.key
+                  ? "bg-wa-teal text-white"
+                  : "border border-wa-outline bg-surface text-on-surface"
+              }`}
+              onClick={() => setFilter(chip.key)}
+            >
+              {chip.label}
+            </button>
           ))}
-        </ul>
-      )}
+        </div>
 
-      <ul className="flex-1 overflow-y-auto">
-        {visible.map((thread) => (
-          <li key={thread.counterpartAddress} className="border-b border-wa-line">
-            <Link href={`/thread/${thread.counterpart}`} className="row">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal text-xl font-semibold text-white">
+        {/* Search-to-chat offer */}
+        {searchNumber && (
+          <div className="w-full px-4 pb-2">
+            <Link
+              href={`/thread/${searchNumber}`}
+              className="flex h-[76px] w-full items-center rounded-2xl border border-wa-outline bg-surface-container-low px-4"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-green text-on-surface">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </span>
+              <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
+                <span className="truncate text-base font-bold">Message {searchNumber}</span>
+                <span className="mt-0.5 truncate text-sm text-on-surface-variant">
+                  Start a conversation with this number
+                </span>
+              </span>
+            </Link>
+          </div>
+        )}
+
+        {loading && <ChatListSkeleton rows={4} />}
+        {error && (
+          <p className="px-4 text-wa-alert" role="alert">
+            {error}
+          </p>
+        )}
+
+        {!loading && !error && visible.length + visibleGroups.length === 0 && (
+          <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
+            <p className="text-lg font-semibold">
+              {filter === "attachments"
+                ? "No messages with attachments yet"
+                : threads.length + groupThreads.length === 0
+                  ? "No messages yet"
+                  : "Nothing matches that search"}
+            </p>
+            <p className="text-sm text-on-surface-variant">
+              {filter === "attachments"
+                ? "Attachments are not supported yet - this is where they will appear."
+                : filter === "favorites"
+                  ? "Open a message and use the tag button to mark it a favorite."
+                  : threads.length + groupThreads.length === 0
+                    ? "Start a conversation and it will appear here."
+                    : "Try a different name, subject or number."}
+            </p>
+            {threads.length + groupThreads.length === 0 && (
+              <Link href="/compose" className="btn-primary">
+                Write a message
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* 4. Conversation rows */}
+        <div className="flex w-full flex-col pb-28">
+          {visibleGroups.map((group) => (
+            <Link
+              key={group.threadKey}
+              href={`/thread/group/${encodeURIComponent(group.threadKey)}`}
+              className="flex h-[76px] w-full cursor-pointer items-center px-4 active:bg-surface-container-high/40"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wa-teal font-headline text-base font-bold text-white">
+                {group.members.length}
+              </span>
+              <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
+                <span className="truncate text-base font-bold">Group - {group.members.join(", ")}</span>
+                <span className="mt-0.5 truncate text-sm text-on-surface-variant">{group.subject}</span>
+                <span className="truncate text-sm text-on-surface-variant">{group.preview}</span>
+              </span>
+              <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
+                <span className="text-xs text-on-surface-variant">{formatTime(group.lastAt)}</span>
+                <UnreadBadge count={group.unread} />
+              </span>
+            </Link>
+          ))}
+
+          {visible.map((thread) => (
+            <Link
+              key={thread.counterpartAddress}
+              href={`/thread/${thread.counterpart}`}
+              className="flex h-[76px] w-full cursor-pointer items-center px-4 active:bg-surface-container-high/40"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-container-high font-headline text-base font-bold text-primary-container">
                 {initialOf(thread.counterpart)}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline gap-2">
-                  <span className="truncate text-lg font-semibold">{thread.counterpart}</span>
-                  <span className="ml-auto shrink-0 text-xs text-wa-muted">{formatTime(thread.lastAt)}</span>
-                </span>
-                <span className="block truncate text-sm text-wa-muted">{thread.subject}</span>
-                <span className="block truncate text-sm text-wa-muted">{thread.preview}</span>
+              <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
+                <span className="truncate text-base font-bold">{thread.counterpart}</span>
+                <span className="mt-0.5 truncate text-sm text-on-surface-variant">{thread.subject}</span>
+                <span className="truncate text-sm text-on-surface-variant">{thread.preview}</span>
               </span>
-              {thread.unread > 0 && (
-                <span className="ml-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-wa-green px-2 text-sm font-semibold text-white">
-                  {thread.unread}
-                </span>
-              )}
+              <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
+                <span className="text-xs text-on-surface-variant">{formatTime(thread.lastAt)}</span>
+                <UnreadBadge count={thread.unread} />
+              </span>
             </Link>
-          </li>
-        ))}
-      </ul>
+          ))}
 
-      <Link
-        href="/compose"
-        aria-label="Compose"
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-wa-green text-3xl text-white"
-      >
-        +
-      </Link>
-
-      {menuOpen && (
-        <div className="fixed inset-0 z-10 flex bg-black/40" role="dialog" aria-modal="true">
-          <nav className="w-3/4 max-w-xs bg-wa-panel p-4">
-            <p className="mb-2 text-sm uppercase tracking-wide text-wa-muted">Menu</p>
-            <Link href="/" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-              Home
-            </Link>
-            <Link href="/drafts" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-              Drafts
-            </Link>
-            <Link href="/spam" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-              Spam
-            </Link>
-            <Link href="/trash" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-              Trash
-            </Link>
-            <Link href="/desktop" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
-              Desktop version
-            </Link>
-            <button type="button" className="btn-quiet mt-4 w-full" onClick={() => setMenuOpen(false)}>
-              Close
-            </button>
-          </nav>
-          <button type="button" aria-label="Close menu" className="flex-1" onClick={() => setMenuOpen(false)} />
+          <div className="flex w-full select-none items-center justify-center gap-1.5 px-6 py-8 text-xs text-on-surface-variant">
+            <span className="shrink-0" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <rect x="5" y="10.5" width="14" height="9" rx="2" />
+                <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+              </svg>
+            </span>
+            <span>Your personal emails are end-to-end encrypted</span>
+            <span aria-hidden="true">·</span>
+            <span title="connection">
+              {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
+            </span>
+          </div>
         </div>
-      )}
+
+        {/* 5. Floating compose button */}
+        <div className="fixed bottom-6 right-6 z-10">
+          <Link
+            href="/compose"
+            aria-label="Compose email"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-wa-green text-on-surface transition-opacity duration-ui active:opacity-90"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
+              <path d="M13.5 6.5l4 4" />
+            </svg>
+          </Link>
+        </div>
+
+        {menuOpen && (
+          <div className="fixed inset-0 z-10 flex bg-black/40" role="dialog" aria-modal="true">
+            <nav className="w-3/4 max-w-xs bg-wa-panel p-4">
+              <p className="mb-2 text-xs uppercase tracking-wide text-on-surface-variant">Menu</p>
+              <Link href="/" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+                Home
+              </Link>
+              <Link href="/drafts" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+                Drafts
+              </Link>
+              <Link href="/spam" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+                Spam
+              </Link>
+              <Link href="/trash" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+                Trash
+              </Link>
+              <Link href="/desktop" className="block min-h-tap py-3 text-lg" onClick={() => setMenuOpen(false)}>
+                Desktop version
+              </Link>
+              <button type="button" className="btn-quiet mt-4 w-full" onClick={() => setMenuOpen(false)}>
+                Close
+              </button>
+            </nav>
+            <button type="button" aria-label="Close menu" className="flex-1" onClick={() => setMenuOpen(false)} />
+          </div>
+        )}
+      </div>
     </main>
   );
 }
