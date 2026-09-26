@@ -1609,6 +1609,33 @@ context instantly)*
     with the favicon, the Apple icon, both PWA icons and the manifest all
     answering; and real mode confirmed in the container.
 
+- Day 7 (Sat Sep 26): the door's wording, and both text boxes rebuilt to the
+  owner's reference.
+  - The consent line on the first screen is the owner's own: 'By continuing,
+    you agree to the Terms & Conditions', with the link on it. The number
+    step's copy of the same line is removed, so it is said once, on the screen
+    that asks you to agree.
+  - The caption under the mark no longer explains that a phone number is an
+    email address: it reads 'A private inbox, ready in seconds.', and the number
+    step's reads 'One number is all we need'.
+  - BOTH TEXT BOXES ARE NOW THE OWNER'S REFERENCE BAR: one wide rounded field
+    (28px radius, a hairline outline-variant border, the chat field's white, a
+    soft card shadow, and the accent on focus). The number field carries the
+    reference's furniture - a country chip in the soft tint, a hairline divider,
+    the number large and bold as it is typed, the accent caret, and a clear
+    button that appears with the number.
+  - The six code cells became one bar in the same geometry. They are still six
+    real inputs - so the auto-advance, the paste handling and the per-digit
+    screen-reader labels all still work - but they carry no borders of their own
+    and sit inside the one rounded shape, with a clear button for the code too.
+  - Where the reference uses a green caret and a mint chip, this uses the accent
+    and its soft tint: the owner asked for the green to leave the interface two
+    passes ago, and the reference's blue is this system's accent anyway.
+  - Verified: build green; the screens suite 26/26, welcome 15/15 after updating
+    the one assertion that quoted the old consent wording, palette 27/27 and
+    chat 21/21; and the deployed bundle serving the new bar geometry and the new
+    copy. Real mode confirmed in the container.
+
 - Day 7:
 
 ---

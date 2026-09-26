@@ -364,7 +364,7 @@ export default function OnboardingPage() {
                 style={{ width: "min(156px, 40vw, 20vh)" }}
               />
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
-                Your phone number is your email address.
+                A private inbox, ready in seconds.
               </p>
             </div>
 
@@ -372,11 +372,10 @@ export default function OnboardingPage() {
               {/* The owner's own wording, sitting directly above the button it is
                   about, with the one link that has a route. */}
               <p className="px-2 text-center text-[13px] leading-relaxed text-on-surface-variant">
-                By clicking Create account you agree to accept the{" "}
+                By continuing, you agree to the{" "}
                 <Link href="/terms" className="font-semibold text-accent">
-                  Terms and Conditions
+                  Terms &amp; Conditions
                 </Link>
-                .
               </p>
               {/* Two doors, one authentication. Both collect a number, both
                   prove it with a one-time code - the only way into PhoneMail. */}
@@ -418,52 +417,50 @@ export default function OnboardingPage() {
                   {mode === "login" ? "Welcome back" : "You're almost in!"}
                 </h1>
                 <p className="mt-1 text-base leading-relaxed text-on-surface-variant">
-                  Your phone number is your email address
+                  One number is all we need
                 </p>
               </div>
 
               <div className="mt-6 flex flex-col gap-4">
-                <div className="flex w-full items-center justify-between rounded-xl border border-wa-outline bg-surface p-4 transition-all duration-ui focus-within:border-2 focus-within:border-primary-container">
-                  <div className="flex items-center gap-2 pr-4">
+                {/* The owner's reference: one wide rounded bar, a soft chip for
+                    the country, a hairline divider, the number large and bold as
+                    you type it, and a clear button that appears with it. */}
+                <div className="flex w-full items-center gap-3 rounded-[28px] border border-outline-variant bg-chat-field py-2 pl-3 pr-2 shadow-card transition-all duration-ui focus-within:border-accent">
+                  <span className="flex shrink-0 items-center gap-2 rounded-full bg-accent-soft px-3 py-2 text-base font-semibold text-accent">
                     <span className="select-none leading-none" aria-hidden="true">
                       🇮🇳
                     </span>
-                    <span className="text-base font-bold">+91</span>
-                    <span className="text-on-surface-variant">
-                      <Icon name="chevron" size={18} />
-                    </span>
-                  </div>
+                    +91
+                  </span>
 
-                  <div className="h-8 w-px bg-wa-outline" />
+                  <span className="h-7 w-px shrink-0 bg-outline-variant" />
 
-                  <div className="flex min-w-0 flex-1 items-center justify-between pl-4">
-                    <input
-                      className="w-full bg-transparent text-base font-semibold tracking-wide outline-none"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      placeholder="9876543210"
-                      maxLength={10}
-                      value={phoneNumber}
-                      onChange={(event) => {
-                        setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 10));
+                  <input
+                    className="min-w-0 flex-1 bg-transparent text-[22px] font-bold tracking-wide text-on-surface caret-accent outline-none placeholder:font-normal placeholder:text-outline"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    placeholder="9876543210"
+                    maxLength={10}
+                    value={phoneNumber}
+                    onChange={(event) => {
+                      setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 10));
+                      setPhoneError(null);
+                    }}
+                    aria-label="Phone number"
+                  />
+                  {phoneNumber.length > 0 && (
+                    <button
+                      type="button"
+                      aria-label="Clear the number"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant"
+                      onClick={() => {
+                        setPhoneNumber("");
                         setPhoneError(null);
                       }}
-                      aria-label="Phone number"
-                    />
-                    {phoneNumber.length > 0 && (
-                      <button
-                        type="button"
-                        aria-label="Clear the number"
-                        className="flex min-h-0 items-center justify-center p-1 text-on-surface-variant"
-                        onClick={() => {
-                          setPhoneNumber("");
-                          setPhoneError(null);
-                        }}
-                      >
-                        <Icon name="clear" size={20} />
-                      </button>
-                    )}
-                  </div>
+                    >
+                      <Icon name="clear" size={20} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-start gap-2 px-1">
@@ -517,12 +514,6 @@ export default function OnboardingPage() {
                 {sending ? <Spinner label="Sending" /> : "Send OTP"}
               </button>
 
-              <p className="px-4 text-center text-xs leading-normal text-on-surface-variant">
-                By continuing, you agree to the{" "}
-                <Link href="/terms" className="font-semibold text-primary-container underline">
-                  Terms &amp; Conditions
-                </Link>
-              </p>
             </div>
           </>
         )}
@@ -559,30 +550,41 @@ export default function OnboardingPage() {
               </span>
             </div>
 
-            <div className="mb-8 flex w-full items-center justify-between gap-2 px-1">
+            {/* The same bar as the number field, six digits inside it: one
+                rounded shape, one hairline, and the digit you are on carries the
+                accent caret. */}
+            <div className="mb-8 flex w-full items-center gap-1 rounded-[28px] border border-outline-variant bg-chat-field py-2 pl-3 pr-2 shadow-card transition-all duration-ui focus-within:border-accent">
               {digits.map((digit, index) => (
-                <div
+                <input
                   key={index}
-                  className={`flex h-14 flex-1 items-center justify-center rounded-xl border bg-surface ${
-                    digit ? "border-primary-container" : "border-wa-outline"
-                  }`}
-                >
-                  <input
-                    ref={(element) => {
-                      inputsRef.current[index] = element;
-                    }}
-                    className="w-full bg-transparent text-center text-[22px] font-bold outline-none"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={1}
-                    value={digit}
-                    disabled={verifying || lockedOut}
-                    onChange={(event) => handleDigitChange(index, event.target.value)}
-                    onKeyDown={(event) => handleDigitKeyDown(index, event.key)}
-                    aria-label={`Digit ${index + 1}`}
-                  />
-                </div>
+                  ref={(element) => {
+                    inputsRef.current[index] = element;
+                  }}
+                  className="min-w-0 flex-1 bg-transparent text-center text-[24px] font-bold tracking-wider text-on-surface caret-accent outline-none disabled:opacity-60"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={1}
+                  value={digit}
+                  disabled={verifying || lockedOut}
+                  onChange={(event) => handleDigitChange(index, event.target.value)}
+                  onKeyDown={(event) => handleDigitKeyDown(index, event.key)}
+                  aria-label={`Digit ${index + 1}`}
+                />
               ))}
+              {digits.some((entry) => entry !== "") && (
+                <button
+                  type="button"
+                  aria-label="Clear the code"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant"
+                  onClick={() => {
+                    setDigits(Array(OTP_LENGTH).fill(""));
+                    setOtpError(null);
+                    inputsRef.current[0]?.focus();
+                  }}
+                >
+                  <Icon name="clear" size={20} />
+                </button>
+              )}
             </div>
 
             {devHint && (
