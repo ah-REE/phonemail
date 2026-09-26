@@ -1745,6 +1745,39 @@ context instantly)*
     either the user to run it or an approval for the cleanup.
   - Mode found and left: REAL.
 
+- Day 7 (Sat Sep 26), continued: THE CONTACTS LAYER and THE SHARED AVATAR land;
+  the rest of the brief does not.
+  - CONTACTS: a Contact model (userId, address, displayName, unique per user) with
+    its own migration - the 10th, applied - plus GET/POST /api/contacts and
+    DELETE /api/contacts/[id]. A contact is stored as an ADDRESS: the same person
+    is reachable as a number or through any of their aliases, and adding either
+    canonicalises to <number>@phonemail.com, so adding the same person twice
+    UPDATES one row instead of making two. An unknown address is refused with the
+    same 404 an unknown recipient gets when sending, because the resolution is the
+    send path's own helper - the two cannot disagree.
+  - Verified end to end rather than by inspection: add by bare number -> 201; add
+    again by alias-form address WITH a name -> 201, the SAME row, now named; list
+    -> 200 count=1 carrying the name; an unknown number -> 404; remove -> 200;
+    list -> 0. The migration applied through the entrypoint: 10 rows in
+    _prisma_migrations, the Contact table present.
+  - THE SHARED AVATAR: src/components/avatar.tsx is one neutral person mark in the
+    palette's tint, and it replaces the letter/number initials on the home rows,
+    both thread headers, both threads' incoming bubbles and the 1:1 full view. The
+    group header takes the two-person mark its row already used - a group is not a
+    person.
+  - NOT DONE, stated so the next session starts from truth: the initial avatars in
+    the profile header and the first-contact reader still carry letters; the
+    user-detail sheet, group info, the home bottom bar, the contacts screen and the
+    contact-name overrides are not built. The contacts API they depend on is now in
+    place, which was the ordering constraint the brief itself set.
+  - TWO ENVIRONMENT LESSONS, worth keeping: the image build caches on the source
+    COPY, so a new migration file needs a real rebuild before the container can see
+    it; and the host's Prisma client must be regenerated after a schema change or
+    the app's own build fails on the new model. Both cost time this session.
+  - Suites after these changes: 252 of 253, the one red being a chat assertion that
+    named the literal avatar classes this session replaced (updated).
+  - Mode found and left: REAL.
+
 - Day 7:
 
 ---

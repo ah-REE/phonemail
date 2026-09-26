@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { Avatar } from "@/components/avatar";
 import { Spinner } from "@/components/spinner";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { useAuth } from "@/lib/useAuth";
@@ -225,8 +226,15 @@ export default function GroupThreadPage() {
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </Link>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent font-headline text-lg font-bold text-white">
-          {members.length || others.length + 1}
+        <span
+          aria-hidden="true"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-white"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="8" r="3.2" />
+            <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+            <path d="M16 5.6a3.2 3.2 0 0 1 0 6.3M17.5 19a5.5 5.5 0 0 0-2.2-4.4" />
+          </svg>
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
@@ -261,9 +269,7 @@ export default function GroupThreadPage() {
           return (
             <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
               {!message.mine && (
-                <span className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-sm font-bold text-accent">
-                  {(message.fromName?.trim() || phoneOf(message.from)).slice(0, 1).toUpperCase()}
-                </span>
+                <Avatar size={40} className="mb-0.5" />
               )}
               <div
                 className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ChatListSkeleton } from "@/components/skeleton";
+import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -238,19 +239,6 @@ export default function HomePage() {
     { key: "attachments", label: "Attachments" },
   ];
 
-  // A soft tint per conversation, sampled from the owner's home reference.
-  const TINTS = [
-    "bg-avatar-sky text-avatar-sky-ink",
-    "bg-avatar-violet text-avatar-violet-ink",
-    "bg-avatar-mint text-avatar-mint-ink",
-    "bg-accent-soft text-accent",
-  ];
-  const tintFor = (seed: string) => {
-    let sum = 0;
-    for (let index = 0; index < seed.length; index += 1) sum += seed.charCodeAt(index);
-    return TINTS[sum % TINTS.length];
-  };
-
   // What the reference's top-right badge counts.
   const totalUnread =
     threads.reduce((sum, thread) => sum + (thread.unread ?? 0), 0) +
@@ -422,9 +410,7 @@ export default function HomePage() {
               href={`/thread/${thread.counterpart}`}
               className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
             >
-              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-headline text-base font-bold ${tintFor(thread.counterpart)}`}>
-                {initialOf(thread.counterpart)}
-              </span>
+              <Avatar size={48} />
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
                 <span className="truncate text-base font-bold">
                   {thread.counterpartName?.trim() || thread.counterpart}

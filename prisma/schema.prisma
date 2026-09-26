@@ -54,6 +54,24 @@ model User {
 
   /// Day 6 alias IDs: extra addresses that resolve to this same account.
   aliases        Alias[]
+
+  /// The owner's address book. Names here OVERRIDE a raw number in the list and
+  /// the thread headers, which is why the name lives on this row and not on User.
+  contacts       Contact[]
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  userId      String
+  address     String
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One row per address per user; the list query is "mine, oldest first".
+  @@unique([userId, address])
+  @@index([userId, createdAt])
 }
 
 /// A delivered message. Rows are only ever created by the inbound delivery

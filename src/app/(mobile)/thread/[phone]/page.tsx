@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { Avatar } from "@/components/avatar";
 import { MailReader } from "@/components/mail-reader";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
@@ -241,9 +242,7 @@ export default function ThreadPage() {
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </Link>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent font-headline text-lg font-bold text-white">
-          {(counterpartName?.trim() || phone).slice(0, 1).toUpperCase()}
-        </span>
+        <Avatar size={48} />
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
             {counterpartName?.trim() || phone}
@@ -308,9 +307,7 @@ export default function ThreadPage() {
           return (
             <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
               {!message.mine && (
-                <span className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-sm font-bold text-accent">
-                  {(message.fromName?.trim() || message.from.replace(/@.*$/, "")).slice(0, 1).toUpperCase()}
-                </span>
+                <Avatar size={40} className="mb-0.5" />
               )}
               <div
                 className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
@@ -358,9 +355,7 @@ export default function ThreadPage() {
                     {/* The email-reader mockup: sender block, subject heading,
                         hairline, then the body at the mockup's generous leading. */}
                     <div className="flex items-start gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
-                        {message.from.slice(0, 1)}
-                      </span>
+                      <Avatar size={44} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-base font-semibold">
                           {message.fromName?.trim() || message.from.replace(/@.*$/, "")}
