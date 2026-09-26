@@ -516,6 +516,16 @@ export default function ThreadPage() {
               <circle cx="12" cy="13" r="3.2" />
             </svg>
           </Link>
+          <Link
+            href="/compose"
+            aria-label="Start a new message"
+            title="Start a new message"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-accent"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </Link>
         </div>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}

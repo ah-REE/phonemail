@@ -92,7 +92,6 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "attachments">("all");
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -227,26 +226,15 @@ export default function HomePage() {
       <div className="relative flex w-full flex-1 flex-col">
 
         {/* 1. Top bar */}
-        <header className="flex h-[60px] w-full shrink-0 select-none items-center justify-between px-4">
-          <button
-            type="button"
-            aria-label="Open menu"
-            className="-ml-2 flex h-10 w-10 items-center justify-center rounded-full text-on-surface transition-opacity duration-ui active:opacity-75"
-            onClick={() => setMenuOpen(true)}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <rect x="3" y="6" width="18" height="2" rx="1" />
-              <rect x="3" y="11" width="18" height="2" rx="1" />
-              <rect x="3" y="16" width="18" height="2" rx="1" />
-            </svg>
-          </button>
-
-          <h1 className="font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em]">PhoneMail</h1>
+        <header className="relative flex h-[60px] w-full shrink-0 select-none items-center justify-end px-4">
+          <h1 className="pointer-events-none absolute inset-x-0 text-center font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em]">
+            PhoneMail
+          </h1>
 
           <Link
             href="/profile"
             aria-label="Profile and settings"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container font-headline text-base font-bold text-on-secondary-container"
+            className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container font-headline text-base font-bold text-on-secondary-container"
           >
             {initialOf(user?.phoneNumber ?? "")}
           </Link>
@@ -415,87 +403,11 @@ export default function HomePage() {
             aria-label="Compose email"
             className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container transition-opacity duration-ui active:opacity-90"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
-              <path d="M13.5 6.5l4 4" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
             </svg>
           </Link>
         </div>
-
-        {menuOpen && (
-          <div className="fixed inset-0 z-20 flex bg-black/40" role="dialog" aria-modal="true">
-                      <nav className="flex w-4/5 max-w-xs flex-col bg-surface">
-              <div className="flex flex-col bg-primary-container px-5 pb-6 pt-5 text-on-primary">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container font-headline text-xl font-bold text-on-secondary-container">
-                  {initialOf(user?.phoneNumber ?? "")}
-                </span>
-                <p className="mt-3 text-lg font-bold">{user?.phoneNumber ?? ""}</p>
-                <p className="truncate text-xs opacity-80">{user?.phoneNumber ?? ""}@phonemail.com</p>
-              </div>
-
-              <Link
-                href="/"
-                className="flex min-h-[60px] items-center gap-5 bg-surface-container-low px-5 text-base text-on-surface"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20H4z" /></svg></span>
-                <span>Home</span>
-              </Link>
-              <Link
-                href="/drafts"
-                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h5" /></svg></span>
-                <span>Drafts</span>
-              </Link>
-              <Link
-                href="/spam"
-                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z" /></svg></span>
-                <span>Spam</span>
-              </Link>
-              <Link
-                href="/trash"
-                className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" /></svg></span>
-                <span>Trash</span>
-              </Link>
-
-              <div className="mt-auto">
-                <div className="h-[1px] w-full bg-surface-variant" />
-                <Link
-                  href="/profile"
-                  className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" /></svg></span>
-                  <span>Settings</span>
-                </Link>
-                <Link
-                  href="/desktop"
-                  className="flex min-h-[60px] items-center gap-5 px-5 text-base text-on-surface"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="shrink-0 text-primary-container"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20H4z" /></svg></span>
-                  <span>Desktop version</span>
-                </Link>
-                <button
-                  type="button"
-                  className="btn-quiet m-4 w-[calc(100%-2rem)]"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </nav>
-            <button type="button" aria-label="Close menu" className="flex-1" onClick={() => setMenuOpen(false)} />
-          </div>
-        )}
       </div>
     </main>
   );

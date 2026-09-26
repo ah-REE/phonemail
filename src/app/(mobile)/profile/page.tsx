@@ -342,6 +342,44 @@ export default function ProfilePage() {
 
         <section>
           <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
+            Folders
+          </h3>
+          {/* These lived in the slide-out menu. The owner asked for that menu and its
+              screen to go, so they live here now - otherwise three real screens would
+              have had no door at all. */}
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
+            {[
+              { href: "/drafts", label: "Drafts", paths: ["M6 3h8l4 4v14H6z", "M14 3v5h5"] },
+              { href: "/spam", label: "Spam", paths: ["M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z"] },
+              { href: "/trash", label: "Trash", paths: ["M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"] },
+            ].map((row, index) => (
+              <Link
+                key={row.href}
+                href={row.href}
+                className={`flex min-h-[64px] w-full items-center justify-between px-4 py-4 transition-colors duration-ui hover:bg-paper ${
+                  index === 0 ? "border-b border-surface-container" : ""
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      {row.paths.map((d) => (
+                        <path key={d} d={d} />
+                      ))}
+                    </svg>
+                  </div>
+                  <span className="text-[15px] font-medium text-on-surface">{row.label}</span>
+                </div>
+                <span className="text-outline">
+                  <Icon name="chevron" size={20} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Preferences
           </h3>
           <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">

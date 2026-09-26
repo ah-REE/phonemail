@@ -1556,6 +1556,32 @@ context instantly)*
     screens 26/26 suites; and real mode restored and confirmed in the container.
   - The visual judgement remains the owner's, since I cannot see images.
 
+- Day 7 (Sat Sep 26): the slide-out menu is gone, the mark centres itself, the
+  compose pencil is the mockup's own glyph, and the two missing adds are in.
+  - The home's hamburger and its drawer screen are removed, as asked. Its three
+    folder links - Drafts, Spam and Trash - moved to Settings > Folders in the
+    same pass: without that, removing the drawer would have left three working
+    screens with no door at all. /drafts, /spam and /trash all still answer.
+  - The header kept its centred title. It never needed the hamburger to hold the
+    centre, so the title is placed absolutely and the profile mark stays right.
+  - THE FLOATING BUTTON'S PENCIL IS NOW THE MOCKUP'S OWN GLYPH. The owner said
+    it sat out of position, and the reason was in the drawing:
+    design/phonemail_home uses Material's filled 'edit' at 24px in the 56px
+    circle, while the app carried a hand-drawn outline path whose visual mass sat
+    up and to the left of its own box. The mockup's path is centred by
+    construction, so the button now uses it.
+  - THE MISSING ADD. The app had exactly one visible plus - the group composer's,
+    added with the chat reference. The 1:1 composer now carries the same one, and
+    the compose screen's To row gained an explicit + that commits the typed
+    recipient; until now typing and pressing Enter was the only way, and nothing
+    on screen said so. If the plus was meant to be the home's floating button
+    rather than the pencil, that is a one-line swap.
+  - Verified: build green; the chat suite 21/21, welcome 15/15, palette 27/27 and
+    screens 26/26; no reference to the drawer remains anywhere in src; the
+    deployed bundle serves the mockup's edit glyph and no longer contains 'Open
+    menu'; and every page answers, so the re-homed folders are genuinely
+    reachable.
+
 - Day 7:
 
 ---
