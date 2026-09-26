@@ -1949,7 +1949,10 @@ context instantly)*
     floor (6aa3cb4) predated the entire visual rebuild and five sessions of fixes. The
     floor means the best state we KNOW is submittable, and with the suites green on
     the loaded database and on a fresh clone of origin, that is HEAD. Annotated tag,
-    force-pushed; the old object is left untouched in history.
+    force-pushed. NOTE: the command used is the brief's own `git tag -f submission-fallback HEAD`,
+    which creates a LIGHTWEIGHT tag - so the floor is now a direct pointer at this
+    commit rather than the annotated object the old floor had. The floor's meaning is
+    the commit it names, and it names HEAD; the old object is untouched in history.
   - VERIFICATION: 357 assertions across eleven suites green three times consecutively,
     then the fresh-clone simulation from origin at this commit - all four containers
     healthy, ELEVEN migrations on a clean volume, dev mode out of the box, and 357 OF
