@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
 import { MailReader } from "@/components/mail-reader";
+import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
 import { useAuth } from "@/lib/useAuth";
@@ -68,9 +69,11 @@ export default function ThreadPage() {
   const [subject, setSubject] = useState("");
   const [counterpartAddress, setCounterpartAddress] = useState("");
   const [counterpartName, setCounterpartName] = useState<string | null>(null);
+  const [counterpartAccountName, setCounterpartAccountName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
@@ -99,6 +102,7 @@ export default function ThreadPage() {
           subject?: string;
           counterpartAddress?: string;
           counterpartName?: string | null;
+          counterpartAccountName?: string | null;
           messages?: ThreadMessage[];
         };
 
@@ -113,6 +117,7 @@ export default function ThreadPage() {
         setSubject(body.subject ?? "");
         setCounterpartAddress(body.counterpartAddress ?? "");
         setCounterpartName(body.counterpartName ?? null);
+        setCounterpartAccountName(body.counterpartAccountName ?? null);
         setError(null);
         setLoading(false);
 
@@ -242,15 +247,23 @@ export default function ThreadPage() {
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </Link>
-        <Avatar size={48} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
-            {counterpartName?.trim() || phone}
-          </h1>
-          <span className="truncate text-[13px] leading-tight text-chat-meta" title={headerSubject}>
-            {headerSubject}
+        {/* Tapping the person opens their details - which is how a person is saved. */}
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-label={`Details for ${counterpartName?.trim() || phone}`}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <Avatar size={48} />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
+              {counterpartName?.trim() || phone}
+            </span>
+            <span className="truncate text-[13px] leading-tight text-chat-meta" title={headerSubject}>
+              {headerSubject}
+            </span>
           </span>
-        </div>
+        </button>
         <span className="shrink-0 text-[11px] text-chat-meta" title="connection">
           {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
         </span>
@@ -548,6 +561,17 @@ export default function ThreadPage() {
             </span>
           </span>
         </button>
+      )}
+      {sheetOpen && (
+        <UserSheet
+          subject={{
+            phone,
+            name: counterpartName,
+            accountName: counterpartAccountName,
+            address: counterpartAddress || `${phone}@phonemail.com`,
+          }}
+          onClose={() => setSheetOpen(false)}
+        />
       )}
     </main>
   );

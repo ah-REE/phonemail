@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -202,7 +203,6 @@ export default function ProfilePage() {
   }
 
   const address = user ? `${user.phoneNumber}@phonemail.com` : "";
-  const initial = user?.phoneNumber?.slice(0, 1) ?? "?";
 
   return (
     <main className="flex flex-1 flex-col bg-[#F8FAFC]">
@@ -223,9 +223,7 @@ export default function ProfilePage() {
 
         <div className="flex flex-col items-center px-5 pb-8 pt-2 text-center">
           <div className="relative">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-navy-deep ring-4 ring-white/15">
-              <span className="select-none font-headline text-3xl font-bold text-white">{initial}</span>
-            </div>
+            <Avatar size={80} className="ring-4 ring-white/15" />
             <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-navy bg-accent text-white">
               <Icon name="check" size={14} />
             </div>

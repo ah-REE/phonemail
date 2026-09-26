@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { ChatListSkeleton } from "@/components/skeleton";
 import { Avatar } from "@/components/avatar";
+import { BottomBar } from "@/components/bottom-bar";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -52,10 +53,6 @@ interface ConversationGroup {
   unread: number;
   favorite?: boolean;
   attachments?: number;
-}
-
-function initialOf(counterpart: string): string {
-  return counterpart.slice(0, 1) || "?";
 }
 
 function formatTime(iso: string): string {
@@ -149,6 +146,20 @@ export default function HomePage() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [load]);
+
+  // The bottom bar's Favorites tab is this same list, filtered. The filter
+  // arrives in the query string and is read straight off the location here:
+  // useSearchParams would force a Suspense boundary around this screen, which
+  // currently prerenders fine without one.
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const wanted = new URLSearchParams(window.location.search).get("filter");
+    if (wanted === "unread" || wanted === "favorites" || wanted === "attachments") {
+      setFilter(wanted);
+    }
+  }, []);
 
   const realtimeStatus = useRealtime({
     token,
@@ -370,8 +381,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 4. Conversation rows */}
-        <div className="flex w-full flex-col pb-28">
+        {/* 4. Conversation rows. The bottom padding clears the bottom bar AND
+            the compose button that floats above it. */}
+        <div className="flex w-full flex-col pb-44">
           {visibleGroups.map((group) => (
             <Link
               key={group.threadKey}
@@ -435,8 +447,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 5. Floating compose button */}
-        <div className="fixed bottom-6 right-6 z-10">
+        {/* 5. Floating compose button, clear of the bottom bar */}
+        <div className="fixed bottom-[92px] right-6 z-10">
           <Link
             href="/compose"
             aria-label="Compose email"
@@ -451,6 +463,7 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
+      <BottomBar active={filter === "favorites" ? "favorites" : "home"} />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { Avatar } from "@/components/avatar";
 import { clearDraft, readDraft, saveDraft } from "@/lib/folders";
 import { useAuth } from "@/lib/useAuth";
 
@@ -46,6 +47,19 @@ function parseRecipients(raw: string): string[] {
   ];
 }
 
+interface SavedContact {
+  id: string;
+  address: string;
+  displayName: string | null;
+  accountName: string | null;
+  accountPhone: string | null;
+}
+
+/** "<number>@phonemail.com" -> "<number>" */
+function phonePartOf(address: string): string {
+  return address.replace(/@.*$/, "");
+}
+
 function ComposeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,12 +82,40 @@ function ComposeForm() {
   const [fieldErrors, setFieldErrors] = useState<{ to?: string; subject?: string; body?: string }>({});
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
+  const [contacts, setContacts] = useState<SavedContact[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/onboarding");
     }
   }, [status, router]);
+
+  // Contact autocomplete reads the same list the Contacts screen shows. Read
+  // once, when the screen opens: a compose screen is short-lived and this is a
+  // convenience, so a failure here stays silent rather than blocking a send.
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await authorizedFetch("/api/contacts");
+        if (!response.ok) {
+          return;
+        }
+        const body = (await response.json()) as { contacts?: SavedContact[] };
+        if (!cancelled) {
+          setContacts(body.contacts ?? []);
+        }
+      } catch {
+        // Silent on purpose: no address book, no suggestions, sending unaffected.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, authorizedFetch]);
 
   // Resume a draft: /compose?draft=1 fills the form from this device's storage.
   const resumingDraft = searchParams.get("draft") === "1";
@@ -104,6 +146,38 @@ function ComposeForm() {
     }
     saveDraft({ to: recipients.join(", "), subject, body });
   }, [recipients, subject, body, isReply]);
+
+  // The saved name for a number, so a chip reads "Amma" rather than a number the
+  // user never typed. Empty string means "no name saved", and the number shows.
+  const nameByRecipient = new Map(
+    contacts.map((contact) => [
+      contact.accountPhone ?? phonePartOf(contact.address),
+      contact.displayName?.trim() || contact.accountName?.trim() || "",
+    ]),
+  );
+
+  // Suggestions while typing: name or address contains the needle, never someone
+  // already on the list, capped so the dropdown cannot take over the screen.
+  const needle = draftRecipient.trim().toLowerCase();
+  const suggestions =
+    lockRecipients || needle.length === 0
+      ? []
+      : contacts
+          .filter((contact) => {
+            const name = (contact.displayName?.trim() || contact.accountName?.trim() || "").toLowerCase();
+            return name.includes(needle) || contact.address.toLowerCase().includes(needle);
+          })
+          .filter(
+            (contact) =>
+              !recipients.includes(contact.accountPhone ?? phonePartOf(contact.address)),
+          )
+          .slice(0, 5);
+
+  function addSuggestion(contact: SavedContact) {
+    const number = contact.accountPhone ?? phonePartOf(contact.address);
+    setRecipients((current) => [...new Set([...current, number])]);
+    setDraftRecipient("");
+  }
 
   function addRecipientsFrom(raw: string) {
     const parsed = parseRecipients(raw);
@@ -230,7 +304,7 @@ function ComposeForm() {
                 key={recipient}
                 className="flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-sm"
               >
-                {recipient}
+                <span title={recipient}>{nameByRecipient.get(recipient) || recipient}</span>
                 {!lockRecipients && (
                   <button
                     type="button"
@@ -276,6 +350,27 @@ function ComposeForm() {
             )}
           </div>
         </div>
+        {!lockRecipients && suggestions.length > 0 && (
+          <div className="flex flex-col border-b border-surface-variant" aria-label="Contact suggestions">
+            {suggestions.map((contact) => {
+              const name = contact.displayName?.trim() || contact.accountName?.trim() || contact.address;
+              return (
+                <button
+                  key={contact.id}
+                  type="button"
+                  className="flex min-h-[52px] items-center gap-3 px-4 text-left active:bg-surface-container-high/40"
+                  onClick={() => addSuggestion(contact)}
+                >
+                  <Avatar size={32} />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-semibold">{name}</span>
+                    <span className="truncate text-xs text-on-surface-variant">{contact.address}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         {lockRecipients && (
           <p className="px-4 pb-2 text-xs text-on-surface-variant">
             Recipients are locked for this conversation.

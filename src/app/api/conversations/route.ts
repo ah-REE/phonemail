@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
+import { contactNamesByPhone } from "@/lib/contacts";
 import { prisma } from "@/lib/prisma";
 import { FAVORITE_TAG } from "@/lib/tags";
 import { phoneOf } from "@/lib/threadKey";
@@ -234,14 +235,21 @@ export async function GET(request: Request) {
 
   const nameByPhone = new Map(namedUsers.map((entry) => [entry.phoneNumber, entry.displayName]));
 
+  // The owner's own address book outranks the account's profile name: a name you
+  // typed is the one you will recognise. Unnamed contacts are absent from the
+  // map, so they fall through to the profile name and then to the number.
+  const contactNames = await contactNamesByPhone(user.sub);
+
   const namedThreads = ordered.map((thread) => ({
     ...thread,
-    counterpartName: nameByPhone.get(thread.counterpart) ?? null,
+    counterpartName: contactNames.get(thread.counterpart) ?? nameByPhone.get(thread.counterpart) ?? null,
   }));
 
   const namedGroups = orderedGroups.map((group) => ({
     ...group,
-    memberNames: group.members.map((member) => nameByPhone.get(member) ?? null),
+    memberNames: group.members.map(
+      (member) => contactNames.get(member) ?? nameByPhone.get(member) ?? null,
+    ),
   }));
 
   return NextResponse.json(

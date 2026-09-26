@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
+import { contactNamesByPhone } from "@/lib/contacts";
 import { prisma } from "@/lib/prisma";
 import { isGroupThreadKey, phoneOf } from "@/lib/threadKey";
 
@@ -101,7 +102,13 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
     select: { phoneNumber: true, displayName: true },
   });
   const nameByPhone = new Map(memberUsers.map((entry) => [entry.phoneNumber, entry.displayName]));
-  const memberNames = members.map((member) => nameByPhone.get(member) ?? null);
+
+  // Same precedence as everywhere else: the user's own contact name first, then
+  // the member's profile name, then the number.
+  const contactNames = await contactNamesByPhone(user.sub);
+  const nameFor = (phone: string) => contactNames.get(phone) ?? nameByPhone.get(phone) ?? null;
+
+  const memberNames = members.map((member) => nameFor(member));
 
   const unread = messages.filter((message) => message.toUserId === user.sub && !message.isRead).length;
   const latest = messages[messages.length - 1];
@@ -118,7 +125,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       messages: messages.map((message) => ({
         id: message.id,
         mine: message.fromUserId === user.sub,
-        fromName: nameByPhone.get(phoneOf(message.fromAddress)) ?? null,
+        fromName: nameFor(phoneOf(message.fromAddress)),
         from: message.fromAddress,
         to: message.toAddress,
         subject: message.subject,

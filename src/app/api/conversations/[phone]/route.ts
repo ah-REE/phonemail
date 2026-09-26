@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
+import { contactNamesByPhone } from "@/lib/contacts";
 import { addressForPhone } from "@/lib/mailer";
 import { normalizePhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
@@ -79,10 +80,16 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
   const unread = messages.filter((message) => message.toUserId === user.sub && !message.isRead).length;
   const latest = messages[messages.length - 1];
 
+  // The name this user saved beats the name the other account chose, which beats
+  // the number. The account's own name rides along separately so the detail sheet
+  // can show both when they differ, rather than silently picking one.
+  const contactNames = await contactNamesByPhone(user.sub);
+
   return NextResponse.json(
     {
       counterpart: counterpart.phoneNumber,
-      counterpartName: counterpart.displayName ?? null,
+      counterpartName: contactNames.get(counterpartPhone) ?? counterpart.displayName ?? null,
+      counterpartAccountName: counterpart.displayName ?? null,
       counterpartAddress: addressForPhone(counterpart.phoneNumber),
       subject: latest?.subject ?? "",
       count: messages.length,

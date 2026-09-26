@@ -6,7 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
+import { GroupInfo } from "@/components/group-info";
 import { Spinner } from "@/components/spinner";
+import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
@@ -51,6 +53,7 @@ interface GroupThreadBody {
   threadKey?: string;
   members?: string[];
   memberNames?: (string | null)[];
+  memberAddresses?: string[];
   subject?: string;
   unread?: number;
   messages?: GroupMessage[];
@@ -79,6 +82,9 @@ export default function GroupThreadPage() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [members, setMembers] = useState<string[]>([]);
   const [memberNames, setMemberNames] = useState<(string | null)[]>([]);
+  const [memberAddresses, setMemberAddresses] = useState<string[]>([]);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [memberSheet, setMemberSheet] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +127,7 @@ export default function GroupThreadPage() {
         setMessages(incoming);
         setMembers(body?.members ?? []);
         setMemberNames(body?.memberNames ?? []);
+        setMemberAddresses(body?.memberAddresses ?? []);
         setSubject(body?.subject ?? "");
         setError(null);
         setLoading(false);
@@ -226,28 +233,34 @@ export default function GroupThreadPage() {
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </Link>
-        <span
-          aria-hidden="true"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-white"
+        {/* Tapping the group opens its read-only details, and each member there is a person. */}
+        <button
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          aria-label="Group details"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="8" r="3.2" />
-            <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
-            <path d="M16 5.6a3.2 3.2 0 0 1 0 6.3M17.5 19a5.5 5.5 0 0 0-2.2-4.4" />
-          </svg>
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
-            Group ({members.length || others.length + 1})
-          </h1>
-          <span className="truncate text-[13px] leading-tight text-chat-meta" title={members.join(", ")}>
-            {members.length > 0
-              ? members
-                  .map((member, index) => memberNames[index]?.trim() || member)
-                  .join(", ")
-              : subject || "Loading members"}
+          <span
+            aria-hidden="true"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-white"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="8" r="3.2" />
+              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+              <path d="M16 5.6a3.2 3.2 0 0 1 0 6.3M17.5 19a5.5 5.5 0 0 0-2.2-4.4" />
+            </svg>
           </span>
-        </div>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
+              Group ({members.length || others.length + 1})
+            </span>
+            <span className="truncate text-[13px] leading-tight text-chat-meta" title={members.join(", ")}>
+              {members.length > 0
+                ? members.map((member, index) => memberNames[index]?.trim() || member).join(", ")
+                : subject || "Loading members"}
+            </span>
+          </span>
+        </button>
         <span className="shrink-0 text-[11px] text-chat-meta">group</span>
       </header>
 
@@ -398,6 +411,31 @@ export default function GroupThreadPage() {
           )}
         </button>
       </form>
+      {infoOpen && (
+        <GroupInfo
+          members={members}
+          memberNames={memberNames}
+          memberAddresses={memberAddresses}
+          me={myNumber}
+          onOpenMember={(member) => {
+            setInfoOpen(false);
+            setMemberSheet(member);
+          }}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
+
+      {memberSheet && (
+        <UserSheet
+          subject={{
+            phone: memberSheet,
+            name: memberNames[members.indexOf(memberSheet)] ?? null,
+            address:
+              memberAddresses[members.indexOf(memberSheet)] || `${memberSheet}@phonemail.com`,
+          }}
+          onClose={() => setMemberSheet(null)}
+        />
+      )}
     </main>
   );
 }

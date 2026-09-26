@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { Avatar } from "@/components/avatar";
+
 /**
  * The traditional mail reader (design/email_reader).
  *
@@ -72,11 +74,7 @@ export function MailReader({
       <section className="px-5 pb-2 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-container-high">
-              <span className="font-headline text-base font-bold text-primary-container">
-                {name.slice(0, 1).toUpperCase()}
-              </span>
-            </div>
+            <Avatar size={44} />
             <div className="min-w-0">
               <h2 className="truncate font-headline text-lg font-semibold leading-tight text-on-surface">
                 {name}
