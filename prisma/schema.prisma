@@ -111,6 +111,19 @@ model Email {
   /// stored membership (see lib/threadKey.ts).
   threadKey String?
 
+  /// One value per SMTP SUBMISSION, shared by every fan-out row of it. A group
+  /// broadcast to three members is three rows - one per recipient, each with its
+  /// own read state, which is what makes per-member unread work - but it is ONE
+  /// message. Without this the group view rendered the same text once per
+  /// recipient, which is the "my own group messages render twice" bug.
+  submissionId String?
+
+  /// The row this message ANSWERS, when it is a reply. NULL for anything that is
+  /// not a reply - which is also what makes a row a BROADCAST for the group
+  /// visibility rule (see the group thread endpoint): broadcasts are read by
+  /// every member, replies only by their sender and their recipient.
+  replyToId String?
+
   /// Day 6 folders: which folder the RECIPIENT keeps this message in
   /// (inbox | spam | trash). Recipient-scoped state, like isRead and tag, so a
   /// move never affects what the sender sees. 'inbox' is the default, which is
@@ -126,6 +139,8 @@ model Email {
   @@index([fromUserId, toUserId, createdAt])
   /// Serves the group thread query: WHERE threadKey = ? ORDER BY createdAt.
   @@index([threadKey, createdAt])
+  /// Serves the collapse of one submission's fan-out rows.
+  @@index([submissionId])
   /// Serves a folder screen: WHERE toUserId = ? AND folder = ? ORDER BY createdAt.
   @@index([toUserId, folder, createdAt])
 }

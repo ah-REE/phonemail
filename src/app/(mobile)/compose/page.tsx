@@ -25,26 +25,46 @@ import { useAuth } from "@/lib/useAuth";
  */
 
 /**
- * "9876543210, +91 98765 43211, 9876543212@phonemail.com" -> canonical numbers.
- * The preset query string, the chip input and validation all use this one
- * function, so all three agree on what a recipient is.
+ * "9876543210, +91 98765 43211, 9876543212@phonemail.com, bee.friend" -> recipients.
+ *
+ * The field says it takes a NUMBER OR AN ALIAS, and this is the one function the
+ * preset query string, the chip input and validation all use - so it has to
+ * accept both. It used to strip every non-digit from every token, which turned an
+ * alias into the empty string: the app advertised "Number or alias" and then
+ * silently refused half of its own promise, leaving an error about the number
+ * that gave the sender nothing to act on.
+ *
+ * A token that is not phone-shaped is therefore kept as an ALIAS (lower-cased) and
+ * handed to the server, which is the only thing that can say whether it exists.
  */
 function parseRecipients(raw: string): string[] {
-  return [
-    ...new Set(
-      raw
-        .split(/[,\s]+/)
-        .map((entry) =>
-          entry
-            .trim()
-            .replace(/@.*$/, "")
-            .replace(/\D/g, "")
-            .replace(/^91(?=\d{10}$)/, "")
-            .replace(/^0(?=\d{10}$)/, ""),
-        )
-        .filter((entry) => entry.length > 0),
-    ),
-  ];
+  const tokens = raw
+    .split(/[,\s]+/)
+    .map((entry) => entry.trim().replace(/@.*$/, ""))
+    .filter((entry) => entry.length > 0);
+
+  const recipients = tokens.map((token) => {
+    const digits = token.replace(/\D/g, "");
+    if (digits.length < 10) {
+      return token.toLowerCase();
+    }
+    return digits.replace(/^91(?=\d{10}$)/, "").replace(/^0(?=\d{10}$)/, "");
+  });
+
+  return [...new Set(recipients)];
+}
+
+/** The number on file for a recipient, so a NAME can be resolved to their address. */
+function numberForName(contacts: SavedContact[], raw: string): string | null {
+  const wanted = raw.trim().toLowerCase();
+  if (!wanted) {
+    return null;
+  }
+  const match = contacts.find((contact) => {
+    const name = (contact.displayName?.trim() || contact.accountName?.trim() || "").toLowerCase();
+    return name.length > 0 && name === wanted;
+  });
+  return match ? match.accountPhone ?? phonePartOf(match.address) : null;
 }
 
 interface SavedContact {
@@ -74,6 +94,9 @@ function ComposeForm() {
   // the composer can show what is being answered, the way a chat quotes a reply.
   const originalSubject = searchParams.get("origSubject") ?? "";
   const quotedFrom = searchParams.get("quote") ?? "";
+  // A reply inside a GROUP names its thread: addressed to one member, it would
+  // otherwise derive a pairwise key and land in that member's 1:1 chat.
+  const groupThreadKey = searchParams.get("threadKey") ?? "";
   const replySubject = originalSubject
     ? originalSubject.toLowerCase().startsWith("re:")
       ? originalSubject
@@ -191,7 +214,10 @@ function ComposeForm() {
   }
 
   function addRecipientsFrom(raw: string) {
-    const parsed = parseRecipients(raw);
+    // A name that matches a saved contact picks that contact - "selecting a saved
+    // contact" by typing it, which is what the field implies it can do.
+    const byName = numberForName(contacts, raw);
+    const parsed = byName ? [byName] : parseRecipients(raw);
     if (parsed.length === 0) {
       return;
     }
@@ -210,9 +236,11 @@ function ComposeForm() {
   function validate() {
     const next: { to?: string; subject?: string; body?: string } = {};
     if (recipients.length === 0) {
-      next.to = "Add at least one 10-digit number (two or more makes a group).";
-    } else if (!recipients.every((recipient) => /^[6-9]\d{9}$/.test(recipient))) {
-      next.to = "Every recipient must be a 10-digit Indian mobile number starting with 6, 7, 8 or 9.";
+      next.to = "Add a 10-digit number, a saved contact or an alias (two or more makes a group).";
+    } else if (
+      !recipients.every((recipient) => /^[6-9]\d{9}$/.test(recipient) || /^[a-z0-9.]{3,20}$/.test(recipient))
+    ) {
+      next.to = "Each recipient must be a 10-digit mobile number, or an alias like bee.friend.";
     }
     if (!subject.trim()) {
       next.subject = "Add a subject.";
@@ -243,6 +271,7 @@ function ComposeForm() {
           subject,
           body,
           ...(replyToId ? { replyToId } : {}),
+          ...(groupThreadKey ? { threadKey: groupThreadKey } : {}),
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -270,7 +299,7 @@ function ComposeForm() {
       void addresses;
       // Back to the thread so the new message appears when delivery completes.
       // A group send opens the derived group thread - the server hands us the key.
-      const groupKey = payload.threadKey ?? null;
+      const groupKey = payload.threadKey ?? groupThreadKey ?? null;
       const single = addresses[0]?.replace(/@.*$/, "") ?? recipients[0] ?? "";
       setTimeout(() => {
         if (groupKey) {

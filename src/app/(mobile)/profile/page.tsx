@@ -20,10 +20,11 @@ import { useAuth } from "@/lib/useAuth";
  * REAL rows rather than mockup decoration: the switch is User.smsNotifications
  * (which the delivery gate reads) and deleting runs through a one-time code.
  *
- * Two documented deviations live here: the Folders section is gone (the folder
- * screens had no door left once it went) and the Language row is gone (the app is
- * single-language by spec, so the row was decoration). Both are recorded in the
- * README's spec-mapping table.
+ * Two rows were removed for one round and are BACK at the owner's request: the
+ * Folders section (Drafts, Spam, Trash - the screens never went away, only their
+ * door) and the Language row. Language is honest about itself: English is the one
+ * language that ships, and the other two say so rather than pretending to switch
+ * anything.
  */
 
 interface Alias {
@@ -99,6 +100,7 @@ export default function ProfilePage() {
   const [smsNotifications, setSmsNotifications] = useState(true);
   const [smsSaving, setSmsSaving] = useState(false);
   const [smsNotice, setSmsNotice] = useState<string | null>(null);
+  const [language, setLanguage] = useState("en");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteStep, setDeleteStep] = useState<"confirm" | "otp">("confirm");
   const [deleteOtp, setDeleteOtp] = useState("");
@@ -472,9 +474,74 @@ export default function ProfilePage() {
 
         <section>
           <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
+            Folders
+          </h3>
+          {/* Restored at the owner's request. The three screens never went away -
+              only the doors to them did - so this is a door, not new machinery. */}
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
+            {[
+              { href: "/drafts", label: "Drafts", paths: ["M6 3h8l4 4v14H6z", "M14 3v5h5"] },
+              { href: "/spam", label: "Spam", paths: ["M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z"] },
+              { href: "/trash", label: "Trash", paths: ["M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"] },
+            ].map((row, index) => (
+              <Link
+                key={row.href}
+                href={row.href}
+                className={`flex min-h-[64px] w-full items-center justify-between px-4 py-4 transition-colors duration-ui hover:bg-paper ${
+                  index === 0 ? "border-b border-surface-container" : ""
+                }`}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      {row.paths.map((d) => (
+                        <path key={d} d={d} />
+                      ))}
+                    </svg>
+                  </div>
+                  <span className="text-[15px] font-medium text-on-surface">{row.label}</span>
+                </div>
+                <span className="text-outline">
+                  <Icon name="chevron" size={20} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Preferences
           </h3>
           <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
+            {/* Language. Only English ships, so the control offers the other two
+                as coming-soon entries that cannot be chosen - which is truer than
+                a row that implies a switch it cannot perform. */}
+            <div className="flex min-h-[64px] w-full items-center justify-between border-b border-surface-container-low bg-white px-4 py-4">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
+                  <Icon name="globe" size={20} />
+                </div>
+                <label className="text-[15px] font-medium text-on-surface" htmlFor="language">
+                  Language
+                </label>
+              </div>
+              <select
+                id="language"
+                className="rounded-full border border-outline-variant bg-surface px-3 py-2 text-[14px] text-on-surface outline-none"
+                value={language}
+                onChange={(event) => setLanguage(event.target.value)}
+              >
+                <option value="en">English (India)</option>
+                <option value="hi" disabled>
+                  हिन्दी — coming soon
+                </option>
+                <option value="ta" disabled>
+                  தமிழ் — coming soon
+                </option>
+              </select>
+            </div>
+
             <div className="flex min-h-[64px] w-full items-center justify-between bg-white px-4 py-4">
               <div className="flex items-center gap-3.5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">

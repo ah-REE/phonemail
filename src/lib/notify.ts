@@ -40,7 +40,8 @@ export type NotificationOutcome =
   | "dev-mode"
   | "failed"
   | "skipped-mobile"
-  | "skipped-disabled";
+  | "skipped-disabled"
+  | "skipped-self";
 
 /**
  * The spec's gate: an SMS notification goes only to someone who registered

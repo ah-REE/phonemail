@@ -8,6 +8,7 @@ import { addressForPhone } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
 import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
+import { newSubmissionId, submissionKey, takeSubmission } from "@/lib/submissions";
 import { deriveThreadKey } from "@/lib/threadKey";
 
 /**
@@ -90,15 +91,31 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
 
   const recipients: RecipientUser[] = recipientTokens.map((token) => resolved.get(token) as RecipientUser);
 
+  const fromAddress = addressForPhone(sender.phoneNumber);
+
+  // What the SEND path knew and this one cannot: that this message is a reply,
+  // and that a group reply belongs to the GROUP thread rather than to the pairwise
+  // thread its single recipient would derive. See lib/submissions.ts - the note is
+  // read AND deleted here, so it applies exactly once.
+  const pending = await takeSubmission(
+    submissionKey(fromAddress, message.subject, recipients.map((r) => addressForPhone(r.phoneNumber))),
+  );
+
   // The derived key is built from canonical NUMBERS, never from whatever alias
   // a sender happened to type: the same three people must always land in the
-  // same thread.
-  const threadKey =
+  // same thread. An explicit key - which only ever arrives from a send that
+  // validated it - wins over the derivation.
+  const derivedThreadKey =
     recipients.length > 1
       ? deriveThreadKey([sender.phoneNumber, ...recipients.map((recipient) => recipient.phoneNumber)])
       : null;
 
-  const fromAddress = addressForPhone(sender.phoneNumber);
+  const threadKey = pending.threadKey ?? derivedThreadKey;
+
+  // Every fan-out row of ONE submission shares this, so the group view can show
+  // one bubble per message rather than one per recipient.
+  const submissionId = newSubmissionId();
+
   const deliveries: InboundDelivery[] = [];
 
   for (const recipient of recipients) {
@@ -111,6 +128,8 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
         subject: message.subject,
         body: message.body,
         threadKey,
+        submissionId,
+        replyToId: pending.replyToId ?? null,
         // Messaging your own number: you wrote it, so you have obviously seen it.
         // Born read means no unread badge can appear for a message you sent
         // yourself, which is the only sensible reading of an email to yourself.
@@ -127,18 +146,22 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
       preview: email.body.slice(0, PREVIEW_LENGTH),
     });
 
-    // Best-effort SMS notification, gated by how the recipient registered AND by
-    // the recipient's own switch. Never allowed to fail the delivery. The switch
-    // wins: an explicit "no" from the person is not overridden by anything.
-    const smsNotification = !recipient.smsNotifications
-      ? "skipped-disabled"
-      : shouldNotify(recipient.registeredVia)
-        ? await notifyNewMail({
-            recipientPhone: recipient.phoneNumber,
-            senderAddress: fromAddress,
-            subject: email.subject,
-          })
-        : "skipped-mobile";
+    // Best-effort SMS notification, gated three ways: never to yourself, never
+    // against your own switch, and only for a registration path the spec allows.
+    // Never allowed to fail the delivery. The first gate is the plainest one: you
+    // do not need a text telling you that you just mailed your own number.
+    const smsNotification =
+      recipient.id === sender.id
+        ? "skipped-self"
+        : !recipient.smsNotifications
+          ? "skipped-disabled"
+          : shouldNotify(recipient.registeredVia)
+            ? await notifyNewMail({
+                recipientPhone: recipient.phoneNumber,
+                senderAddress: fromAddress,
+                subject: email.subject,
+              })
+            : "skipped-mobile";
 
     deliveries.push({
       emailId: email.id,

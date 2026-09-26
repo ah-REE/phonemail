@@ -45,6 +45,8 @@ interface ThreadMessage {
   isRead: boolean;
   createdAt: string;
   repliedAt: string | null;
+  /** The row this message answers, when it is a reply. */
+  replyToId?: string | null;
   tag: string | null;
   /** Local-only: true when this message was unread when the thread opened. */
   wasUnread?: boolean;
@@ -76,6 +78,10 @@ export default function ThreadPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Swipe RIGHT reveals the spec's traditional-view reply; swipe LEFT keeps the
+  // tag panel. A right swipe used to open the tag panel as well, which left the
+  // gesture the spec asks for with nowhere to live.
+  const [replyPromptId, setReplyPromptId] = useState<string | null>(null);
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
   // The composer's own state. The thread sends its own messages now, so this is
@@ -85,6 +91,7 @@ export default function ThreadPage() {
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(
     async (markRead: boolean) => {
@@ -183,13 +190,19 @@ export default function ThreadPage() {
     onFallbackPoll: () => void load(false),
   });
 
-  // Keep the newest message in view: a chat should not open mid-thread.
+  // Keep the newest message in view: a chat should not open mid-thread, and a new
+  // message - mine sending, or arriving live on the socket - pulls the thread down
+  // to it without anyone reaching for the screen. The sentinel moves with the last
+  // message, so this fires on an append even when the length is unchanged by a
+  // reconciliation.
+  const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : "";
   useEffect(() => {
     const node = listRef.current;
     if (node) {
       node.scrollTop = node.scrollHeight;
     }
-  }, [messages.length]);
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length, lastMessageId]);
 
   const headerSubject = useMemo(() => subject || "Conversation", [subject]);
 
@@ -269,6 +282,26 @@ export default function ThreadPage() {
       quote: message.body.replace(/\s+/g, " ").slice(0, 160),
     });
     return `/compose?${params.toString()}`;
+  }
+
+  /**
+   * Day 6 folders, restored at the owner's request: moving a message is one PATCH
+   * on its folder, exactly like a tag. It leaves the conversation (folder is
+   * recipient-scoped state) and appears on the Spam or Trash screen.
+   */
+  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+    setTagOpenId(null);
+    setError(null);
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    if (!response.ok) {
+      setError("Could not move that message.");
+      return;
+    }
+    void load(false);
   }
 
   if (status !== "authenticated") {
@@ -393,11 +426,41 @@ export default function ThreadPage() {
                   if (!start || start.id !== message.id) {
                     return;
                   }
-                  if (Math.abs(event.clientX - start.x) >= SWIPE_REVEAL_PX) {
-                    setTagOpenId(message.id);
+                  const travelled = event.clientX - start.x;
+                  if (travelled >= SWIPE_REVEAL_PX) {
+                    setReplyPromptId(replyPromptId === message.id ? null : message.id);
+                    setTagOpenId(null);
+                    return;
+                  }
+                  if (-travelled >= SWIPE_REVEAL_PX) {
+                    setTagOpenId(tagOpenId === message.id ? null : message.id);
+                    setReplyPromptId(null);
                   }
                 }}
               >
+                {/* A reply shows the mail it answers, the way a chat quotes one.
+                    The link is stored on the row, so it survives a reload and is
+                    the same on both sides of the conversation. */}
+                {message.replyToId && (
+                  <div className="mb-1.5 flex flex-col rounded-card border-l-4 border-accent bg-black/5 px-2 py-1">
+                    <span className="text-[11px] font-semibold text-on-surface">
+                      {(() => {
+                        const original = messages.find((entry) => entry.id === message.replyToId);
+                        if (!original) {
+                          return "Replying to an earlier message";
+                        }
+                        return original.mine
+                          ? "You"
+                          : original.fromName?.trim() || original.from.replace(/@.*$/, "");
+                      })()}
+                    </span>
+                    <span className="truncate text-[11px] text-on-surface-variant">
+                      {messages.find((entry) => entry.id === message.replyToId)?.body.slice(0, 80) ??
+                        "The message this answers is above."}
+                    </span>
+                  </div>
+                )}
+
                 <div className="bubble-meta">
                   {message.wasUnread && (
                     <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
@@ -489,6 +552,19 @@ export default function ThreadPage() {
                   </>
                 )}
 
+                {replyPromptId === message.id && (
+                  <Link
+                    href={replyHrefFor(message)}
+                    className="mt-2 flex min-h-tap items-center justify-center gap-2 rounded-card bg-wa-teal text-sm font-semibold text-white"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 7L4 12l5 5" />
+                      <path d="M4 12h9a6 6 0 0 1 6 6v1" />
+                    </svg>
+                    Reply in traditional view
+                  </Link>
+                )}
+
                 {!message.mine && !message.provisional && (
                   <div className="mt-2 flex items-center gap-3">
                     {message.repliedAt ? (
@@ -531,6 +607,20 @@ export default function ThreadPage() {
                     >
                       clear
                     </button>
+                    <button
+                      type="button"
+                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
+                      onClick={() => void moveMessage(message.id, "spam")}
+                    >
+                      Move to Spam
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
+                      onClick={() => void moveMessage(message.id, "trash")}
+                    >
+                      Move to Trash
+                    </button>
                   </div>
                 )}
               </div>
@@ -538,6 +628,7 @@ export default function ThreadPage() {
             </div>
           );
         })}
+        <div ref={bottomRef} aria-hidden="true" />
       </div>
       )}
 

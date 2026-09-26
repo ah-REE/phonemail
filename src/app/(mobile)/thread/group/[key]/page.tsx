@@ -21,10 +21,19 @@ import { useRealtime } from "@/lib/useRealtime";
  * carries it. Every member therefore sees the WHOLE conversation, including the
  * rows that were addressed to other members - which is the point of the feature.
  *
- * The composer at the bottom is the spec's "in-thread compose": it sends to all
- * the OTHER members of the open thread and the recipient set is LOCKED. There is
- * deliberately no way to add or remove a member from inside the thread; the Day
- * 6 regression asserts that lock.
+ * The composer at the bottom is the spec's "in-thread compose" and it belongs to
+ * the CREATOR - the member whose mail opened the conversation. Their messages are
+ * broadcasts: every member reads them.
+ *
+ * Every other member replies instead, and a reply is PRIVATE: it is addressed to
+ * the member whose mail it answers, carries this thread's key so it stays in the
+ * conversation, and is visible to exactly two people - the member who wrote it and
+ * the member who received it. Nobody else's payload contains it, and nobody else's
+ * socket hears about it. That is why the payload carries a submission id (one
+ * broadcast is one bubble, however many recipients) and a reply link (a reply
+ * knows the mail it answers, which is also what makes it per-member).
+ *
+ * There is deliberately no way to add or remove a member from inside the thread.
  *
  * Deliberate day-6 scope: bubbles, unread marks and the long-message expansion
  * work here, but swipe-to-tag and reply-once stay pairwise-only affordances (the
@@ -35,6 +44,10 @@ const LONG_MESSAGE_CHARS = 180;
 
 interface GroupMessage {
   id: string;
+  /** One value per submission: the key that makes a broadcast one bubble. */
+  submissionId?: string | null;
+  /** The row this message answers, when it is a reply. */
+  replyToId?: string | null;
   mine: boolean;
   fromName?: string | null;
   from: string;
@@ -51,6 +64,7 @@ interface GroupMessage {
 
 interface GroupThreadBody {
   threadKey?: string;
+  creatorPhone?: string | null;
   members?: string[];
   memberNames?: (string | null)[];
   memberAddresses?: string[];
@@ -83,6 +97,7 @@ export default function GroupThreadPage() {
   const [members, setMembers] = useState<string[]>([]);
   const [memberNames, setMemberNames] = useState<(string | null)[]>([]);
   const [memberAddresses, setMemberAddresses] = useState<string[]>([]);
+  const [creatorPhone, setCreatorPhone] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [memberSheet, setMemberSheet] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
@@ -93,10 +108,30 @@ export default function GroupThreadPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // Locked recipient set: every member except me.
   const myNumber = user?.phoneNumber ?? "";
   const others = members.filter((member) => member !== myNumber);
+  // The creator broadcasts; everyone else replies. Derived from the thread's own
+  // first broadcast, so it needs no stored role.
+  const isCreator = myNumber !== "" && creatorPhone !== null && myNumber === creatorPhone;
+
+  /** The reply I already sent to this broadcast, if any. */
+  const myReplyTo = (message: GroupMessage) =>
+    messages.find((entry) => entry.mine && entry.replyToId === message.id);
+
+  /** The reply URL for a broadcast: addressed to its sender, carrying the group. */
+  function groupReplyHref(message: GroupMessage): string {
+    const params = new URLSearchParams({
+      to: phoneOf(message.from),
+      replyTo: message.id,
+      threadKey,
+      origSubject: message.subject,
+      quote: message.body.replace(/\s+/g, " ").slice(0, 160),
+    });
+    return `/compose?${params.toString()}`;
+  }
 
   const load = useCallback(
     async (markRead: boolean) => {
@@ -128,6 +163,7 @@ export default function GroupThreadPage() {
         setMembers(body?.members ?? []);
         setMemberNames(body?.memberNames ?? []);
         setMemberAddresses(body?.memberAddresses ?? []);
+        setCreatorPhone(body?.creatorPhone ?? null);
         setSubject(body?.subject ?? "");
         setError(null);
         setLoading(false);
@@ -165,12 +201,15 @@ export default function GroupThreadPage() {
     onFallbackPoll: () => void load(false),
   });
 
+  // Same rule as the pairwise thread: a new message pulls the thread down to it.
+  const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : "";
   useEffect(() => {
     const node = listRef.current;
     if (node) {
       node.scrollTop = node.scrollHeight;
     }
-  }, [messages.length]);
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length, lastMessageId]);
 
   async function handleSend(event: React.FormEvent) {
     event.preventDefault();
@@ -281,13 +320,25 @@ export default function GroupThreadPage() {
           const expanded = expandedId === message.id;
 
           return (
-            <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
+            <div
+              key={message.submissionId ?? message.id}
+              className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}
+            >
               {!message.mine && (
                 <Avatar size={40} className="mb-0.5" />
               )}
               <div
                 className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
               >
+                {message.replyToId && (
+                  <div className="mb-1.5 flex flex-col rounded-card border-l-4 border-accent bg-black/5 px-2 py-1">
+                    <span className="truncate text-[11px] text-on-surface-variant">
+                      {messages.find((entry) => entry.id === message.replyToId)?.body.slice(0, 80) ??
+                        "Answering an earlier mail"}
+                    </span>
+                  </div>
+                )}
+
                 <div className="bubble-meta">
                   {message.wasUnread && (
                     <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
@@ -311,6 +362,21 @@ export default function GroupThreadPage() {
                     </span>
                   )}
                 </div>
+
+                {!message.mine && !message.replyToId && (
+                  <div className="mt-2 flex items-center gap-3">
+                    {myReplyTo(message) ? (
+                      <span className="text-xs text-chat-meta">Replied</span>
+                    ) : (
+                      <Link
+                        href={groupReplyHref(message)}
+                        className="min-h-tap text-sm font-semibold text-wa-teal"
+                      >
+                        Reply
+                      </Link>
+                    )}
+                  </div>
+                )}
 
                 {expanded ? (
                   <div className="mt-1 border-t border-wa-line pt-2">
@@ -357,8 +423,17 @@ export default function GroupThreadPage() {
             </div>
           );
         })}
+        <div ref={bottomRef} aria-hidden="true" />
       </div>
 
+      {!isCreator && (
+        <p className="sticky bottom-0 z-20 w-full rounded-t-[28px] bg-chat-sheet px-5 pb-5 pt-4 text-center text-[13px] text-chat-meta shadow-overlay">
+          Only the member who opened this conversation sends to everyone. Reply from the mail you are
+          answering - your reply goes to them alone.
+        </p>
+      )}
+
+      {isCreator && (
       <form
         className="sticky bottom-0 z-20 flex w-full flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-5 pb-5 pt-4 shadow-overlay"
         onSubmit={handleSend}
@@ -412,6 +487,8 @@ export default function GroupThreadPage() {
           )}
         </button>
       </form>
+      )}
+
       {infoOpen && (
         <GroupInfo
           members={members}

@@ -270,21 +270,20 @@ export default function HomePage() {
             </span>
           </h1>
 
-          {/* The reference puts the unread count here. It is also the only way into
-              settings since the slide-out menu went, so it stays a link - labelled
-              as one, rather than a badge that quietly navigates. */}
+          {/* The door into settings, and it is a PERSON mark - never a digit. The
+              reference put the unread count in this slot, which read as somebody
+              else's phone number sitting where your own avatar belongs; the count
+              is a badge ON the mark now, which is what it always meant. */}
           <Link
             href="/profile"
             aria-label={`Profile and settings - ${totalUnread} unread`}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-base font-bold text-accent"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
           >
-            {totalUnread > 0 ? (
-              totalUnread
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                <circle cx="12" cy="8.5" r="3.5" />
-                <path d="M5 20a7 7 0 0 1 14 0" />
-              </svg>
+            <Avatar size={40} />
+            {totalUnread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-white ring-2 ring-surface">
+                {totalUnread}
+              </span>
             )}
           </Link>
         </header>

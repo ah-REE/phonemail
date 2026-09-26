@@ -65,6 +65,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
       createdAt: true,
       repliedAt: true,
       tag: true,
+      replyToId: true,
     },
   });
 
@@ -105,6 +106,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
         isRead: message.isRead,
         createdAt: message.createdAt,
         repliedAt: message.repliedAt,
+        replyToId: message.replyToId,
         tag: message.tag,
       })),
     },

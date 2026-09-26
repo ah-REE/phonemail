@@ -6,7 +6,8 @@ import { classifyToken, lookupRecipientUsers, recipientToken } from "@/lib/alias
 import { EMAIL_FOLDERS, isEmailFolder } from "@/lib/folders";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
-import { deriveThreadKey } from "@/lib/threadKey";
+import { rememberSubmission, submissionKey } from "@/lib/submissions";
+import { deriveThreadKey, isGroupThreadKey } from "@/lib/threadKey";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,11 @@ const sendSchema = z.object({
   subject: z.string().trim().min(1, "subject is required").max(200).optional(),
   body: z.string().min(1, "body is required"),
   replyToId: z.string().trim().min(1).optional(),
+  /// Present only for a REPLY INSIDE A GROUP. A member's reply is addressed to the
+  /// one member whose mail it answers, so deriving the thread from its recipients
+  /// would file it in their 1:1 chat; the client names the thread instead, and it
+  /// is validated below.
+  threadKey: z.string().trim().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -103,6 +109,58 @@ export async function POST(request: Request) {
 
   const recipients = tokens.map((token) => resolved.get(token) as { id: string; phoneNumber: string; registeredVia: string });
 
+  // A GROUP REPLY names its thread, and this is the first thing checked: the
+  // caller must be a member of that thread, the
+  // row being answered must be IN it, and the reply must be addressed to the
+  // member who wrote that row - never to the group at large, which would be a
+  // broadcast wearing a reply's thread key.
+  //
+  // It runs BEFORE the reply-once claim below, deliberately: the claim is a
+  // mutation, so rejecting a reply after taking it would burn the sender's one
+  // reply to that mail instead of just refusing the request.
+  let groupThreadKey: string | null = null;
+  if (parsed.data.threadKey) {
+    groupThreadKey = parsed.data.threadKey;
+    if (!isGroupThreadKey(groupThreadKey)) {
+      return NextResponse.json({ error: "Invalid thread key." }, { status: 400 });
+    }
+    if (!parsed.data.replyToId) {
+      return NextResponse.json(
+        { error: "A reply inside a group must answer a message." },
+        { status: 400 },
+      );
+    }
+
+    const rows = await prisma.email.findMany({
+      where: { threadKey: groupThreadKey },
+      select: { id: true, fromUserId: true, toUserId: true },
+    });
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "No such conversation." }, { status: 404 });
+    }
+    if (!rows.some((row) => row.fromUserId === user.sub || row.toUserId === user.sub)) {
+      return NextResponse.json(
+        { error: "You are not a member of this conversation." },
+        { status: 403 },
+      );
+    }
+
+    const answered = rows.find((row) => row.id === parsed.data.replyToId);
+    if (!answered) {
+      return NextResponse.json(
+        { error: "That message is not part of this conversation." },
+        { status: 404 },
+      );
+    }
+    if (recipients.length !== 1 || recipients[0].id !== answered.fromUserId) {
+      return NextResponse.json(
+        { error: "A reply goes to the member who wrote that mail." },
+        { status: 400 },
+      );
+    }
+  }
+
   // Reply-once: claim the original message atomically before sending anything.
   let claimedReplyTo: string | null = null;
   let subject = parsed.data.subject?.trim() ?? "";
@@ -158,6 +216,15 @@ export async function POST(request: Request) {
   // The stored address is always the canonical number address: an alias is a
   // way in, not a second identity in the message data.
   const addresses = recipients.map((recipient) => addressForPhone(recipient.phoneNumber));
+
+  // Leave the note the inbound path will pick up. Without it a group reply would
+  // be filed pairwise and a reply would carry no link to what it answers.
+  if (claimedReplyTo || groupThreadKey) {
+    await rememberSubmission(submissionKey(fromAddress, subject, addresses), {
+      threadKey: groupThreadKey,
+      replyToId: claimedReplyTo,
+    });
+  }
 
   try {
     await submitOutboundEmail({

@@ -44,10 +44,18 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   const messages = await prisma.email.findMany({
     where: {
       threadKey,
-      // A member's folder move applies to group mail too. Rows addressed to ME in
-      // spam/trash leave MY view; everything else stays, so the member list and
-      // every other member's view are untouched.
-      OR: [{ toUserId: user.sub, folder: "inbox" }, { toUserId: { not: user.sub } }],
+      // Visibility is PER VIEWER, and it is the core of the group's reply model:
+      //   - my own rows are mine to see (the recipient's folder is theirs);
+      //   - mail addressed to me is visible unless I moved it out of my inbox;
+      //   - another member's BROADCAST (replyToId null) is the group's shared
+      //     history and everyone reads it;
+      //   - another member's REPLY is visible to nobody but its sender and its
+      //     recipient, so it is excluded from everyone else's payload entirely.
+      OR: [
+        { fromUserId: user.sub },
+        { toUserId: user.sub, folder: "inbox" },
+        { replyToId: null, toUserId: { not: user.sub } },
+      ],
     },
     orderBy: { createdAt: "desc" },
     take: THREAD_LIMIT,
@@ -63,6 +71,8 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       createdAt: true,
       repliedAt: true,
       tag: true,
+      submissionId: true,
+      replyToId: true,
     },
   });
 
@@ -78,6 +88,21 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   if (messages.length === 0) {
     return NextResponse.json({ error: "No such thread." }, { status: 404 });
   }
+
+  // ONE bubble per submission. A broadcast is one row per recipient, so without
+  // this the same message appears once for every member - and the viewer's OWN row
+  // is preferred, because that is the row carrying their read state.
+  const representative = new Map<string, (typeof messages)[number]>();
+  for (const message of messages) {
+    const key = message.submissionId ?? message.id;
+    const current = representative.get(key);
+    if (!current || message.toUserId === user.sub) {
+      representative.set(key, message);
+    }
+  }
+  const shown = messages.filter(
+    (message) => representative.get(message.submissionId ?? message.id)?.id === message.id,
+  );
 
   const isMember = messages.some(
     (message) => message.fromUserId === user.sub || message.toUserId === user.sub,
@@ -110,20 +135,30 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
 
   const memberNames = members.map((member) => nameFor(member));
 
-  const unread = messages.filter((message) => message.toUserId === user.sub && !message.isRead).length;
-  const latest = messages[messages.length - 1];
+  const unread = shown.filter((message) => message.toUserId === user.sub && !message.isRead).length;
+  const latest = shown[shown.length - 1];
+
+  // The creator is the member who broadcasts - the sender of the thread's first
+  // broadcast. Derived, like everything else about a group, so no column has to
+  // remember it: who opened the conversation is the member whose mail did.
+  const broadcasts = shown.filter((message) => !message.replyToId);
+  const creatorPhone =
+    broadcasts.length > 0 ? phoneOf(broadcasts[broadcasts.length - 1].fromAddress) : null;
 
   return NextResponse.json(
     {
       threadKey,
+      creatorPhone,
       members,
       memberNames,
       memberAddresses,
       subject: latest?.subject ?? "",
       count: messages.length,
       unread,
-      messages: messages.map((message) => ({
+      messages: shown.map((message) => ({
         id: message.id,
+        submissionId: message.submissionId,
+        replyToId: message.replyToId,
         mine: message.fromUserId === user.sub,
         fromName: nameFor(phoneOf(message.fromAddress)),
         from: message.fromAddress,
