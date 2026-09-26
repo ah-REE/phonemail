@@ -2031,6 +2031,35 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), fourteenth session: THE FRESH-CLONE EVALUATOR SIMULATION FINALLY
+  RAN AGAIN, from ORIGIN, and it passed. It had not run for several sessions, and it
+  was the one thing this session was told it must land.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260926-230607). The clone came down at HEAD 2b9e521 with
+    143 tracked files and 12 migrations, and - correctly - with NO
+    docker-compose.override.yml, since that file is gitignored.
+  - docker compose up -d --build brought all four services healthy, and the clone
+    SERVED: / , /onboarding , /profile and /contacts all answered 200.
+  - ONE FINDING WORTH KEEPING: docker-compose.yml hardcodes the app port as 3000:3000.
+    That means a clone can NEVER run alongside the main stack - it cannot bind. The
+    simulation therefore stops ONLY the main app container for its duration and restarts
+    it after, rather than editing the clone's compose file, which would have meant
+    simulating something that is not what origin serves. If the evaluator's own
+    procedure ever runs both at once, this is the reason it would fail.
+  - The clone's own send-otp answers WITH a devHint even though the clone is not in dev
+    mode, and that is the app behaving correctly: with no SMS credentials configured it
+    falls back to the fixed dev code rather than pretending to send. The override file
+    on this machine is what supplies the real ones.
+  - The clone's containers were brought down afterwards (plain down - no volume removal)
+    and the directory is LEFT IN PLACE, because removing it is not mine to do. The main
+    stack was verified back in REAL mode with exactly four containers.
+  - NOT DONE from this round, and not claimed: all ten feature items - the auth-flow
+    continuation in both directions, the reply model (a Reply button per mail plus the
+    thread's message box becoming a New Mail button, with the README spec-mapping
+    updates), the chevron reveal and its four-action row, Subject: versus re: display,
+    the contact sheet closing on save, the header-alignment sweep and the wordmark pass.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), thirteenth session: THE GROUPCHAT FAILURE, ROOT-CAUSED AND FIXED.
   It was the one thing left standing between the suite and green, and a possible hole
   in the group visibility model outranks every feature that was still on the list, so
