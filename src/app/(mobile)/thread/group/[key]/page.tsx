@@ -327,9 +327,26 @@ export default function GroupThreadPage() {
           const canReply = !message.mine && !message.replyToId;
           const answered = myReplyTo(message);
 
+          // RUNS: consecutive messages from one sender are one person talking, so the
+          // sender's name lands on the run's first bubble and their avatar once at
+          // its foot, and the messages inside a run sit closer than runs sit apart.
+          const runIndex = messages.indexOf(message);
+          const sameRun = (other: (typeof messages)[number] | undefined) =>
+            Boolean(
+              other &&
+                other.mine === message.mine &&
+                (message.mine || other.from === message.from),
+            );
+          const isFirstInRun = !sameRun(messages[runIndex - 1]);
+          const isLastInRun = !sameRun(messages[runIndex + 1]);
+
           return (
             <MessageCard
               key={message.submissionId ?? message.id}
+              mine={message.mine}
+              isFirstInRun={isFirstInRun}
+              isLastInRun={isLastInRun}
+              showName
               name={message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
               secondary={message.mine ? message.to : message.from}
               when={formatWhen(message.createdAt)}

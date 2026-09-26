@@ -412,6 +412,19 @@ export default function ThreadPage() {
             ? messages.find((entry) => entry.id === message.replyToId)
             : undefined;
 
+          // RUNS: consecutive messages from one sender are one person talking, so the
+          // sender's name lands on the run's first bubble and their avatar once at
+          // its foot, and the messages inside a run sit closer than runs sit apart.
+          const runIndex = messages.indexOf(message);
+          const sameRun = (other: (typeof messages)[number] | undefined) =>
+            Boolean(
+              other &&
+                other.mine === message.mine &&
+                (message.mine || other.from === message.from),
+            );
+          const isFirstInRun = !sameRun(messages[runIndex - 1]);
+          const isLastInRun = !sameRun(messages[runIndex + 1]);
+
           return (
             <div key={message.id}>
               {newSubject && (
@@ -423,6 +436,9 @@ export default function ThreadPage() {
               )}
 
               <MessageCard
+                mine={message.mine}
+                isFirstInRun={isFirstInRun}
+                isLastInRun={isLastInRun}
                 name={message.mine ? "You" : message.fromName?.trim() || phone}
                 secondary={message.mine ? counterpartAddress : message.from}
                 when={formatWhen(message.createdAt)}
