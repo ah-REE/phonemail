@@ -60,6 +60,21 @@ const config: Config = {
           mint: "#cffafe",
           "mint-ink": "#0e7490",
         },
+        /* The message card, sampled from the owner's chat reference: a light-blue
+           identity panel with a paler avatar on it, the reference's own blue for the
+           NEW pill and the Reply action, a near-navy ink for the name and the body,
+           and its quiet greys for the metadata and the ellipsis. */
+        msg: {
+          card: "#ffffff",
+          panel: "#eef4ff",
+          avatar: "#d8e6ff",
+          accent: "#2f7df6",
+          ink: "#0b1b3a",
+          muted: "#8a95a8",
+          line: "#e6e8eb",
+          action: "#eaf2ff",
+          more: "#f1f3f5",
+        },
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },

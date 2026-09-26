@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
 import { GroupInfo } from "@/components/group-info";
+import { MessageCard } from "@/components/message-card";
 import { Spinner } from "@/components/spinner";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
@@ -318,111 +319,54 @@ export default function GroupThreadPage() {
         {messages.map((message) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
+          const original = message.replyToId
+            ? messages.find((entry) => entry.id === message.replyToId)
+            : undefined;
+          // Members reply from a broadcast; the creator keeps the composer.
+          const canReply = !message.mine && !message.replyToId;
+          const answered = myReplyTo(message);
 
           return (
-            <div
+            <MessageCard
               key={message.submissionId ?? message.id}
-              className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}
-            >
-              {!message.mine && (
-                <Avatar size={40} className="mb-0.5" />
-              )}
-              <div
-                className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
-              >
-                {message.replyToId && (
-                  <div className="mb-1.5 flex flex-col rounded-card border-l-4 border-accent bg-black/5 px-2 py-1">
-                    <span className="truncate text-[11px] text-on-surface-variant">
-                      {messages.find((entry) => entry.id === message.replyToId)?.body.slice(0, 80) ??
-                        "Answering an earlier mail"}
-                    </span>
-                  </div>
-                )}
-
-                <div className="bubble-meta">
-                  {message.wasUnread && (
-                    <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
-                  )}
-                  {/* The sender matters in a group: name it on incoming bubbles. */}
-                  {!message.mine && (
-                    <span className="font-semibold text-on-surface">
-                      {message.fromName?.trim() || phoneOf(message.from)}
-                    </span>
-                  )}
-                  <span>{formatWhen(message.createdAt)}</span>
-                  {message.mine && (
-                    <span
-                      className="ml-auto text-accent"
-                      title="Sent - the mail service accepted this message"
-                      aria-label="Sent"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-                    </span>
-                  )}
-                </div>
-
-                {!message.mine && !message.replyToId && (
-                  <div className="mt-2 flex items-center gap-3">
-                    {myReplyTo(message) ? (
-                      <span className="text-xs text-chat-meta">Replied</span>
-                    ) : (
-                      <Link
-                        href={groupReplyHref(message)}
-                        className="min-h-tap text-sm font-semibold text-wa-teal"
-                      >
-                        Reply
-                      </Link>
-                    )}
-                  </div>
-                )}
-
-                {expanded ? (
-                  <div className="mt-1 border-t border-wa-line pt-2">
-                    <dl className="mb-2 text-xs text-wa-muted">
-                      <div>
-                        <dt className="inline font-semibold">From: </dt>
-                        <dd className="inline">{message.from}</dd>
-                      </div>
-                      <div>
-                        <dt className="inline font-semibold">To: </dt>
-                        <dd className="inline">{message.to}</dd>
-                      </div>
-                      <div>
-                        <dt className="inline font-semibold">Subject: </dt>
-                        <dd className="inline">{message.subject}</dd>
-                      </div>
-                    </dl>
-                    <p className="whitespace-pre-wrap text-base">{message.body}</p>
-                    <button
-                      type="button"
-                      className="mt-2 text-sm font-semibold text-wa-teal"
-                      onClick={() => setExpandedId(null)}
-                    >
-                      Collapse
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="whitespace-pre-wrap text-base">
-                      {long ? `${message.body.slice(0, LONG_MESSAGE_CHARS)}.` : message.body}
-                    </p>
-                    {long && (
-                      <button
-                        type="button"
-                        className="mt-1 text-sm font-semibold text-wa-teal"
-                        onClick={() => setExpandedId(message.id)}
-                      >
-                        Read full message
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+              name={message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
+              secondary={message.mine ? message.to : message.from}
+              when={formatWhen(message.createdAt)}
+              body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
+              isNew={message.wasUnread ?? false}
+              tick={message.mine}
+              quoted={
+                original
+                  ? `${original.mine ? "You" : original.fromName?.trim() || phoneOf(original.from)}: ${original.body.slice(0, 90)}`
+                  : message.replyToId
+                    ? "An earlier mail"
+                    : null
+              }
+              replyHref={canReply && !answered ? groupReplyHref(message) : undefined}
+              statusNote={message.mine ? "Sent" : canReply && answered ? "Replied" : null}
+              footer={
+                long && !expanded ? (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-semibold text-msg-accent"
+                    onClick={() => setExpandedId(message.id)}
+                  >
+                    Read full message
+                  </button>
+                ) : long && expanded ? (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-semibold text-msg-accent"
+                    onClick={() => setExpandedId(null)}
+                  >
+                    Collapse
+                  </button>
+                ) : null
+              }
+            />
           );
         })}
+
         <div ref={bottomRef} aria-hidden="true" />
       </div>
 

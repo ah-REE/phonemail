@@ -2031,6 +2031,40 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), sixth session: THE MESSAGE CARD, built from the owner's
+  reference drawing.
+  - The owner supplied a picture of the chat message and asked for it. It is not a
+    bubble: it is a CARD, one per message - a light-blue identity panel carrying the
+    avatar, the sender's name and the address beneath it; a meta row with the NEW
+    pill and the time; the message itself, large and calm; a hairline; then Reply
+    and the rest behind an ellipsis. Every colour is sampled from the drawing into a
+    new msg token group - panel #eef4ff, avatar #d8e6ff, accent #2f7df6, ink
+    #0b1b3a, muted #8a95a8, line #e6e8eb, action #eaf2ff, more #f1f3f5 - so the card
+    and the rest of the app cannot drift apart.
+  - THE CARD IS THE SAME FOR BOTH SIDES, exactly as drawn: the reference labels its
+    one card You, so a message you sent and one you received use the same card and
+    the panel says who each is from, instead of a left/right bubble layout. A mail
+    conversation reads as a stack of messages, not as a chat transcript.
+  - ONE DELIBERATE ADDITION, STATED: the drawing shows no sent tick, and the owner
+    asked for one two rounds ago. It stays, in the card's own accent, on the meta row
+    where the reference puts its time. Dropping it quietly would have been an
+    accident; keeping it is a decision.
+  - What MOVED rather than vanished: the swipe gestures live on the card's root, so
+    swipe left still opens the tag and move panel and swipe right still reveals
+    Reply in traditional view; the reply quote is the card's own quoted block; the
+    long-message expand and collapse is the card's footer; the group's per-member
+    Reply offer is the card's Reply slot; the sent tick is the card's tick slot.
+  - THE HOME SCREEN'S TOP-RIGHT SLOT LOSES THE COUNT ENTIRELY. The owner asked for
+    it gone: the slot is the shared person mark and nothing else. The count stays
+    where it belongs, on the conversation rows.
+  - VERIFICATION: 408 assertions across twelve suites green, and the four routes the
+    redesign touches answer 200. EIGHT bubble-era assertions were re-pointed rather
+    than deleted - the fills, the avatar, the metadata row, the sent tick, the NEW
+    mark, the header slot and the reply quote - every one of which described markup
+    the owner's own drawing replaced. The names suite's tick assertions now read the
+    card, which is where the tick lives.
+  - Mode found and left: REAL.
+
 - Day 7:
 
 ---

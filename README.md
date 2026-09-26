@@ -113,6 +113,7 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | SMS "new mail" notifications, on/off | `/profile` switch → `User.smsNotifications` → the gate in `src/lib/inbound.ts` | Done — the switch is real state the delivery path reads. It can only ever NARROW who is notified: the non-mobile registration gate must allow it too, so the spec's rule cannot be widened by a user setting |
 | Delete account | `/profile` → confirm → OTP → `DELETE /api/me/delete` | Done — a live one-time code is verified server-side before anything is removed, then emails, aliases, contacts and the user go in foreign-key order inside one transaction; the response reports exactly what was removed |
 | Compact subject above the message box | thread subject pill | Done |
+| Chat message design | `src/components/message-card.tsx` | Done — the owner's reference card, one per message: an identity panel (avatar, sender, address), a NEW pill and time, the body, a hairline, then Reply and an ellipsis. Colours sampled into the `msg` token group. The card is the same for both sides, as drawn, and carries the sent tick the owner asked for earlier (the drawing shows none — stated, not dropped) |
 | All mail from one sender stays in one chat | `GET /api/conversations` | Done |
 | New mail shows its subject; replies link to the original | thread + reply-once | Done — a new subject renders as a divider at its chronological position, the chat simply continues, and a reply carries the original mail's subject as `re: <original>` plus a quoted preview above the input, linked to that exact message id |
 | Replying hides the Subject field | `/compose` | **Deviation** — the subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are replying to |
@@ -221,7 +222,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **407 assertions** across twelve suites, in dev mode through the real SMTP round
+- **408 assertions** across twelve suites, in dev mode through the real SMTP round
   trip: 15 for the onboarding forms, 26 for the auth screens, 27 for the palette, 21
   for the chat reference, 21 for the traditional reader, 27 for display names, 43 for
   the group chat, 42 for the final functional items (search-to-chat, the
@@ -230,7 +231,7 @@ claim made anywhere else.
   single-send, the free composer, self-sends, the notification switch, account
   deletion, reply linkage and the input pass, and 50 for the round 3 items: the
   contact and alias send, the group's per-viewer reply model, the restored settings
-  rows, the swipe reply and the live subject divider.
+  rows, the swipe reply, the live subject divider and the message-card design.
 - **Fresh-clone evaluator simulations** several times through the build, most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all twelve migrations applying on a clean volume,

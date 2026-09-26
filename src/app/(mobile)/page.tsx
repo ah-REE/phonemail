@@ -270,21 +270,16 @@ export default function HomePage() {
             </span>
           </h1>
 
-          {/* The door into settings, and it is a PERSON mark - never a digit. The
-              reference put the unread count in this slot, which read as somebody
-              else's phone number sitting where your own avatar belongs; the count
-              is a badge ON the mark now, which is what it always meant. */}
+          {/* The door into settings, and it is a PERSON mark - never a digit and
+              never a badge. The count lived here once and read as somebody else's
+              phone number; it is a badge on the conversation rows, where it belongs,
+              and the owner asked for it gone from here entirely. */}
           <Link
             href="/profile"
-            aria-label={`Profile and settings - ${totalUnread} unread`}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            aria-label="Profile and settings"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
           >
             <Avatar size={40} />
-            {totalUnread > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-white ring-2 ring-surface">
-                {totalUnread}
-              </span>
-            )}
           </Link>
         </header>
 

@@ -13,14 +13,18 @@
 export function Avatar({
   size = 48,
   className = "",
+  tone = "default",
 }: {
   size?: number;
   className?: string;
+  /** "card" is the message card's own pair: its paler blue behind the mark. */
+  tone?: "default" | "card";
 }) {
+  const palette = tone === "card" ? "bg-msg-avatar text-msg-accent" : "bg-avatar-sky text-accent";
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-full bg-avatar-sky text-accent ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full ${palette} ${className}`}
       style={{ width: size, height: size }}
     >
       <svg

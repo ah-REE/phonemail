@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
 import { MailReader } from "@/components/mail-reader";
+import { MessageCard } from "@/components/message-card";
 import { Spinner } from "@/components/spinner";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
@@ -397,10 +398,11 @@ export default function ThreadPage() {
         {messages.map((message, index) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
-          // A new subject opens a new chapter of the same conversation: the chat
-          // simply continues, and the subject marks where it turned. A reply to an
-          // OLDER message still lands in its own chronological place.
+          // A new subject opens a new chapter of the same conversation.
           const newSubject = index > 0 && messages[index - 1].subject !== message.subject;
+          const original = message.replyToId
+            ? messages.find((entry) => entry.id === message.replyToId)
+            : undefined;
 
           return (
             <div key={message.id}>
@@ -411,185 +413,41 @@ export default function ThreadPage() {
                   </span>
                 </div>
               )}
-              <div className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
-              {!message.mine && (
-                <Avatar size={40} className="mb-0.5" />
-              )}
-              <div
-                className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
-                onPointerDown={(event) => {
-                  swipeStart.current = { id: message.id, x: event.clientX };
-                }}
-                onPointerUp={(event) => {
-                  const start = swipeStart.current;
-                  swipeStart.current = null;
-                  if (!start || start.id !== message.id) {
-                    return;
-                  }
-                  const travelled = event.clientX - start.x;
-                  if (travelled >= SWIPE_REVEAL_PX) {
-                    setReplyPromptId(replyPromptId === message.id ? null : message.id);
-                    setTagOpenId(null);
-                    return;
-                  }
-                  if (-travelled >= SWIPE_REVEAL_PX) {
-                    setTagOpenId(tagOpenId === message.id ? null : message.id);
-                    setReplyPromptId(null);
-                  }
-                }}
-              >
-                {/* A reply shows the mail it answers, the way a chat quotes one.
-                    The link is stored on the row, so it survives a reload and is
-                    the same on both sides of the conversation. */}
-                {message.replyToId && (
-                  <div className="mb-1.5 flex flex-col rounded-card border-l-4 border-accent bg-black/5 px-2 py-1">
-                    <span className="text-[11px] font-semibold text-on-surface">
-                      {(() => {
-                        const original = messages.find((entry) => entry.id === message.replyToId);
-                        if (!original) {
-                          return "Replying to an earlier message";
-                        }
-                        return original.mine
-                          ? "You"
-                          : original.fromName?.trim() || original.from.replace(/@.*$/, "");
-                      })()}
-                    </span>
-                    <span className="truncate text-[11px] text-on-surface-variant">
-                      {messages.find((entry) => entry.id === message.replyToId)?.body.slice(0, 80) ??
-                        "The message this answers is above."}
-                    </span>
-                  </div>
-                )}
 
-                <div className="bubble-meta">
-                  {message.wasUnread && (
-                    <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
-                  )}
-                  <span>{formatWhen(message.createdAt)}</span>
-                  {message.mine && (
-                    <span
-                      className="ml-auto text-accent"
-                      title="Sent - the mail service accepted this message"
-                      aria-label="Sent"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-                    </span>
-                  )}
-                  {message.tag && (
-                    <span className="rounded border border-wa-line px-1 text-xs text-wa-muted">
-                      {message.tag}
-                    </span>
-                  )}
-                  {message.provisional && <span className="text-xs text-wa-muted">arriving…</span>}
-                </div>
-
-                {expanded ? (
-                  // Traditional full view: the complete message plus its header block.
-                  <div className="mt-1 border-t border-wa-line pt-2">
-                    {/* The email-reader mockup: sender block, subject heading,
-                        hairline, then the body at the mockup's generous leading. */}
-                    <div className="flex items-start gap-3">
-                      <Avatar size={44} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-semibold">
-                          {message.fromName?.trim() || message.from.replace(/@.*$/, "")}
-                        </p>
-                        <p className="select-all truncate text-xs text-outline">
-                          {message.from}
-                        </p>
-                      </div>
-                      <span className="shrink-0 pt-0.5 text-xs text-outline">
-                        {formatWhen(message.createdAt)}
-                      </span>
-                    </div>
-                    <span className="mt-4 inline-block rounded bg-surface-container px-2 py-0.5 text-xs font-medium text-on-surface-variant">
-                      To: {message.to}
-                    </span>
-                    <h3 className="mt-2 font-headline text-[22px] font-bold leading-snug">
-                      {message.subject}
-                    </h3>
-                    <div className="my-3 h-[1px] w-full bg-surface-container" />
-                    <p className="whitespace-pre-wrap text-base leading-[30px]">{message.body}</p>
-                    {!message.mine && !message.provisional && !message.repliedAt && (
-                      <Link
-                        href={replyHrefFor(message)}
-                        className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-wa-teal text-base font-bold text-white"
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M9 7L4 12l5 5" />
-                          <path d="M4 12h9a6 6 0 0 1 6 6v1" />
-                        </svg>
-                        Reply
-                      </Link>
-                    )}
-                    {message.repliedAt && (
-                      <p className="mt-4 text-sm text-on-surface-variant">Replied</p>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-2 text-sm font-semibold text-wa-teal"
-                      onClick={() => setExpandedId(null)}
-                    >
-                      Collapse
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <p className="whitespace-pre-wrap text-base">
-                      {long ? `${message.body.slice(0, LONG_MESSAGE_CHARS)}…` : message.body}
-                    </p>
-                    {long && (
-                      <button
-                        type="button"
-                        className="mt-1 text-sm font-semibold text-wa-teal"
-                        onClick={() => setExpandedId(message.id)}
-                      >
-                        Read full message
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {replyPromptId === message.id && (
-                  <Link
-                    href={replyHrefFor(message)}
-                    className="mt-2 flex min-h-tap items-center justify-center gap-2 rounded-card bg-wa-teal text-sm font-semibold text-white"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M9 7L4 12l5 5" />
-                      <path d="M4 12h9a6 6 0 0 1 6 6v1" />
-                    </svg>
-                    Reply in traditional view
-                  </Link>
-                )}
-
-                {!message.mine && !message.provisional && (
-                  <div className="mt-2 flex items-center gap-3">
-                    {message.repliedAt ? (
-                      <span className="text-xs text-wa-muted">Replied</span>
-                    ) : (
-                      <Link
-                        href={replyHrefFor(message)}
-                        className="min-h-tap text-sm font-semibold text-wa-teal"
-                      >
-                        Reply
-                      </Link>
-                    )}
-                    <button
-                      type="button"
-                      className="min-h-tap text-sm text-wa-muted"
-                      aria-label="Tag this message"
-                      onClick={() => setTagOpenId(tagOpenId === message.id ? null : message.id)}
-                    >
-                      ⋯
-                    </button>
-                  </div>
-                )}
-
-                {tagOpenId === message.id && (
-                  <div className="mt-2 flex flex-wrap gap-2 border-t border-wa-line pt-2">
+              <MessageCard
+                name={message.mine ? "You" : message.fromName?.trim() || phone}
+                secondary={message.mine ? counterpartAddress : message.from}
+                when={formatWhen(message.createdAt)}
+                body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
+                isNew={message.wasUnread ?? false}
+                tick={message.mine}
+                quoted={
+                  original
+                    ? `${original.mine ? "You" : original.fromName?.trim() || original.from}: ${original.body.slice(0, 90)}`
+                    : message.replyToId
+                      ? "An earlier message"
+                      : null
+                }
+                replyHref={
+                  message.mine || message.provisional || message.repliedAt ? undefined : replyHrefFor(message)
+                }
+                statusNote={
+                  message.mine
+                    ? "Sent"
+                    : message.provisional
+                      ? "Arriving…"
+                      : message.repliedAt
+                        ? "Replied"
+                        : null
+                }
+                onMore={
+                  message.mine || message.provisional
+                    ? undefined
+                    : () => setTagOpenId(tagOpenId === message.id ? null : message.id)
+                }
+                moreOpen={tagOpenId === message.id}
+                moreContent={
+                  <div className="flex flex-wrap gap-2 border-t border-wa-line pt-2">
                     {EMAIL_TAGS.map((tag) => (
                       <button
                         key={tag}
@@ -622,12 +480,58 @@ export default function ThreadPage() {
                       Move to Trash
                     </button>
                   </div>
-                )}
-              </div>
-              </div>
+                }
+                footer={
+                  replyPromptId === message.id ? (
+                    <Link
+                      href={replyHrefFor(message)}
+                      className="mt-3 flex min-h-tap items-center justify-center gap-2 rounded-[16px] bg-msg-action text-sm font-semibold text-msg-accent"
+                    >
+                      Reply in traditional view
+                    </Link>
+                  ) : long && !expanded ? (
+                    <button
+                      type="button"
+                      className="mt-2 text-sm font-semibold text-msg-accent"
+                      onClick={() => setExpandedId(message.id)}
+                    >
+                      Read full message
+                    </button>
+                  ) : long && expanded ? (
+                    <button
+                      type="button"
+                      className="mt-2 text-sm font-semibold text-msg-accent"
+                      onClick={() => setExpandedId(null)}
+                    >
+                      Collapse
+                    </button>
+                  ) : null
+                }
+                onPointerDown={(event) => {
+                  swipeStart.current = { id: message.id, x: event.clientX };
+                }}
+                onPointerUp={(event) => {
+                  const start = swipeStart.current;
+                  swipeStart.current = null;
+                  if (!start || start.id !== message.id) {
+                    return;
+                  }
+                  const travelled = event.clientX - start.x;
+                  if (travelled >= SWIPE_REVEAL_PX) {
+                    setReplyPromptId(replyPromptId === message.id ? null : message.id);
+                    setTagOpenId(null);
+                    return;
+                  }
+                  if (-travelled >= SWIPE_REVEAL_PX) {
+                    setTagOpenId(tagOpenId === message.id ? null : message.id);
+                    setReplyPromptId(null);
+                  }
+                }}
+              />
             </div>
           );
         })}
+
         <div ref={bottomRef} aria-hidden="true" />
       </div>
       )}
