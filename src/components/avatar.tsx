@@ -17,10 +17,18 @@ export function Avatar({
 }: {
   size?: number;
   className?: string;
-  /** "card" is the message card's own pair: its paler blue behind the mark. */
-  tone?: "default" | "card";
+  /**
+   * "card" is the message card's own pair: its paler blue behind the mark.
+   * "settings" is the settings hero's: the reference's own disc and glyph.
+   */
+  tone?: "default" | "card" | "settings";
 }) {
-  const palette = tone === "card" ? "bg-msg-avatar text-msg-accent" : "bg-avatar-sky text-accent";
+  const palette =
+    tone === "card"
+      ? "bg-msg-avatar text-msg-accent"
+      : tone === "settings"
+        ? "bg-settings-disc text-[#3b6fd4]"
+        : "bg-avatar-sky text-accent";
   return (
     <span
       aria-hidden="true"

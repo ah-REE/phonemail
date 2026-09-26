@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Avatar } from "@/components/avatar";
@@ -9,22 +9,25 @@ import { Spinner } from "@/components/spinner";
 import { useAuth } from "@/lib/useAuth";
 
 /**
- * Profile & settings.
+ * Profile & settings, to the owner's reference.
  *
- * The palette is the logo's: the identity block sits on the indigo chrome
- * (#1e3a8a) with the avatar ringed in white, the phone in white, the address
- * pill in the chrome's deep tint, and every action in the mark's own blue.
+ * EVERY COLOUR HERE IS SAMPLED FROM THAT REFERENCE, into the `settings` token
+ * group rather than typed inline, so this screen and the rest of the app cannot
+ * drift apart. The reference's own geometry: a full-bleed gradient hero with the
+ * bottom corners cut round; uppercase section headings sitting ABOVE white cards;
+ * a circular icon chip at the head of every row; a solid blue pill for the one
+ * primary action on a row; a hairline inside a card that starts at the text
+ * column rather than at the card's edge.
  *
- * Aliases are the app feature the mockup predates, so they get their own section
- * in the same card language. The notification switch and Delete account are now
- * REAL rows rather than mockup decoration: the switch is User.smsNotifications
- * (which the delivery gate reads) and deleting runs through a one-time code.
+ * Two things live here that the reference does not draw, and they are named
+ * rather than smuggled in: the FOLDERS section and the Language row. The owner
+ * asked for both back a round earlier, so they are kept - in the reference's own
+ * row grammar, in their old places, so the drawn sections still read exactly as
+ * drawn. Removing them is a one-line deletion and the owner's call.
  *
- * Two rows were removed for one round and are BACK at the owner's request: the
- * Folders section (Drafts, Spam, Trash - the screens never went away, only their
- * door) and the Language row. Language is honest about itself: English is the one
- * language that ships, and the other two say so rather than pretending to switch
- * anything.
+ * The things the reference cannot show and the app still needs are kept and
+ * styled to disappear into it: the alias list, the alias Remove action, the
+ * save/notice/error lines, and the delete confirmation sheet.
  */
 
 interface Alias {
@@ -34,25 +37,66 @@ interface Alias {
   createdAt?: string;
 }
 
+type IconName =
+  | "back"
+  | "bell"
+  | "check"
+  | "chevron"
+  | "copy"
+  | "globe"
+  | "lock"
+  | "logout"
+  | "pencil"
+  | "person"
+  | "trash";
+
 function Icon({
   name,
   size = 20,
+  strokeWidth = 1.8,
+  className = "",
 }: {
-  name: "back" | "bell" | "check" | "chevron" | "globe" | "logout" | "lock" | "trash";
+  name: IconName;
   size?: number;
+  strokeWidth?: number;
+  className?: string;
 }) {
   const stroke = {
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 1.8,
+    strokeWidth,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden="true"
+    >
       {name === "back" && <path d="M15 5l-7 7 7 7" {...stroke} />}
       {name === "chevron" && <path d="M9 5l7 7-7 7" {...stroke} />}
       {name === "check" && <path d="M5 13l4 4L19 7" {...stroke} />}
+      {name === "copy" && (
+        <>
+          <rect x="9" y="9" width="11" height="11" rx="2.5" {...stroke} />
+          <path d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-6A3.5 3.5 0 0 0 3 6.5v6A2.5 2.5 0 0 0 5.5 15" {...stroke} />
+        </>
+      )}
+      {name === "person" && (
+        <>
+          <circle cx="12" cy="8.6" r="3.6" {...stroke} />
+          <path d="M5 20a7 7 0 0 1 14 0" {...stroke} />
+        </>
+      )}
+      {name === "pencil" && (
+        <>
+          <path d="M4.5 19.5l4.2-1.1 9.6-9.6a2.2 2.2 0 0 0-3.1-3.1l-9.6 9.6z" {...stroke} />
+          <path d="M13.6 7.2l3.2 3.2" {...stroke} />
+        </>
+      )}
       {name === "globe" && (
         <>
           <circle cx="12" cy="12" r="8" {...stroke} />
@@ -61,13 +105,13 @@ function Icon({
       )}
       {name === "logout" && (
         <>
-          <path d="M15 5h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" {...stroke} />
-          <path d="M10 8l-4 4 4 4M6 12h9" {...stroke} />
+          <path d="M14 5h3.5A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5H14" {...stroke} />
+          <path d="M11 9l-3.5 3L11 15M4 12h7" {...stroke} />
         </>
       )}
       {name === "lock" && (
         <>
-          <rect x="5" y="10.5" width="14" height="9" rx="2" {...stroke} />
+          <rect x="5" y="10.5" width="14" height="9" rx="2.5" {...stroke} />
           <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" {...stroke} />
         </>
       )}
@@ -87,12 +131,54 @@ function Icon({
   );
 }
 
+const FOLDER_ROWS: { href: string; label: string; paths: string[] }[] = [
+  { href: "/drafts", label: "Drafts", paths: ["M6 3h8l4 4v14H6z", "M14 3v5h5"] },
+  { href: "/spam", label: "Spam", paths: ["M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z"] },
+  { href: "/trash", label: "Trash", paths: ["M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"] },
+];
+
+/** The heading above every card: small, grey, letterspaced, uppercase. */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-2.5 px-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-settings-faint">
+      {children}
+    </h3>
+  );
+}
+
+/** The white card the reference puts under every heading. */
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border border-settings-hair bg-settings-card ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** The circular chip that heads a row, and the inset rule that separates rows. */
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-settings-chip text-settings-chipink">
+      {children}
+    </span>
+  );
+}
+
+function InsetRule() {
+  return <span className="absolute left-[82px] right-0 top-0 h-px bg-settings-line" aria-hidden="true" />;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { status, token, user, signOut, authorizedFetch } = useAuth();
 
   const [aliases, setAliases] = useState<Alias[]>([]);
-  // Day 7: the display name, loaded from /api/me and saved back to it.
   const [nameDraft, setNameDraft] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
   const [nameNotice, setNameNotice] = useState<string | null>(null);
@@ -111,6 +197,9 @@ export default function ProfilePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const nameFieldRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -144,6 +233,12 @@ export default function ProfilePage() {
     }
   }, [authorizedFetch]);
 
+  useEffect(() => {
+    if (token) {
+      void load();
+    }
+  }, [token, load]);
+
   async function saveName(event: React.FormEvent) {
     event.preventDefault();
     setNameNotice(null);
@@ -154,7 +249,10 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: nameDraft.trim() === "" ? null : nameDraft.trim() }),
       });
-      const body = (await response.json().catch(() => ({}))) as { error?: string; user?: { displayName?: string | null } };
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        user?: { displayName?: string | null };
+      };
       if (!response.ok) {
         setNameNotice(body.error ?? "Could not save your name.");
         return;
@@ -168,12 +266,6 @@ export default function ProfilePage() {
       setNameSaving(false);
     }
   }
-
-  useEffect(() => {
-    if (token) {
-      void load();
-    }
-  }, [token, load]);
 
   async function addAlias(event: React.FormEvent) {
     event.preventDefault();
@@ -209,6 +301,24 @@ export default function ProfilePage() {
     }
   }
 
+  async function removeAlias(localPart: string) {
+    setError(null);
+    setNotice(null);
+
+    const response = await authorizedFetch(`/api/aliases/${encodeURIComponent(localPart)}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(body.error ?? "Could not remove that alias.");
+      return;
+    }
+
+    setNotice(`${localPart} removed.`);
+    await load();
+  }
+
   /** Flip the new-mail SMS switch. The server owns the value; this echoes it back. */
   async function toggleSms() {
     const next = !smsNotifications;
@@ -230,14 +340,24 @@ export default function ProfilePage() {
       }
       setSmsNotifications(Boolean(body.user?.smsNotifications));
       setSmsNotice(
-        body.user?.smsNotifications
-          ? "New mail will be texted to you."
-          : "New mail texts are off.",
+        body.user?.smsNotifications ? "New mail will be texted to you." : "New mail texts are off.",
       );
     } catch {
       setSmsNotice("Network error. Please try again.");
     } finally {
       setSmsSaving(false);
+    }
+  }
+
+  /** The reference's copy glyph, made real rather than decorative. */
+  async function copyAddress() {
+    const address = `${user?.phoneNumber ?? ""}@phonemail.com`;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -301,27 +421,9 @@ export default function ProfilePage() {
     }
   }
 
-  async function removeAlias(localPart: string) {
-    setError(null);
-    setNotice(null);
-
-    const response = await authorizedFetch(`/api/aliases/${encodeURIComponent(localPart)}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      setError(body.error ?? "Could not remove that alias.");
-      return;
-    }
-
-    setNotice(`${localPart} removed.`);
-    await load();
-  }
-
   if (status !== "authenticated") {
     return (
-      <main className="flex flex-1 flex-col bg-[#F8FAFC] p-4">
+      <main className="flex flex-1 flex-col bg-settings-canvas p-4">
         <span className="skeleton h-20 w-20 self-center rounded-full" />
         <span className="skeleton mt-4 h-6 w-40 self-center rounded-full" />
       </main>
@@ -329,231 +431,288 @@ export default function ProfilePage() {
   }
 
   const address = user ? `${user.phoneNumber}@phonemail.com` : "";
+  const canAdd = draft.trim().length > 0 && !busy;
 
   return (
-    <main className="flex flex-1 flex-col bg-[#F8FAFC]">
-      <header className="relative z-10 flex w-full flex-col bg-navy text-white">
-        <div className="relative flex h-14 items-center justify-between px-3">
+    <main className="flex flex-1 flex-col bg-settings-canvas">
+      {/* THE HERO. The reference runs one soft blue gradient from a near-white
+          top-left into its deepest blue at the bottom-right, cuts the panel's
+          bottom corners round, and floats the header on the pale top of it. */}
+      <header
+        className="relative flex w-full flex-col rounded-b-[30px] px-5 pb-8 pt-3"
+        style={{
+          backgroundImage:
+            "radial-gradient(115% 85% at 100% 100%, #7ba5f0 0%, rgba(123,165,240,0) 58%), radial-gradient(120% 70% at 8% 0%, #e8f0ff 0%, rgba(232,240,255,0) 62%), linear-gradient(152deg, #e8f0ff 0%, #dce9ff 34%, #c3d9fb 68%, #8fb6f7 100%)",
+        }}
+      >
+        <div className="relative flex h-14 items-center justify-between">
           <Link
             href="/"
-            className="z-10 flex h-12 w-12 items-center justify-center rounded-full transition-colors duration-ui hover:bg-white/10"
+            className="z-10 flex h-11 w-11 items-center justify-center rounded-full text-settings-ink transition-colors duration-ui hover:bg-white/40"
             aria-label="Back to the chat list"
           >
-            <Icon name="back" size={24} />
+            <Icon name="back" size={24} strokeWidth={2} />
           </Link>
-          <h1 className="pointer-events-none absolute inset-x-0 text-center font-headline text-[18px] font-bold tracking-tight text-white">
+          <h1 className="pointer-events-none absolute inset-x-0 text-center text-[21px] font-bold tracking-[-0.01em] text-settings-ink">
             Profile &amp; Settings
           </h1>
-          <span className="h-12 w-12" aria-hidden="true" />
+          <span className="h-11 w-11" aria-hidden="true" />
         </div>
 
-        <div className="flex flex-col items-center px-5 pb-8 pt-2 text-center">
+        <div className="flex flex-col items-center px-2 pb-2 pt-4 text-center">
           <div className="relative">
-            <Avatar size={80} className="ring-4 ring-white/15" />
-            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-navy bg-accent text-white">
-              <Icon name="check" size={14} />
-            </div>
+            <Avatar
+              size={108}
+              tone="settings"
+              className="ring-4 ring-settings-ring"
+            />
+            {/* The reference's badge is a pencil, not a tick: it opens the name
+                field rather than reporting something that already happened. */}
+            <button
+              type="button"
+              className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-settings-brand text-white shadow-card transition-transform duration-ui active:scale-95"
+              aria-label="Change your display name"
+              onClick={() => {
+                nameFieldRef.current?.focus();
+                nameFieldRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+              }}
+            >
+              <Icon name="pencil" size={18} strokeWidth={2} />
+            </button>
           </div>
-          {/* The name is primary when there is one and the number sits under it:
-              the number is the mail address, not a person's identity. With no name
-              set the number takes the top line, so nobody is ever nameless. */}
-          <h2 className="mt-3.5 font-headline text-[22px] font-extrabold leading-tight tracking-tight text-white">
+
+          <h2 className="mt-4 text-[27px] font-bold leading-tight tracking-[-0.018em] text-settings-ink">
             {savedName?.trim() || user?.phoneNumber || "Unknown"}
           </h2>
           {savedName?.trim() ? (
-            <p className="mt-1 select-all text-[15px] font-medium text-primary-fixed">
-              {user?.phoneNumber}
+            <p className="mt-1 select-all text-[17px] text-settings-quiet">{user?.phoneNumber}</p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => void copyAddress()}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-settings-pill px-5 py-2.5 transition-colors duration-ui hover:bg-white/80"
+            aria-label={`Copy your address ${address}`}
+          >
+            <span className="select-all text-[15px] text-settings-ink">{address}</span>
+            <span className="text-[#475467]" aria-hidden="true">
+              <Icon name={copied ? "check" : "copy"} size={17} strokeWidth={1.9} />
+            </span>
+          </button>
+          {copied ? (
+            <p className="mt-1.5 text-[13px] font-medium text-settings-quiet" role="status">
+              Address copied
             </p>
           ) : null}
-          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-navy-deep/80 px-4 py-1.5">
-            <span className="select-all text-[13px] font-semibold tracking-wide text-primary-fixed">
-              {address}
-            </span>
-          </div>
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col space-y-6 px-4 pb-6 pt-6">
-
+      <div className="flex flex-1 flex-col gap-7 px-5 pb-6 pt-7">
+        {/* ---------------------------------------------------------- PERSONAL */}
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
-            Personal details
-          </h3>
-          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
-            <form className="flex min-h-[64px] w-full items-center gap-2 px-4 py-4" onSubmit={saveName}>
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
-                  <Icon name="globe" size={20} />
-                </div>
-                <span className="text-[15px] font-medium text-on-surface">Name</span>
+          <SectionHeading>Personal details</SectionHeading>
+          <Card>
+            <form className="flex min-h-[76px] w-full items-center gap-4 px-5 py-4" onSubmit={saveName}>
+              <Chip>
+                <Icon name="person" size={21} />
+              </Chip>
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="display-name"
+                  className="block text-[17px] font-semibold text-settings-ink"
+                >
+                  Name
+                </label>
+                <input
+                  id="display-name"
+                  ref={nameFieldRef}
+                  className="mt-0.5 w-full bg-transparent text-[15px] text-settings-quiet outline-none placeholder:text-settings-faint focus:text-settings-ink"
+                  placeholder="Add your name"
+                  maxLength={40}
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                />
               </div>
-              <input
-                className="min-w-0 flex-1 bg-transparent text-right text-[15px] text-on-surface outline-none placeholder:text-outline"
-                placeholder="Your name"
-                maxLength={40}
-                value={nameDraft}
-                onChange={(event) => setNameDraft(event.target.value)}
-                aria-label="Your display name"
-              />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[14px] font-semibold text-white disabled:opacity-60"
+                className="shrink-0 rounded-full bg-settings-brand px-[22px] py-3 text-[15px] font-semibold text-white transition-opacity duration-ui disabled:opacity-60"
                 disabled={nameSaving}
               >
                 {nameSaving ? "Saving" : "Save"}
               </button>
             </form>
-          </div>
-          <p className="mt-2 px-1 text-[12px] text-on-surface-variant">
+          </Card>
+          <p className="mt-2.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
             Shown to people you write to. Leave it empty to show your number instead.
           </p>
-          {nameNotice && <p className="mt-2 px-1 text-[14px] text-navy">{nameNotice}</p>}
+          {nameNotice && <p className="mt-2 px-1 text-[14px] text-settings-ink">{nameNotice}</p>}
         </section>
 
+        {/* ------------------------------------------------------------- ALIAS */}
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
-            Alias IDs
-          </h3>
-          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
-            {aliases.length === 0 ? (
-              <p className="px-4 py-3.5 text-[14px] text-on-surface-variant">
-                No aliases yet. An alias is a second address for this account.
-              </p>
-            ) : (
-              aliases.map((alias) => (
-                <div
-                  key={alias.id}
-                  className="flex min-h-[64px] w-full items-center justify-between border-b border-surface-container-low px-4 py-4"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-on-surface">
-                    {alias.address}
-                  </span>
-                  <button
-                    type="button"
-                    className="shrink-0 text-[14px] font-semibold text-danger"
-                    aria-label={`Remove alias ${alias.localPart}`}
-                    onClick={() => void removeAlias(alias.localPart)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
-            <form
-              className="flex min-h-[64px] w-full items-center gap-2 border-t border-surface-container-low px-4 py-4"
-              onSubmit={addAlias}
-            >
-              <input
-                className="min-w-0 flex-1 bg-transparent text-[15px] text-on-surface outline-none placeholder:text-outline"
-                placeholder="Add an alias, e.g. john.doe"
-                autoCapitalize="none"
-                autoComplete="off"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[14px] font-semibold text-white disabled:opacity-60"
-                disabled={busy || draft.trim().length === 0}
+          <SectionHeading>Alias IDs</SectionHeading>
+          <Card>
+            <div className="p-5">
+              {aliases.length === 0 ? (
+                <p className="text-[15px] leading-[1.45] text-[#344054]">
+                  No aliases yet. An alias is a second address for this account.
+                </p>
+              ) : (
+                <ul>
+                  {aliases.map((alias, index) => (
+                    <li
+                      key={alias.id}
+                      className={`relative flex items-center justify-between gap-3 ${
+                        index === 0 ? "" : "border-t border-settings-line"
+                      } py-3 first:pt-0`}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[15px] text-[#344054]">
+                        {alias.address}
+                      </span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-[15px] font-semibold text-settings-danger"
+                        aria-label={`Remove alias ${alias.localPart}`}
+                        onClick={() => void removeAlias(alias.localPart)}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <form
+                className={`flex items-center gap-3 ${aliases.length === 0 ? "mt-4" : "mt-2 border-t border-settings-line pt-4"}`}
+                onSubmit={addAlias}
               >
-                {busy ? "Adding" : "Add"}
-              </button>
-            </form>
-          </div>
-          <p className="mt-2 px-1 text-[12px] text-on-surface-variant">
+                <input
+                  className="h-[48px] min-w-0 flex-1 rounded-xl bg-settings-field px-4 text-[15px] text-settings-ink outline-none placeholder:text-settings-faint"
+                  placeholder="Add an alias, e.g. john.doe"
+                  aria-label="New alias"
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className={`h-[48px] shrink-0 rounded-full px-6 text-[15px] font-semibold text-white transition-colors duration-ui ${
+                    canAdd ? "bg-settings-brand" : "bg-settings-brandsoft"
+                  }`}
+                  disabled={!canAdd}
+                >
+                  {busy ? "Adding" : "Add"}
+                </button>
+              </form>
+            </div>
+          </Card>
+          <p className="mt-2.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
             3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
             account exactly like mail sent to the number.
           </p>
-          {notice && <p className="mt-2 px-1 text-[14px] text-navy">{notice}</p>}
+          {notice && <p className="mt-2 px-1 text-[14px] text-settings-ink">{notice}</p>}
           {error && (
-            <p className="mt-2 px-1 text-[14px] text-danger" role="alert">
+            <p className="mt-2 px-1 text-[14px] text-settings-danger" role="alert">
               {error}
             </p>
           )}
         </section>
 
+        {/* ----------------------------------------------------------- FOLDERS
+            Not in the reference. The owner asked for these back a round earlier,
+            so they stay - in the reference's own row grammar. */}
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
-            Folders
-          </h3>
-          {/* Restored at the owner's request. The three screens never went away -
-              only the doors to them did - so this is a door, not new machinery. */}
-          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
-            {[
-              { href: "/drafts", label: "Drafts", paths: ["M6 3h8l4 4v14H6z", "M14 3v5h5"] },
-              { href: "/spam", label: "Spam", paths: ["M12 3l8 4v6c0 4-3.4 6.8-8 8-4.6-1.2-8-4-8-8V7z"] },
-              { href: "/trash", label: "Trash", paths: ["M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"] },
-            ].map((row, index) => (
+          <SectionHeading>Folders</SectionHeading>
+          <Card>
+            {FOLDER_ROWS.map((row, index) => (
               <Link
                 key={row.href}
                 href={row.href}
-                className={`flex min-h-[64px] w-full items-center justify-between px-4 py-4 transition-colors duration-ui hover:bg-paper ${
-                  index === 0 ? "border-b border-surface-container" : ""
-                }`}
+                className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 transition-colors duration-ui hover:bg-settings-canvas"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {index > 0 && <InsetRule />}
+                <span className="flex min-w-0 items-center gap-4">
+                  <Chip>
+                    <svg
+                      width="21"
+                      height="21"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       {row.paths.map((d) => (
                         <path key={d} d={d} />
                       ))}
                     </svg>
-                  </div>
-                  <span className="text-[15px] font-medium text-on-surface">{row.label}</span>
-                </div>
-                <span className="text-outline">
+                  </Chip>
+                  <span className="text-[17px] font-semibold text-settings-ink">{row.label}</span>
+                </span>
+                <span className="shrink-0 text-settings-faint">
                   <Icon name="chevron" size={20} />
                 </span>
               </Link>
             ))}
-          </div>
+          </Card>
         </section>
 
+        {/* ------------------------------------------------------- PREFERENCES */}
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
-            Preferences
-          </h3>
-          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
-            {/* Language. Only English ships, so the control offers the other two
-                as coming-soon entries that cannot be chosen - which is truer than
-                a row that implies a switch it cannot perform. */}
-            <div className="flex min-h-[64px] w-full items-center justify-between border-b border-surface-container-low bg-white px-4 py-4">
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
-                  <Icon name="globe" size={20} />
-                </div>
-                <label className="text-[15px] font-medium text-on-surface" htmlFor="language">
+          <SectionHeading>Preferences</SectionHeading>
+          <Card>
+            {/* Language is the other carried-over row. English is the one language
+                that ships; the other two say so rather than pretending. */}
+            <div className="flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4">
+              <span className="flex min-w-0 items-center gap-4">
+                <Chip>
+                  <Icon name="globe" size={21} />
+                </Chip>
+                <label className="text-[17px] font-semibold text-settings-ink" htmlFor="language">
                   Language
                 </label>
-              </div>
-              <select
-                id="language"
-                className="rounded-full border border-outline-variant bg-surface px-3 py-2 text-[14px] text-on-surface outline-none"
-                value={language}
-                onChange={(event) => setLanguage(event.target.value)}
-              >
-                <option value="en">English (India)</option>
-                <option value="hi" disabled>
-                  हिन्दी — coming soon
-                </option>
-                <option value="ta" disabled>
-                  தமிழ் — coming soon
-                </option>
-              </select>
+              </span>
+              <span className="relative flex shrink-0 items-center">
+                <select
+                  id="language"
+                  className="appearance-none bg-transparent pr-7 text-right text-[15px] font-medium text-settings-quiet outline-none"
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                >
+                  <option value="en">English (India)</option>
+                  <option value="hi" disabled>
+                    हिन्दी — coming soon
+                  </option>
+                  <option value="ta" disabled>
+                    தமிழ் — coming soon
+                  </option>
+                </select>
+                <span className="pointer-events-none absolute right-0 text-settings-faint">
+                  <Icon name="chevron" size={18} />
+                </span>
+              </span>
             </div>
 
-            <div className="flex min-h-[64px] w-full items-center justify-between bg-white px-4 py-4">
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
-                  <Icon name="bell" size={20} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[15px] font-medium text-on-surface">SMS notifications</span>
-                  <span className="text-[12px] text-on-surface-variant">
+            <div className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4">
+              <InsetRule />
+              <span className="flex min-w-0 items-center gap-4">
+                <Chip>
+                  <Icon name="bell" size={21} />
+                </Chip>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-[17px] font-semibold text-settings-ink">
+                    SMS notifications
+                  </span>
+                  <span className="mt-0.5 text-[14.5px] text-settings-quiet">
                     A text when new mail arrives
                   </span>
-                </div>
-              </div>
+                </span>
+              </span>
+              {/* The reference draws this switch OFF: a grey track with the knob
+                  at the left. On is the app's own blue. */}
               <button
                 type="button"
                 role="switch"
@@ -561,54 +720,55 @@ export default function ProfilePage() {
                 aria-label="SMS notifications for new mail"
                 disabled={smsSaving}
                 onClick={() => void toggleSms()}
-                className={`relative flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-ui disabled:opacity-60 ${
-                  smsNotifications ? "bg-accent" : "bg-surface-variant"
+                className={`relative flex h-[30px] w-[52px] shrink-0 items-center rounded-full transition-colors duration-ui disabled:opacity-60 ${
+                  smsNotifications ? "bg-settings-brand" : "bg-settings-track"
                 }`}
               >
                 <span
-                  className={`absolute h-5 w-5 rounded-full bg-white shadow-card transition-all duration-ui ${
-                    smsNotifications ? "left-6" : "left-1"
+                  className={`absolute h-[26px] w-[26px] rounded-full bg-white shadow-card transition-all duration-ui ${
+                    smsNotifications ? "left-[24px]" : "left-[2px]"
                   }`}
                 />
               </button>
             </div>
+
             {smsNotice && (
-              <p className="border-t border-surface-container-low px-4 py-3 text-[13px] text-navy">
+              <p className="relative border-t border-settings-line px-5 py-3 text-[14px] text-settings-quiet">
                 {smsNotice}
               </p>
             )}
-          </div>
+          </Card>
         </section>
 
+        {/* ----------------------------------------------------------- ACTIONS */}
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
-            Actions
-          </h3>
-          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
+          <SectionHeading>Actions</SectionHeading>
+          <Card>
             <button
               type="button"
-              className="flex min-h-[64px] w-full items-center justify-between px-4 py-4 text-left transition-colors duration-ui hover:bg-paper"
+              className="flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-ui hover:bg-settings-canvas"
               onClick={() => {
                 signOut();
                 router.replace("/onboarding");
               }}
             >
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
-                  <Icon name="logout" size={20} />
-                </div>
-                <span className="text-[15px] font-medium text-on-surface">Sign out</span>
-              </div>
-              <span className="text-outline">
+              <span className="flex min-w-0 items-center gap-4">
+                <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-settings-dangersoft text-settings-danger">
+                  <Icon name="logout" size={21} />
+                </span>
+                <span className="text-[17px] font-semibold text-settings-ink">Sign out</span>
+              </span>
+              <span className="shrink-0 text-settings-faint">
                 <Icon name="chevron" size={20} />
               </span>
             </button>
 
             {/* Delete account: confirmation, then a one-time code, then the server
-                checks BOTH before anything is removed. */}
+                checks BOTH before anything is removed. The reference reds only this
+                row's label; its background stays plain white. */}
             <button
               type="button"
-              className="flex min-h-[64px] w-full items-center justify-between border-t border-surface-container px-4 py-4 text-left transition-colors duration-ui hover:bg-paper"
+              className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-ui hover:bg-settings-canvas"
               onClick={() => {
                 setDeleteOpen(true);
                 setDeleteStep("confirm");
@@ -617,24 +777,30 @@ export default function ProfilePage() {
                 setDeleteError(null);
               }}
             >
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
-                  <Icon name="trash" size={20} />
-                </div>
-                <span className="text-[15px] font-medium text-danger">Delete account</span>
-              </div>
+              <InsetRule />
+              <span className="flex min-w-0 items-center gap-4">
+                <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-settings-dangersoft text-settings-danger">
+                  <Icon name="trash" size={21} />
+                </span>
+                <span className="text-[17px] font-semibold text-settings-danger">
+                  Delete account
+                </span>
+              </span>
+              <span className="shrink-0 text-settings-faint">
+                <Icon name="chevron" size={20} />
+              </span>
             </button>
-          </div>
+          </Card>
         </section>
 
-        <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-6">
-          <div className="inline-flex max-w-[340px] items-center justify-center gap-2 rounded-xl border border-outline-variant/80 bg-white px-4 py-2">
-            <span className="shrink-0 text-outline">
-              <Icon name="lock" size={15} />
+        <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-settings-track/80 bg-white px-5 py-2.5">
+            <span className="shrink-0 text-settings-quiet">
+              <Icon name="lock" size={16} />
             </span>
-            <span className="text-[12px] leading-snug text-on-surface-variant">End-to-end encrypted</span>
+            <span className="text-[14px] text-settings-quiet">End-to-end encrypted</span>
           </div>
-          <p className="mt-2.5 font-mono text-[12px] text-outline">PhoneMail v0.1.0</p>
+          <p className="mt-3 text-[12.5px] text-settings-faint">PhoneMail v0.1.0</p>
         </footer>
       </div>
 
@@ -645,19 +811,17 @@ export default function ProfilePage() {
           aria-modal="true"
           aria-label="Delete account"
         >
-          <div className="surface flex w-full max-w-phone flex-col gap-3 bg-white p-5">
+          <div className="flex w-full max-w-phone flex-col gap-3 rounded-2xl bg-white p-5 shadow-overlay">
             {deleteStep === "confirm" ? (
               <>
-                <h2 className="font-headline text-[19px] font-bold text-on-surface">
-                  Delete this account?
-                </h2>
-                <p className="text-[14px] leading-relaxed text-on-surface-variant">
+                <h2 className="text-[19px] font-bold text-settings-ink">Delete this account?</h2>
+                <p className="text-[14px] leading-relaxed text-settings-quiet">
                   Every message in your mailbox, your aliases and your contacts are removed
                   permanently. This cannot be undone.
                 </p>
-                <p className="text-[13px] text-on-surface-variant">
+                <p className="text-[13px] text-settings-quiet">
                   We will first text a one-time code to{" "}
-                  <span className="font-semibold text-on-surface">{user?.phoneNumber}</span>.
+                  <span className="font-semibold text-settings-ink">{user?.phoneNumber}</span>.
                 </p>
                 <button
                   type="button"
@@ -670,12 +834,10 @@ export default function ProfilePage() {
               </>
             ) : (
               <>
-                <h2 className="font-headline text-[19px] font-bold text-on-surface">
-                  Enter the code
-                </h2>
-                <p className="text-[14px] leading-relaxed text-on-surface-variant">
+                <h2 className="text-[19px] font-bold text-settings-ink">Enter the code</h2>
+                <p className="text-[14px] leading-relaxed text-settings-quiet">
                   A one-time code was sent to{" "}
-                  <span className="font-semibold text-on-surface">{user?.phoneNumber}</span>. It is
+                  <span className="font-semibold text-settings-ink">{user?.phoneNumber}</span>. It is
                   checked before anything is removed.
                 </p>
                 <label className="sr-only" htmlFor="delete-otp">
@@ -683,22 +845,22 @@ export default function ProfilePage() {
                 </label>
                 <input
                   id="delete-otp"
-                  className="w-full rounded-full border border-outline-variant bg-chat-field px-4 py-3 text-center text-[20px] font-bold tracking-[0.3em] text-on-surface outline-none placeholder:tracking-normal placeholder:text-outline"
+                  className="w-full rounded-full border border-settings-line bg-settings-field px-4 py-3 text-center text-[20px] font-bold tracking-[0.3em] text-settings-ink outline-none placeholder:tracking-normal placeholder:text-settings-faint"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="6-digit code"
                   maxLength={6}
                   value={deleteOtp}
-                  onChange={(event) => setDeleteOtp(event.target.value.replace(/D/g, "").slice(0, 6))}
+                  onChange={(event) => setDeleteOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
                 />
                 {deleteHint && (
-                  <p className="text-[13px] text-on-surface-variant">
+                  <p className="text-[13px] text-settings-quiet">
                     <strong>Dev mode:</strong> {deleteHint}
                   </p>
                 )}
                 <button
                   type="button"
-                  className="flex min-h-tap w-full items-center justify-center rounded-full bg-danger px-6 text-label-lg font-semibold text-white disabled:opacity-60"
+                  className="flex min-h-tap w-full items-center justify-center rounded-full bg-settings-danger px-6 text-label-lg font-semibold text-white disabled:opacity-60"
                   onClick={() => void confirmDelete()}
                   disabled={deleteBusy || deleteOtp.length !== 6}
                 >
@@ -708,14 +870,14 @@ export default function ProfilePage() {
             )}
 
             {deleteError && (
-              <p className="text-[14px] text-danger" role="alert">
+              <p className="text-[14px] text-settings-danger" role="alert">
                 {deleteError}
               </p>
             )}
 
             <button
               type="button"
-              className="min-h-tap w-full rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+              className="min-h-tap w-full rounded-full bg-settings-field text-sm font-semibold text-settings-ink"
               onClick={() => setDeleteOpen(false)}
               disabled={deleteBusy}
             >

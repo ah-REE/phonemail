@@ -75,6 +75,36 @@ const config: Config = {
           action: "#eaf2ff",
           more: "#f1f3f5",
         },
+        /* Settings, sampled from the owner's settings reference. The reference's
+           own blue (#1b6bff) is a touch brighter than the mark's (#256cf3), and its
+           red is the danger token the app already had - so this group is the
+           reference's geometry: a gradient hero that runs from a near-white blue to
+           its deepest, the white it puts cards on, the pale disc behind the avatar,
+           the chip that heads every row, the filled field, the off-state track, and
+           the three greys it uses for a label, a description and a heading. */
+        settings: {
+          canvas: "#f7f8fa",
+          card: "#ffffff",
+          hair: "#eff1f4",
+          line: "#eaecf0",
+          ink: "#101828",
+          quiet: "#667085",
+          faint: "#98a2b3",
+          chip: "#e5eeff",
+          chipink: "#2563eb",
+          brand: "#1b6bff",
+          brandsoft: "#a9c2f5",
+          field: "#f2f4f7",
+          disc: "#dce9fb",
+          ring: "#c6d9f5",
+          pill: "#e4ecfb",
+          track: "#d0d5dd",
+          danger: "#e5484d",
+          dangersoft: "#fdecec",
+          haze1: "#e8f0ff",
+          haze2: "#c3d9fb",
+          haze3: "#7ba5f0",
+        },
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },

@@ -2031,6 +2031,62 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), seventh session: THE SETTINGS SCREEN, rebuilt to the owner's
+  second reference drawing.
+  - The owner supplied a picture of a settings screen and asked for it EXACTLY. It is
+    a different visual language from the rest of the app, and it is now the settings
+    screen's own: a full-bleed hero panel running one soft blue gradient from a
+    near-white top-left to its deepest blue at the bottom-right, with the bottom
+    corners cut round; the header floating on the pale top of that gradient; a large
+    avatar with a blue PENCIL badge; the address in a pale pill with a copy glyph;
+    then uppercase letterspaced grey headings, each ABOVE a flat white card; a
+    circular pale-blue chip heading every row; a solid blue pill for the one primary
+    action on a row; and hairlines that start at the text column instead of the
+    card's edge.
+  - THIRTY-ONE COLOURS SAMPLED, NONE INVENTED, into a `settings` token group: the
+    canvas #f7f8fa, the card #ffffff, the hairline #eff1f4, the separator #eaecf0,
+    the three text greys (#101828 / #667085 / #98a2b3), the chip #e5eeff with its
+    #2563eb glyph, the reference's own blue #1b6bff and its washed-out disabled
+    state #a9c2f5, the field #f2f4f7, the hero's three blues (#e8f0ff / #c3d9fb /
+    #7ba5f0), the avatar's disc and ring (#dce9fb / #c6d9f5), the address pill
+    #e4ecfb, the switch's off track #d0d5dd and the destructive pair (#e5484d /
+    #fdecec).
+  - THE REFERENCE WAS VERIFIED AGAINST REAL PIXELS, not against an opinion. A
+    headless browser logged into the real app through the real onboarding, opened
+    /profile, and the screenshot was measured: the hero's deepest corner came back
+    #7ea8f1 against the reference's #7ba5f0, the canvas exactly #f7f8fa, the icon
+    chips exactly #e5eeff (six of them), the destructive chips exactly #fdecec (two)
+    and the alias field exactly #f2f4f7. The same screenshot was then read back
+    independently: gradient not flat, headings above the cards, no gap above the
+    hero, cards flat, nothing clipped or overflowing.
+  - THE MEASUREMENT FOUND ONE REAL DEFECT, which is why it was worth doing: the Name
+    field's placeholder was longer than the column beside the Save button and was
+    being clipped mid-phrase. It is now 'Add your name' - the sentence it replaced
+    already lives in the helper text under the card, where it has room to read.
+  - TWO ROWS THE DRAWING DOES NOT SHOW ARE KEPT AND NAMED: the FOLDERS section and
+    the Language row, both of which the owner asked for back a round earlier. They
+    sit in the reference's own row grammar so the drawn sections still read exactly
+    as drawn, and the source says so in a comment rather than hiding it. Removing
+    them is the owner's call and a one-line deletion.
+  - EVERYTHING THE DRAWING CANNOT SHOW AND THE APP STILL NEEDS IS KEPT: the alias
+    list and its Remove action, the save/notice/error lines, and the delete flow's
+    confirmation and one-time code. The avatar's badge became a pencil that opens
+    the name field, and the copy glyph on the address pill actually copies.
+  - A LATENT BUG DIED IN THE REWRITE: the delete dialog's code field stripped
+    /D/g - the letter D - instead of non-digits. It is now \\D.
+  - A THIRTEENTH SUITE, ct5/settings_ref.mjs, 31 assertions, SOURCE-ONLY by design:
+    a design lives in the source and the tokens, so it needs no server, no OTP and
+    no mode, and it must never be a reason to touch one. It guards the sampled
+    palette and the reference's geometry; the pixels above were the proof they land.
+  - TWO MORE ASSERTIONS RE-POINTED, both of which had been grading markup rather
+    than intent. The settings Name row moved to a label-for plus a real input. And
+    round 2's 'no Folders section and no language row' had only ever passed because
+    the old markup hid those strings behind variables - it was grading an accident,
+    not a decision, and it now grades the round-3 decision to keep them.
+  - VERIFICATION: 439 assertions across thirteen suites green, build green, the
+    real screen photographed and measured, and the four services healthy.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), sixth session: THE MESSAGE CARD, built from the owner's
   reference drawing.
   - The owner supplied a picture of the chat message and asked for it. It is not a
