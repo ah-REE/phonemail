@@ -1835,6 +1835,77 @@ context instantly)*
     nothing was deleted, and its docker volume is its own, separate from the dev stack.
   - Mode found and left: REAL.
 
+- Day 7 (Sat Sep 26), fourth session: CLICK-THROUGH ROUND 2 - the six bugs the owner
+  hit, the settings rework, true reply semantics, and the input pass.
+  - ONE SEND IS ONE MESSAGE. Both candidates were checked and the WRITE path was
+    innocent: a single POST is one SMTP submission, the inbound fan-out writes one
+    row, and the database was counted after each of two separate sends (one row
+    each time). The doubling was on the RENDER side - the thread appended a
+    provisional bubble on the realtime event and never reconciled it, so the real
+    row arrived beside it. A self-send emits that event to the sender too, which is
+    how one correct single-row write rendered twice. src/lib/threadMerge.ts now owns
+    the reconciliation as two pure functions (drop a provisional once its message
+    really arrives; never append the same message twice) and the suite imports and
+    executes them directly.
+  - THE 1:1 COMPOSER IS TYPABLE. The field on the thread was a LABEL that opened
+    compose with the recipient list LOCKED, so a normal new message could not be
+    typed in the conversation at all: the locked state had leaked out of reply mode
+    into the default flow. It is a real input now, sending to the counterpart.
+    Locking stays where it belongs - reply, and the traditional camera-slot compose.
+  - THE LAYOUT PINS THE COMPOSER: h-dvh instead of h-screen, min-h-0 on the
+    scrolling pane, shrink-0 on the chrome. The list fills the space above a
+    composer that cannot move, and scrolls itself to the newest message.
+  - A SELF-SEND IS BORN READ (src/lib/inbound.ts): when sender and recipient are the
+    same account the row is created isRead, so no unread badge can appear for a
+    message you wrote yourself.
+  - THE REMEMBERED NUMBER NO LONGER CROSSES TABS: sessionStorage instead of
+    localStorage, matching the token's own per-tab scope. A new tab starts empty.
+  - SENDING IS SILENT: the handed-to-the-mail-service line is gone from both
+    composers. The message simply appears.
+  - SETTINGS. The profile header leads with the NAME and puts the number beneath it.
+    The Folders section and every route to the folder screens are gone, along with
+    the in-thread move-to-folder actions (documented deviations in the README; the
+    folder column and API stay, harmlessly). The Language row is gone (also
+    documented). SMS notifications is a REAL switch - User.smsNotifications,
+    migration 11, PATCH /api/me - that the delivery gate reads alongside
+    registeredVia, and it can only ever NARROW who is notified. Delete account is a
+    real three-step flow: confirm, one-time code, then DELETE /api/me/delete, which
+    verifies the code server-side before removing emails, aliases, contacts and the
+    user in foreign-key order inside one transaction, and reports the counts. Proven
+    end to end on a throwaway number the suite itself deletes.
+  - REPLY SEMANTICS. The Reply button carries the original message's id, its subject
+    and a preview into the composer, which quotes it above the input and derives re:
+    from THAT message - so a reply to an older mail still answers the older mail,
+    with the right subject and the right linkage, in its own chronological place. A
+    new subject from the same counterpart draws a divider where the chat turned.
+    Reply-once is untouched.
+  - INPUT PASS: no phone number or code as placeholder text anywhere (grep; all five
+    remaining sites, including the portal's OTP field); the number field caps at ten
+    digits, says nothing while typing, and answers the submit with exactly Enter 10
+    digit mobile number; the Send OTP button sits at the login screen's own inset;
+    and text entry has caret-only focus - the ring that appeared around a field you
+    had merely clicked is gone, while links and buttons keep theirs so keyboard
+    navigation stays visible.
+  - VERIFICATION: 357 assertions across eleven suites, GREEN TWICE CONSECUTIVELY on
+    the loaded dev database. Three older assertions were re-pointed rather than
+    deleted - chatref and reader asserted markup this round replaced, and final
+    asserted the move-to-folder actions that were deliberately removed.
+  - THE FRESH-CLONE SIMULATION RAN AGAIN, from origin at this commit: git clone into
+    a fresh timestamped directory (no delete step anywhere), docker compose up -d,
+    all four containers healthy, ELEVEN migrations applied to a CLEAN volume with the
+    smsNotifications column present, dev mode out of the box - and 357 OF 357 ON THE
+    CLONE'S EMPTY DATABASE as well.
+  - One honest note: the brief called the new migration the 12th; the repository has
+    eleven migration directories and the database reports eleven applied. The count
+    in the brief is off by one, not the migration.
+  - ONE UNEXPLAINED ONE-OFF, recorded rather than buried: a single batch run of the
+    names suite reported three counterpart-name assertions failing with a value that
+    appears in no script and in no row. The suite passed on its own immediately
+    afterwards, and the name plumbing was then verified live end to end (null -> a
+    set name -> null again). It has not reproduced.
+  - Mode found and left: REAL. The clone directory phonemail-clone-20260926-133852 is
+    left in place again, by the same rule: nothing was deleted.
+
 - Day 7:
 
 ---
