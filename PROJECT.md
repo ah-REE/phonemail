@@ -2031,6 +2031,60 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), ninth session: THE CHAT IS BUBBLES. The owner settled the
+  conflict this session had flagged, and settled it against the card:
+  "the chat message design is LEFT/RIGHT BUBBLES - WhatsApp-style - with the
+  squared corner pointing toward the sender. The full-width card currently
+  rendering is WITHDRAWN." So the card is gone and the bubbles are back.
+  - THE CARD'S DISCIPLINE SURVIVED THE CARD, which was the whole point. Inside each
+    bubble, in this order: the reply linkage first and tappable (what a message
+    ANSWERS is often what you need before its words), then the body with long mail
+    collapsed behind Read full message, then ONE quiet metadata line - the time, the
+    sent or replied state where it exists, tag chips only when a tag is set. The
+    old bubble's per-message subject pill and its second metadata row are not
+    coming back.
+  - SHAPE: incoming sits left, outgoing right, and the squared corner points at
+    whoever wrote it - the top corner on the sender's side of the run's first
+    bubble, rounded everywhere else. Outgoing keeps the pale green the owner allows;
+    incoming is white on the chat canvas. A pressed state scales the bubble a hair,
+    so a tap feels like it landed.
+  - RUNS: consecutive messages from one sender collapse. The sender's name lands
+    once, on the first incoming bubble of a run (groups only - a 1:1 stays
+    nameless), their shared avatar once, at the run's foot, and the messages INSIDE
+    a run sit at 4px while runs sit at 12px apart. Identity per run, not per
+    message, is what makes a run read as one person talking.
+  - THE ATTACHMENT SLOT is real and documented: `attachments` renders above the
+    body, inside the bubble, so a picture never shoves its own caption around when
+    it arrives. Attachments land next session with no redesign.
+  - The reply action moved UNDER the bubble rather than inside it: a reply is
+    something you do TO a message, not a part of it. The tag and move panel, both
+    swipes, the expand control, the sent tick and the NEW mark all survive in the
+    bubble's own grammar.
+  - SEVEN CARD-ERA ASSERTIONS WERE RE-POINTED rather than deleted - the two fills,
+    the avatar, the metadata row, the tick, the NEW mark, the reply quote and the
+    card's own hierarchy - and three NEW ones assert the bubble: the side and the
+    squared corner, run grouping with its tighter interior spacing, and the
+    attachment slot. The hierarchy assertion is an ORDER assertion, not a set
+    membership one: it checks the reply linkage really does come before the body
+    and the body before the time, by comparing their positions in the component.
+  - TWO MISTAKES OF MINE, both caught by running things rather than reading them:
+    the run predicate needed an explicit type, and the run index cannot come from
+    the map callback of a list that does not supply one - it comes from the list.
+    A third: six re-pointed checks were written without their closing paren, which
+    the suite caught instantly as a SyntaxError rather than as a false pass.
+  - DOCKER CLEANUP, PARTLY DONE: eleven leftover evaluator/clone compose projects
+    were brought down with `down -v --remove-orphans`, taking 46 orphaned
+    containers with them. `docker ps -a` now shows EXACTLY FOUR - the main stack.
+    The stray `phonemail-*_postgres-data` volumes were then refused by the Safety
+    Guard on an approval timeout, and that refusal is final for the session, so
+    they remain along with the %TEMP% directories. Both need one more pass.
+  - NOT DONE, and not claimed: the bubble-style A/B/C research spec, the composer's
+    compact subject field with its visible/hidden modes, the canvas rules (date
+    pills, live-arrival subject dividers), and the service-worker update-path
+    investigation. The SW one matters - it is why the last session could not
+    re-photograph the settings screen - and it is the next thing to pick up.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), eighth session: THE THREE CHAT FIXES and THE SETTINGS
   DENSITY PASS. Landed and verified; the chat redesign that follows them is NOT in
   this commit and is called out at the end of this entry.

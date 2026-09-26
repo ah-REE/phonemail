@@ -114,7 +114,8 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | Delete account | `/profile` → confirm → OTP → `DELETE /api/me/delete` | Done — a live one-time code is verified server-side before anything is removed, then emails, aliases, contacts and the user go in foreign-key order inside one transaction; the response reports exactly what was removed |
 | Compact subject above the message box | thread subject pill | Done |
 | Settings design | `src/app/(mobile)/profile/page.tsx` | Done — the owner's second reference, EXACTLY: gradient hero, uppercase headings above flat white cards, a pale chip heading every row, blue pills, hairline separators inset to the text column. Thirty-one colours sampled into the `settings` token group, and verified against real pixels from a headless browser (hero corner #7ea8f1 vs the reference's #7ba5f0; canvas, chips and field exact). Two rows the drawing does not show — Folders and Language — are kept in the same grammar and named in the source, because the owner asked for them back a round earlier |
-| Chat message design | `src/components/message-card.tsx` | Done — the owner's reference card, one per message: an identity panel (avatar, sender, address), a NEW pill and time, the body, a hairline, then Reply and an ellipsis. Colours sampled into the `msg` token group. The card is the same for both sides, as drawn, and carries the sent tick the owner asked for earlier (the drawing shows none — stated, not dropped) |
+| Chat message design | `src/components/message-card.tsx` | Done — LEFT/RIGHT BUBBLES, the owner's own decision (the full-width card was withdrawn): the squared corner points at the sender, runs of consecutive messages from one sender show identity once, and the withdrawn card's discipline survives INSIDE each bubble — the reply linkage first, then the body, then one quiet metadata line. An empty documented attachment slot waits for attachments. |
+| ~~Chat message design (withdrawn)~~ | `src/components/message-card.tsx` | Superseded — the owner's reference card, one per message: an identity panel (avatar, sender, address), a NEW pill and time, the body, a hairline, then Reply and an ellipsis. Colours sampled into the `msg` token group. The card is the same for both sides, as drawn, and carries the sent tick the owner asked for earlier (the drawing shows none — stated, not dropped) |
 | All mail from one sender stays in one chat | `GET /api/conversations` | Done |
 | New mail shows its subject; replies link to the original | thread + reply-once | Done — a new subject renders as a divider at its chronological position, the chat simply continues, and a reply carries the original mail's subject as `re: <original>` plus a quoted preview above the input, linked to that exact message id |
 | Replying hides the Subject field | `/compose` | **Deviation** — the subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are replying to |
@@ -223,7 +224,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **460 assertions** across fourteen suites, in dev mode through the real SMTP round
+- **463 assertions** across fourteen suites, in dev mode through the real SMTP round
   trip: 15 for the onboarding forms, 26 for the auth screens, 27 for the palette, 21
   for the chat reference, 21 for the traditional reader, 27 for display names, 43 for
   the group chat, 42 for the final functional items (search-to-chat, the
