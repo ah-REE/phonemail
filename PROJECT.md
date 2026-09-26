@@ -1906,6 +1906,57 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-133852 is
     left in place again, by the same rule: nothing was deleted.
 
+- Day 7 (Sun Sep 27), hygiene session: the test tree tells the truth, the
+  dependency list tells the truth, and THE SAFETY FLOOR MOVES TO HEAD.
+  - RETIRED: otp-unit-test.mjs and notify-unit-test.mjs, which could not even
+    start (they imported a redis stub that does not exist) while the HTTP suites
+    cover the same behaviour through the real endpoints; and phase0/brand_refresh.mjs,
+    which asserted a palette the logo repaint replaced several sessions earlier and
+    had been failing ever since. Nothing in the shipped tree referenced any of the
+    three. The suite set is now exactly the eleven suites that run green.
+  - THE NAMES ONE-OFF IS WATCHED AND CLOSED. It was given the third consecutive
+    full run, and then a fourth and a fifth while the dependency change was
+    verified: green every time, and the raw payload was captured on a passing run
+    (counterpartName carries the value written moments earlier). It has not recurred
+    in six consecutive full runs, and no script or row could ever have produced the
+    value that one run reported. Closed as WATCHED, not as explained - if it ever
+    returns, the raw payload is what to capture.
+  - DEPENDENCY TRUTH: bcryptjs is gone. The password-login path it was installed for
+    was removed when the app went OTP-only, leaving the dependency unused;
+    node_modules, package.json and package-lock.json are all clean of it and the
+    rebuilt image does not contain it. Verified like any other change: build green,
+    full suite green.
+  - ONE ASSERTION OF MY OWN WAS WRONG, and it is the SAME lesson as the harness fix:
+    the round-2 suite asserted the notification switch reads true by default ON THE
+    LOADED DATABASE. A user setting persists - the only writer is the account's own
+    PATCH - so the suite was asserting a baseline it did not own, and it failed the
+    moment the value was not the default. It now reads whatever is there, flips it,
+    proves the flip persisted, and puts the original back. That a NEW account starts
+    at true is a property of the schema default, and it is asserted where new
+    accounts exist: on the fresh clone, where it passes.
+  - README ACCURACY: the migration count said 9 (now 11); the evidence section said
+    247 assertions across eight suites (now 357 across eleven, itemised by suite);
+    the clone paragraph said nine migrations and 116 assertions (now eleven and 357);
+    and the repository layout said 7 committed migrations (now 11).
+  - ONE README CLAIM WAS NOT TRUE, found by the same spot-check and corrected: the
+    spec-mapping table said the profile picture is served from Postgres and pointed at
+    /api/me/avatar. NO SUCH ROUTE EXISTS - there is no upload and nothing serves the
+    avatar columns, and every account shows the shared default mark. The row now reads
+    Partial and spells out that the User.avatar* columns are unused scaffolding; the
+    matching limitation bullet and the comment in /api/me/route.ts were corrected to
+    match.
+  - THE SAFETY FLOOR MOVED: submission-fallback now points at this commit. The old
+    floor (6aa3cb4) predated the entire visual rebuild and five sessions of fixes. The
+    floor means the best state we KNOW is submittable, and with the suites green on
+    the loaded database and on a fresh clone of origin, that is HEAD. Annotated tag,
+    force-pushed; the old object is left untouched in history.
+  - VERIFICATION: 357 assertions across eleven suites green three times consecutively,
+    then the fresh-clone simulation from origin at this commit - all four containers
+    healthy, ELEVEN migrations on a clean volume, dev mode out of the box, and 357 OF
+    357 ON THE CLONE, with bcryptjs absent from the clone's own image.
+  - Mode found and left: REAL. The clone directory phonemail-clone-20260926-151737 is
+    left in place, by the same rule as before: nothing was deleted.
+
 - Day 7:
 
 ---
