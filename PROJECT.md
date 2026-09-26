@@ -1515,6 +1515,47 @@ context instantly)*
     to the readable token), the palette suite 27/27, the screens suite 26/26;
     and the deployed bundle serving the 156px mark and the capitalised line.
 
+- Day 7 (Sat Sep 26): THE CHAT INTERFACE, REBUILT TO THE OWNER'S REFERENCE.
+  - The owner supplied a screenshot of the chat screen and asked for it exactly.
+    Its values were SAMPLED FROM THE IMAGE, not taken from the description: the
+    canvas #eff6fe, the outgoing bubble #e2f9e9 (pale green), the incoming bubble
+    #edf2fa, the sheets #f9fbfe, the rail circle #eef2f9 and the metadata grey
+    #6b7280. Its blue is #256cf3 - which is already this system's accent - so the
+    reference and the logo agree, and the chat needed no new brand colour.
+  - Both thread screens now share it: a white header with rounded bottom corners
+    and a soft shadow, a rail back circle, a 48px accent avatar (the initial for
+    1:1, the member count for a group), a 17px bold title over a 13px grey
+    subtitle; the message list on the chat canvas; bubbles with ONE 16px radius
+    and no tail, outgoing in the pale green and incoming in the light grey with a
+    40px accent-soft avatar outside; the metadata row INSIDE the bubble (time,
+    sender on a group, the sent tick in the accent); and the composer as a white
+    sheet with a rounded top, a 56px rounded field (the paperclip lives inside it
+    on 1:1, with its honest notice) and the brand-blue action.
+  - THREE DELIBERATE DEPARTURES from the reference, each because the app cannot
+    honestly do what the mockup shows, and each one line to reverse:
+    (1) the sent tick stays a SINGLE check - the app knows the mail service
+        accepted a message, nothing tells it the other side received it, and a
+        second tick would claim a delivery this system cannot observe;
+    (2) the group's locked chips carry no remove x, because a thread's recipient
+        set genuinely cannot be changed here - the + opens the traditional
+        composer, where it can;
+    (3) the 1:1 composer's action reads 'Write to <number>' and opens the
+        composer, because this app has no inline sender - that footer has always
+        been a doorway to compose rather than a text box.
+  - Also: the last two green surfaces outside the chat (the drafts pill and the
+    onboarding step dot) were repainted to the accent, so the only green left in
+    the interface is the chat's own outgoing bubble, which the reference names.
+  - Verified: build green; the new chat suite 21/21 (the sampled colours, the
+    single radius, the absence of tails, the avatar, the metadata row, the sheets,
+    both threads agreeing, no green class left in either); the reader suite 21/21
+    after updating the one assertion that named the old container class - it was
+    asserting precisely what this change replaced; the group suite 42/43, its
+    single failure the known loaded-DB artifact (the target message was already
+    read, so the unread count could not move), which has passed 43/43 both earlier
+    today and on a clean clone; names 27/27; the welcome 15/15, palette 27/27 and
+    screens 26/26 suites; and real mode restored and confirmed in the container.
+  - The visual judgement remains the owner's, since I cannot see images.
+
 - Day 7:
 
 ---

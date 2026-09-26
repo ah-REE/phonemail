@@ -38,6 +38,18 @@ const config: Config = {
         /* One of the illustration's own colours, and kept for that reason - but
            nothing in the interface uses it: the owner asked for no green in the
            app, so every green surface was repainted into the mark's blue. */
+        /* Chat, sampled from the owner's reference screenshot. Its blue is the
+           accent above (#256cf3), so the reference and the logo agree; the rest
+           are the canvas and the two bubble fills as they actually measure. */
+        chat: {
+          canvas: "#eff6fe",
+          out: "#e2f9e9",
+          in: "#edf2fa",
+          sheet: "#f9fbfe",
+          field: "#ffffff",
+          rail: "#eef2f9",
+          meta: "#6b7280",
+        },
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },

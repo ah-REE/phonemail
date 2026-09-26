@@ -85,6 +85,18 @@
     box-shadow: 0 14px 28px -14px rgba(52, 102, 224, 0.6);
   }
 
+  /* Chat bubbles, from the owner's reference: one radius, no tail, and the
+     metadata (time, name, tick) lives inside the bubble rather than under it. */
+  .bubble {
+    @apply max-w-[82%] px-3.5 py-2.5 shadow-card;
+    border-radius: 16px;
+  }
+  .bubble-out { @apply bg-chat-out text-on-surface; }
+  .bubble-in { @apply bg-chat-in text-on-surface; }
+  .bubble-meta {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-none text-chat-meta;
+  }
+
   .field {
     @apply min-h-tap w-full rounded-card border border-outline-variant bg-surface px-4 text-base text-on-surface shadow-card outline-none transition-all duration-ui ease-out-quint placeholder:text-outline focus:border-accent focus:shadow-raised;
   }

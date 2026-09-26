@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { Spinner } from "@/components/spinner";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
@@ -214,32 +215,32 @@ export default function GroupThreadPage() {
   return (
     <main className="flex h-screen flex-col">
       {/* The thread design plus the members header the brief asks for. */}
-      <header className="sticky top-0 z-20 flex h-[76px] w-full items-center justify-between bg-primary-container px-4 text-on-primary">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label="Back to the chat list">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M15 5l-7 7 7 7" />
-            </svg>
-          </Link>
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
-              {members.length || others.length + 1}
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <h1 className="truncate font-headline text-base leading-tight">
-                Group ({members.length || others.length + 1})
-              </h1>
-              <span className="truncate text-xs leading-tight opacity-90" title={members.join(", ")}>
-                {members.length > 0
-                  ? members
-                      .map((member, index) => memberNames[index]?.trim() || member)
-                      .join(", ")
-                  : subject || "Loading members"}
-              </span>
-            </div>
-          </div>
+      <header className="sticky top-0 z-20 flex h-[84px] w-full items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
+        <Link
+          href="/"
+          aria-label="Back to the chat list"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </Link>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent font-headline text-lg font-bold text-white">
+          {members.length || others.length + 1}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
+            Group ({members.length || others.length + 1})
+          </h1>
+          <span className="truncate text-[13px] leading-tight text-chat-meta" title={members.join(", ")}>
+            {members.length > 0
+              ? members
+                  .map((member, index) => memberNames[index]?.trim() || member)
+                  .join(", ")
+              : subject || "Loading members"}
+          </span>
         </div>
-        <span className="shrink-0 text-xs opacity-80">group</span>
+        <span className="shrink-0 text-[11px] text-chat-meta">group</span>
       </header>
 
       {loading && <ThreadSkeleton />}
@@ -252,34 +253,35 @@ export default function GroupThreadPage() {
         <p className="p-6 text-center text-wa-muted">No messages in this conversation yet.</p>
       )}
 
-      <div ref={listRef} className="flex-1 overflow-y-auto bg-surface-container p-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto bg-chat-canvas px-4 py-3">
         {messages.map((message) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
 
           return (
-            <div key={message.id} className={`mb-5 flex ${message.mine ? "justify-end" : "justify-start"}`}>
+            <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
+              {!message.mine && (
+                <span className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-sm font-bold text-accent">
+                  {(message.fromName?.trim() || phoneOf(message.from)).slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <div
-                className={`max-w-[82%] rounded-2xl px-3.5 py-3 ${
-                  message.mine
-                    ? "ml-auto rounded-tr-sm bg-secondary-container text-on-surface"
-                    : "rounded-tl-sm bg-surface-container text-on-surface"
-                }`}
+                className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
               >
-                <div className="flex items-baseline gap-2">
+                <div className="bubble-meta">
                   {message.wasUnread && (
-                    <span className="rounded bg-wa-green px-1 text-xs font-semibold text-white">new</span>
+                    <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
                   )}
                   {/* The sender matters in a group: name it on incoming bubbles. */}
                   {!message.mine && (
-                    <span className="text-xs font-semibold">
+                    <span className="font-semibold text-on-surface">
                       {message.fromName?.trim() || phoneOf(message.from)}
                     </span>
                   )}
-                  <span className="text-xs text-wa-muted">{formatWhen(message.createdAt)}</span>
+                  <span>{formatWhen(message.createdAt)}</span>
                   {message.mine && (
                     <span
-                      className="text-primary-container"
+                      className="ml-auto text-accent"
                       title="Sent - the mail service accepted this message"
                       aria-label="Sent"
                     >
@@ -337,36 +339,57 @@ export default function GroupThreadPage() {
         })}
       </div>
 
-      <form className="sticky bottom-0 z-20 border-t border-wa-line bg-surface-container-lowest p-3" onSubmit={handleSend}>
-        <p className="mb-2 text-xs text-on-surface-variant">
-          To (locked): {others.length > 0 ? others.join(", ") : "no other members"}
-        </p>
-        <div className="mb-2 flex flex-wrap gap-2">
+      <form
+        className="sticky bottom-0 z-20 flex w-full flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-5 pb-5 pt-4 shadow-overlay"
+        onSubmit={handleSend}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-chat-meta">To (locked)</span>
           {others.map((member) => (
             <span
               key={member}
-              className="rounded-full border border-wa-line bg-wa-panel px-3 py-1 text-sm"
+              className="flex h-9 items-center rounded-full bg-accent-soft px-3 text-[14px] font-medium text-accent"
               title="Locked: the recipient set of this thread cannot be changed"
             >
               {member}
             </span>
           ))}
+          <Link
+            href={`/compose?to=${encodeURIComponent(others.join(","))}&lockTo=1`}
+            aria-label="Add a recipient in the traditional view"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-chat-rail text-accent"
+            title="Add a recipient in the traditional view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </Link>
         </div>
+
         <textarea
-          className="field mb-2 min-h-20 w-full py-2"
-          rows={3}
+          className="min-h-[56px] w-full resize-none rounded-[28px] border border-outline-variant bg-chat-field px-5 py-4 text-base text-on-surface outline-none placeholder:text-outline"
+          rows={1}
           placeholder="Message the group"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-label="Message the group"
         />
-        {notice && <p className="mb-2 text-sm text-wa-teal">{notice}</p>}
+        {notice && <p className="text-sm text-accent">{notice}</p>}
         <button
           type="submit"
-          className="btn-primary w-full"
+          className="btn-brand w-full"
           disabled={sending || others.length === 0}
         >
-          {sending ? "Sending." : "Send to group"}
+          {sending ? (
+            <Spinner label="Sending" />
+          ) : (
+            <>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12l16-8-6 16-2.6-6.4z" />
+              </svg>
+              Send to group
+            </>
+          )}
         </button>
       </form>
     </main>

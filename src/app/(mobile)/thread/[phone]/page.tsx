@@ -231,28 +231,28 @@ export default function ThreadPage() {
 
   return (
     <main className="flex h-screen flex-col">
-            <header className="sticky top-0 z-20 flex h-[76px] w-full items-center justify-between bg-primary-container px-4 text-on-primary">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label="Back to the chat list">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M15 5l-7 7 7 7" />
-            </svg>
-          </Link>
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container font-headline text-base font-bold text-primary-container">
-              {phone.slice(0, 1) || "?"}
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <h1 className="truncate font-headline text-base leading-tight">
-                {counterpartName?.trim() || phone}
-              </h1>
-              <span className="truncate text-xs leading-tight opacity-90" title={headerSubject}>
-                {headerSubject}
-              </span>
-            </div>
-          </div>
+      <header className="sticky top-0 z-20 flex h-[84px] w-full items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
+        <Link
+          href="/"
+          aria-label="Back to the chat list"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </Link>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent font-headline text-lg font-bold text-white">
+          {(counterpartName?.trim() || phone).slice(0, 1).toUpperCase()}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
+            {counterpartName?.trim() || phone}
+          </h1>
+          <span className="truncate text-[13px] leading-tight text-chat-meta" title={headerSubject}>
+            {headerSubject}
+          </span>
         </div>
-        <span className="shrink-0 text-xs opacity-80" title="connection">
+        <span className="shrink-0 text-[11px] text-chat-meta" title="connection">
           {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
         </span>
       </header>
@@ -286,7 +286,7 @@ export default function ThreadPage() {
           />
         </div>
       ) : (
-      <div ref={listRef} className="flex-1 overflow-y-auto bg-surface-container p-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto bg-chat-canvas px-4 py-3">
         {/* The mockup's date divider, then its subject pill. */}
         <div className="mb-4 flex justify-center">
           <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
@@ -306,13 +306,14 @@ export default function ThreadPage() {
           const expanded = expandedId === message.id;
 
           return (
-            <div key={message.id} className={`mb-5 flex ${message.mine ? "justify-end" : "justify-start"}`}>
+            <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
+              {!message.mine && (
+                <span className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-sm font-bold text-accent">
+                  {(message.fromName?.trim() || message.from.replace(/@.*$/, "")).slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <div
-                className={`max-w-[82%] rounded-2xl px-3.5 py-3 ${
-                  message.mine
-                    ? "ml-auto rounded-tr-sm bg-secondary-container text-on-surface"
-                    : "rounded-tl-sm bg-surface-container text-on-surface"
-                }`}
+                className={`bubble ${message.mine ? "bubble-out" : "bubble-in"}`}
                 onPointerDown={(event) => {
                   swipeStart.current = { id: message.id, x: event.clientX };
                 }}
@@ -327,14 +328,14 @@ export default function ThreadPage() {
                   }
                 }}
               >
-                <div className="flex items-baseline gap-2">
+                <div className="bubble-meta">
                   {message.wasUnread && (
-                    <span className="rounded bg-wa-green px-1 text-xs font-semibold text-white">new</span>
+                    <span className="rounded bg-accent px-1 text-[10px] font-semibold uppercase tracking-wide text-white">new</span>
                   )}
-                  <span className="text-xs text-wa-muted">{formatWhen(message.createdAt)}</span>
+                  <span>{formatWhen(message.createdAt)}</span>
                   {message.mine && (
                     <span
-                      className="text-primary-container"
+                      className="ml-auto text-accent"
                       title="Sent - the mail service accepted this message"
                       aria-label="Sent"
                     >
@@ -492,19 +493,19 @@ export default function ThreadPage() {
           no backend yet. Hidden while the reader is showing, where the reader's
           own Reply bar is the action. */}
       {!onlyIncoming && (
-      <footer className="sticky bottom-0 z-20 flex w-full items-center gap-2 bg-surface-container-lowest px-3 py-2.5">
-        <button
-          type="button"
-          aria-label="Attach documents"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant active:bg-surface-container"
-          onClick={() => setAttachNotice(true)}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
-          </svg>
-        </button>
-        <div className="flex h-12 flex-1 items-center gap-2 rounded-full bg-surface-container px-4 text-sm text-on-surface-variant">
-          <span className="flex-1 truncate">Message {phone}</span>
+      <footer className="sticky bottom-0 z-20 flex w-full flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
+        <div className="flex h-14 items-center gap-2 rounded-[28px] border border-outline-variant bg-chat-field px-4 text-on-surface-variant">
+          <button
+            type="button"
+            aria-label="Attach documents"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+            onClick={() => setAttachNotice(true)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+            </svg>
+          </button>
+          <span className="flex-1 truncate text-sm">Message {phone}</span>
           <Link
             href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
             aria-label="Write to this number in the traditional view (locked recipients)"
@@ -518,13 +519,12 @@ export default function ThreadPage() {
         </div>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
-          aria-label={`Write to ${phone} in the traditional view`}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-surface"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-[28px] bg-accent text-base font-bold text-white shadow-raised transition-all duration-fast ease-out-quint active:scale-[0.985]"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16v4z" />
-            <path d="M13.5 6.5l4 4" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 12l16-8-6 16-2.6-6.4z" />
           </svg>
+          Write to {phone}
         </Link>
       </footer>
       )}

@@ -66,7 +66,7 @@ export default function DraftsPage() {
             <div className="mt-2 flex gap-2">
               <Link
                 href={"/compose?draft=1" + (draft.to ? "&to=" + encodeURIComponent(draft.to) : "")}
-                className="min-h-tap rounded-full bg-wa-green px-4 text-sm font-semibold text-on-surface"
+                className="min-h-tap rounded-full bg-accent px-4 text-sm font-semibold text-on-surface"
               >
                 Resume
               </Link>

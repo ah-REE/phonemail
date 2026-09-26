@@ -111,7 +111,7 @@ function StepDots({ total, active }: { total: number; active: number }) {
           key={index}
           className={
             index === active - 1
-              ? "h-1.5 w-6 rounded-full bg-wa-green"
+              ? "h-1.5 w-6 rounded-full bg-accent"
               : "h-1.5 w-1.5 rounded-full bg-wa-muted/30"
           }
         />
