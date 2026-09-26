@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   aliasAddress,
+  ALIAS_LIMIT,
   localPartIsTaken,
   localPartProblem,
   recipientToken,
@@ -73,6 +74,24 @@ export async function POST(request: Request) {
   }
 
   const localPart = recipientToken(parsed.data.localPart);
+
+  // THE CAP (click-through round 4). Counted rather than assumed: an account over
+  // the limit is told exactly that, and told what to do about it, instead of being
+  // handed a generic refusal. Nothing is taken away from an account already over it.
+  const held = await prisma.alias.count({ where: { userId: user.sub } });
+  if (held >= ALIAS_LIMIT) {
+    return NextResponse.json(
+      {
+        error:
+          held === ALIAS_LIMIT
+            ? "You already have your one alias. Remove it first if you want a different one."
+            : `This account holds ${held} aliases, which is over the limit of ${ALIAS_LIMIT}. Remove one to continue.`,
+        aliasesHeld: held,
+        aliasLimit: ALIAS_LIMIT,
+      },
+      { status: 400 },
+    );
+  }
 
   const problem = localPartProblem(localPart);
   if (problem) {

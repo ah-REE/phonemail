@@ -2031,6 +2031,45 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), twelfth session: ROUND 4, PART TWO - the ALIAS RULES and THE
+  FULL REGRESSION that part one had skipped, on the brief's own instruction.
+  - ONE ALIAS PER ACCOUNT, enforced by count rather than by hope: the create route
+    counts what the account already holds and refuses past ALIAS_LIMIT, with TWO
+    different messages - one for an account exactly at the cap, one for an account
+    already OVER it, which is told how many it holds and what to do. Nothing is taken
+    from an over-cap account; it simply cannot add until it is back under. The refusal
+    carries aliasesHeld and aliasLimit so the client can explain itself.
+  - AN ALIAS MUST MIX LETTERS AND DIGITS, with three distinct messages: no letters at
+    all, no digits at all, and the catch-all. THE RULE DELIBERATELY LIVES ONLY ON THE
+    CREATE PATH and NOT in isValidLocalPart, because that predicate also decides
+    whether an EXISTING alias resolves during delivery - an alias made before this
+    rule must keep working. New ones have to mix; old ones keep their word.
+  - The settings screen mirrors the cap (a local constant, because lib/alias.ts
+    reaches for Prisma and must never be pulled into a client component), stops
+    offering to add past it, and says why in a line rather than just going dead.
+  - ASSERTED AGAINST THE REAL API, 11 assertions, and STATE-SAFE BY CONSTRUCTION: the
+    two rejection checks change nothing because they are refused, and the cap check
+    either refuses without touching anything or creates one alias and deletes the one
+    it created. No existing alias is ever removed to make room for a test. The probe
+    ends by proving the account is back where it started.
+  - THE FULL FIFTEEN-SUITE REGRESSION RAN, as asked: 469/473 first time, four
+    failures, three of them STALE ASSERTIONS FROM PART ONE'S DELIBERATE CHANGES - the
+    reader strip's old wording, the switch's old size, the footer's withdrawn claim -
+    all three re-pointed, and both suites are green again (reader 21/21, settings 32/32).
+  - THE FOURTH IS NOT FIXED AND IS NOT BEING QUIETLY RE-POINTED: groupchat's 'A sees
+    the members' mail, not only their own' failed with bubbles=2 - the two messages A
+    could see were both its own. Its companion assertion, that one submission is one
+    bubble for A, passed, so the fan-out collapse is intact. What I cannot yet say is
+    whether this is the known data-dependence of that suite or a real hole in the
+    per-viewer filter, and re-pointing a VISIBILITY assertion without understanding it
+    would be hiding a possible bug behind a green tick. It is left failing and named.
+  - NOT DONE from part two, and not claimed: the auth-flow continuation in both
+    directions, the reply model (a Reply button per mail, the thread's message box
+    becoming a New Mail button, the README spec-mapping updates that go with it), the
+    chevron reveal and its four-action row, Subject: versus re: display, the contact
+    sheet's close-on-save, the header-alignment sweep and the wordmark pass.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), eleventh session: ROUND 4, PART ONE - honesty, the bubble's
   trailing void, three settings-polish items and a quieter home chip row. LANDED AND
   VERIFIED. Part two of the round - the auth-flow continuation, the reply model, the

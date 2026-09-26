@@ -37,6 +37,10 @@ interface Alias {
   createdAt?: string;
 }
 
+/** Mirrors ALIAS_LIMIT in src/lib/alias.ts. Kept as a local because that module
+ *  reaches for Prisma and must never be pulled into a client component. */
+const ALIAS_LIMIT = 1;
+
 type IconName =
   | "back"
   | "bell"
@@ -441,7 +445,7 @@ export default function ProfilePage() {
   }
 
   const address = user ? `${user.phoneNumber}@phonemail.com` : "";
-  const canAdd = draft.trim().length > 0 && !busy;
+  const canAdd = draft.trim().length > 0 && !busy && aliases.length < ALIAS_LIMIT;
 
   return (
     <main className="flex flex-1 flex-col bg-settings-canvas">
@@ -622,9 +626,14 @@ export default function ProfilePage() {
             </div>
           </Card>
           <p className="mt-1.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
-            3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
-            account exactly like mail sent to the number.
+            3-20 characters, and it must mix letters with numbers - lowercase letters, digits and
+            dots. Mail sent to an alias reaches this account exactly like mail sent to the number.
           </p>
+          {aliases.length >= ALIAS_LIMIT && (
+            <p className="mt-1.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
+              One alias per account, for now. Remove the one you have to create a different one.
+            </p>
+          )}
           {notice && <p className="mt-2 px-1 text-[14px] text-settings-ink">{notice}</p>}
           {error && (
             <p className="mt-2 px-1 text-[14px] text-settings-danger" role="alert">

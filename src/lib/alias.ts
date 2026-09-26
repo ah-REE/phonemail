@@ -19,6 +19,15 @@ import { prisma } from "@/lib/prisma";
 export const ALIAS_MIN_LENGTH = 3;
 export const ALIAS_MAX_LENGTH = 20;
 
+/**
+ * How many aliases one account may hold (Day 7, click-through round 4).
+ *
+ * THE OWNER ASKED FOR ONE. Accounts that already hold more than this KEEP what they
+ * have - nothing is taken away - but they cannot add another until they are back
+ * under the cap, which the create route enforces with a message that says so.
+ */
+export const ALIAS_LIMIT = 1;
+
 /** Lowercase letters, digits and dots - the shape of a mail local part. */
 export const ALIAS_PATTERN = /^[a-z0-9.]+$/;
 
@@ -98,6 +107,21 @@ export function localPartProblem(token: string): string | null {
   }
   if (token.startsWith(".") || token.endsWith(".") || token.includes("..")) {
     return "An alias cannot start or end with a dot, or contain two dots in a row.";
+  }
+  // A MIX of letters and digits, by the owner's rule. This lives HERE, on the create
+  // path, and deliberately NOT in isValidLocalPart: that predicate also decides
+  // whether an EXISTING alias resolves during delivery, and an alias created before
+  // this rule must keep working. New ones have to mix; old ones keep their word.
+  const hasLetter = /[a-z]/.test(token);
+  const hasDigit = /[0-9]/.test(token);
+  if (!hasLetter && !hasDigit) {
+    return "An alias must contain letters and numbers.";
+  }
+  if (!hasLetter) {
+    return "An alias must contain letters as well as numbers - try adding your name to it.";
+  }
+  if (!hasDigit) {
+    return "An alias must contain numbers as well as letters - try adding a few digits.";
   }
   if (RESERVED_ALIASES.has(token)) {
     return `"${token}" is reserved and cannot be used as an alias.`;
