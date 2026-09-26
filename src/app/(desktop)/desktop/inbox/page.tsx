@@ -1,5 +1,7 @@
 "use client";
 
+import { ChatListSkeleton, ThreadSkeleton } from "@/components/skeleton";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -223,7 +225,7 @@ export default function DesktopInboxPage() {
       {/* Thread list */}
       <section className="flex w-96 flex-col overflow-y-auto border-r border-wa-line bg-wa-panel">
         <h1 className="border-b border-wa-line px-4 py-3 text-lg font-semibold">Inbox</h1>
-        {loadingList && <p className="p-4 text-wa-muted">Loading…</p>}
+        {loadingList && <ChatListSkeleton rows={5} />}
         {!loadingList && threads.length + groups.length === 0 && (
           <p className="p-4 text-wa-muted">No conversations yet.</p>
         )}
@@ -339,7 +341,7 @@ export default function DesktopInboxPage() {
               <p className="text-sm text-wa-muted">{threadSubject || selectedThread?.subject}</p>
             </header>
             <div className="flex-1 overflow-y-auto p-6">
-              {loadingThread && <p className="text-wa-muted">Loading…</p>}
+              {loadingThread && <ThreadSkeleton bubbles={3} />}
               {messages.map((message) => (
                 <article
                   key={message.id}

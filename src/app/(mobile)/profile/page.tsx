@@ -9,12 +9,9 @@ import { useAuth } from "@/lib/useAuth";
 /**
  * Profile & settings.
  *
- * Fidelity audit: the earlier pass read this mockup through an outline that had
- * stripped colour classes, and it showed. This markup follows
- * design/profile_settings_minimal_focus/code.html literally - the page canvas is
- * #F8FAFC, the identity block sits ON the teal header (avatar #00453d with a
- * white ring, phone in white, the address pill #00453d/80 with a #25D366 label),
- * and the cards are white on slate-200/80 with slate/teal-50 accents.
+ * The palette is the logo's: the identity block sits on the indigo chrome
+ * (#1e3a8a) with the avatar ringed in white, the phone in white, the address
+ * pill in the chrome's deep tint, and every action in the mark's own blue.
  *
  * Aliases are the app feature the mockup predates, so they get their own section
  * in the same card language. Three mockup rows stay absent because rendering
@@ -229,7 +226,7 @@ export default function ProfilePage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-navy-deep ring-4 ring-white/15">
               <span className="select-none font-headline text-3xl font-bold text-white">{initial}</span>
             </div>
-            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-navy bg-success text-white">
+            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-navy bg-accent text-white">
               <Icon name="check" size={14} />
             </div>
           </div>
@@ -237,7 +234,7 @@ export default function ProfilePage() {
             {user?.phoneNumber ?? "Unknown"}
           </h2>
           <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-navy-deep/80 px-4 py-1.5">
-            <span className="select-all text-[13px] font-semibold tracking-wide text-success">
+            <span className="select-all text-[13px] font-semibold tracking-wide text-primary-fixed">
               {address}
             </span>
           </div>
@@ -268,7 +265,7 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-navy disabled:opacity-60"
+                className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[14px] font-semibold text-white disabled:opacity-60"
                 disabled={nameSaving}
               >
                 {nameSaving ? "Saving" : "Save"}
@@ -324,7 +321,7 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-navy disabled:opacity-60"
+                className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[14px] font-semibold text-white disabled:opacity-60"
                 disabled={busy || draft.trim().length === 0}
               >
                 {busy ? "Adding" : "Add"}

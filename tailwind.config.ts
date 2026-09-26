@@ -35,6 +35,9 @@ const config: Config = {
         navy: { DEFAULT: "#1e3a8a", deep: "#16296b", soft: "#3358c0" },
         accent: { DEFAULT: "#256cf3", soft: "#dbeafe", ink: "#ffffff" },
         brand: { DEFAULT: "#3b82f6", violet: "#7c3aed", cyan: "#bde3ff", sky: "#60a5fa" },
+        /* One of the illustration's own colours, and kept for that reason - but
+           nothing in the interface uses it: the owner asked for no green in the
+           app, so every green surface was repainted into the mark's blue. */
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },

@@ -1467,6 +1467,40 @@ context instantly)*
     container recreated and checked to serve the new drawing with the real
     credentials still in place.
 
+- Day 7 (Sat Sep 26), the owner's last pass for now: THE HERO IS SIMPLY THE
+  LOGO, waiting states are clean, and the last of the green is gone.
+  - THE HERO IS NO LONGER A DRAWING OF ANY KIND. It is the owner's own mark,
+    centred, at min(236px, 62vw, 32vh) - wider than the 134px it was before -
+    with nothing behind it and nothing moving. The vector tile drawn in the
+    previous pass is removed, and the drawn-mark component with it. The
+    success screen shows the same mark at 156px.
+  - The consent line is the owner's own wording - 'By clicking Create account
+    you agree to accept the terms and conditions' - sitting directly above the
+    button it is about, with the one link that has a route.
+  - WAITING STATES, in the three places that needed them. The send and verify
+    buttons carry a spinner (one arc at 800ms, inheriting currentColor,
+    stopped by reduced motion) instead of the words 'Sending.' and 'Verifying.'
+    standing in for an action. The app shell and the desktop shell each gained
+    a route-level loading skeleton. And the desktop inbox's two bare
+    'Loading...' lines became the same list and thread skeletons the rest of
+    the app already used.
+  - THE LAST GREEN LEFT THE INTERFACE. The profile screen's three green fills
+    and its green label - the two Save buttons, the avatar badge and the
+    address pill's label - are the mark's blue now, with the two contrast
+    corrections the sweep alone would have got wrong (white labels on filled
+    blue, the light tint on the dark pill). No bg-success, text-success or
+    green literal is left anywhere in src. The palette still keeps 'success'
+    as an entry - it is one of the illustration's own colours - but nothing in
+    the interface uses it, and the config says so.
+  - One self-inflicted bug, caught by the build: the first attempt at
+    rewriting the profile page's header comment replaced everything before the
+    comment too, which took the file's imports with it. The file was reverted
+    and redone with the head untouched.
+  - Verified: build green; the welcome suite 15/15, the palette suite 27/27
+    and the onboarding screens 26/26, all updated to the mark-centred hero; and
+    the deployed container serving the new hero width and the consent wording
+    with real mode intact.
+
 - Day 7:
 
 ---

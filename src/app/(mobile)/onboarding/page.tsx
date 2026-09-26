@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Spinner } from "@/components/spinner";
+
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -160,95 +162,6 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
   );
 }
 
-/**
- * The brand mark, drawn as vector art.
- *
- * The owner's logo is a glossy blue envelope on an app tile: the mark's own blue
- * running light to deep, an envelope whose folded flap is the light end of that
- * blue, a hairline where the fold catches the light, and a soft shadow under the
- * tile. This is that drawing, made of gradients and paths rather than pixels, so
- * it is crisp at any size - which is what a hero needs.
- *
- * It does not move. Nothing here is animated on purpose.
- */
-function HeroMark({ idPrefix }: { idPrefix: string }) {
-  const glow = `${idPrefix}-glow`;
-  const tile = `${idPrefix}-tile`;
-  const flap = `${idPrefix}-flap`;
-  const gloss = `${idPrefix}-gloss`;
-  const shade = `${idPrefix}-shade`;
-  const envClip = `${idPrefix}-env`;
-
-  return (
-    <svg viewBox="0 0 300 300" className="h-full w-full" role="img" aria-label="PhoneMail">
-      <defs>
-        {/* the light the mark sits in */}
-        <radialGradient id={glow} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.28" />
-          <stop offset="55%" stopColor="#60a5fa" stopOpacity="0.09" />
-          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
-        </radialGradient>
-
-        {/* the tile: the mark's blue, lighter at the shoulder */}
-        <linearGradient id={tile} x1="0" y1="0" x2="0.35" y2="1">
-          <stop offset="0%" stopColor="#6aa6fb" />
-          <stop offset="45%" stopColor="#2f6fe4" />
-          <stop offset="100%" stopColor="#1c3f9c" />
-        </linearGradient>
-
-        {/* the folded flap: the light end of the same blue */}
-        <linearGradient id={flap} x1="0" y1="0" x2="0.55" y2="1">
-          <stop offset="0%" stopColor="#eaf3ff" />
-          <stop offset="50%" stopColor="#9cc9ff" />
-          <stop offset="100%" stopColor="#4a8af6" />
-        </linearGradient>
-
-        {/* the sheen across the tile's upper half */}
-        <linearGradient id={gloss} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-
-        {/* the shadow the tile casts */}
-        <radialGradient id={shade} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.32" />
-          <stop offset="65%" stopColor="#1e3a8a" stopOpacity="0.10" />
-          <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0" />
-        </radialGradient>
-
-        <clipPath id={envClip}>
-          <rect x="76" y="84" width="148" height="142" rx="18" />
-        </clipPath>
-      </defs>
-
-      {/* the light */}
-      <circle cx="150" cy="150" r="150" fill={`url(#${glow})`} />
-
-      {/* the shadow, and the tile itself */}
-      <ellipse cx="150" cy="250" rx="106" ry="26" fill={`url(#${shade})`} />
-      <rect x="46" y="46" width="208" height="208" rx="62" fill={`url(#${tile})`} />
-      <rect x="46" y="46" width="208" height="208" rx="62" fill={`url(#${gloss})`} />
-
-      {/* the envelope: body, then the folded flap over it */}
-      <g clipPath={`url(#${envClip})`}>
-        <rect x="76" y="84" width="148" height="142" fill="#2a63d8" />
-        <path d="M76 84 L150 158 L224 84 Z" fill={`url(#${flap})`} />
-      </g>
-
-      {/* the fold catching the light, and the envelope's own edge */}
-      <path
-        d="M79 87 L150 158 L221 87"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.85"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <rect x="76" y="84" width="148" height="142" rx="18" fill="none" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1.2" />
-    </svg>
-  );
-}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -439,28 +352,29 @@ export default function OnboardingPage() {
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
-              {/* One square that scales with the space it is given: capped, but
-                  smaller on a narrow phone and on a short one. The drawing is
-                  vector, so it stays sharp at every size and simply sits there. */}
-              <div
-                className="enter enter-2 mx-auto flex aspect-square items-center justify-center"
-                style={{ width: "min(300px, 76vw, 40vh)" }}
-              >
-                <HeroMark idPrefix="hero" />
-              </div>
+              {/* Just the mark, at the centre of the space it is given - wide
+                  enough to be the first thing the eye lands on, and never wider
+                  than the screen allows. */}
+              <img
+                src="/brand/phonemail-logo.png"
+                alt="PhoneMail"
+                width={236}
+                height={236}
+                className="enter enter-2 mx-auto aspect-square select-none object-contain"
+                style={{ width: "min(236px, 62vw, 32vh)" }}
+              />
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
                 Your phone number is your email address.
               </p>
             </div>
 
             <div className="enter enter-4 flex w-full flex-col items-center gap-5">
-              {/* The design names a Privacy Policy and a Terms of Service; only the
-                  terms have a route, so that is the one link - a dead link is worse
-                  than one honest link, the same call as on the phone step. */}
-              <p className="px-4 text-center text-[13px] leading-relaxed text-outline">
-                Read our Privacy Policy. Tap &ldquo;Agree and continue&rdquo; to accept the{" "}
+              {/* The owner's own wording, sitting directly above the button it is
+                  about, with the one link that has a route. */}
+              <p className="px-2 text-center text-[13px] leading-relaxed text-outline">
+                By clicking Create account you agree to accept the{" "}
                 <Link href="/terms" className="font-semibold text-accent">
-                  Terms of Service
+                  terms and conditions
                 </Link>
                 .
               </p>
@@ -600,7 +514,7 @@ export default function OnboardingPage() {
                   }
                 }}
               >
-                {sending ? "Sending." : "Send OTP"}
+                {sending ? <Spinner label="Sending" /> : "Send OTP"}
               </button>
 
               <p className="px-4 text-center text-xs leading-normal text-on-surface-variant">
@@ -690,7 +604,7 @@ export default function OnboardingPage() {
                 disabled={verifying || lockedOut || digits.some((digit) => digit === "")}
                 onClick={() => void verifyOtp(digits.join(""))}
               >
-                <span>{verifying ? "Verifying." : "Verify"}</span>
+                {verifying ? <Spinner label="Verifying" /> : <span>Verify</span>}
                 <Icon name="next" size={18} />
               </button>
             </div>
@@ -722,12 +636,14 @@ export default function OnboardingPage() {
         {step === "success" && (
           <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-4">
             <div className="my-auto flex w-full flex-col items-center justify-center py-6 text-center">
-              <div
-                className="enter enter-1 mx-auto flex aspect-square items-center justify-center"
-                style={{ width: "min(190px, 52vw, 23vh)" }}
-              >
-                <HeroMark idPrefix="done" />
-              </div>
+              <img
+                src="/brand/phonemail-logo.png"
+                alt="PhoneMail"
+                width={156}
+                height={156}
+                className="enter enter-1 mx-auto aspect-square select-none object-contain"
+                style={{ width: "min(156px, 44vw, 20vh)" }}
+              />
 
               <h1 className="enter enter-2 mt-8 font-display text-[27px] font-bold tracking-tight text-on-surface">
                 Your PhoneMail account is ready

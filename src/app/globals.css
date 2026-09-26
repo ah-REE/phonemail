@@ -115,6 +115,14 @@
   .enter-4 { animation-delay: 190ms; }
 }
 
+/* One spinner, one steady speed: a single arc turning at 800ms. Stopped by the
+   global reduced-motion rule, like every other loop in the app. */
+@keyframes spinner-turn {
+  to { transform: rotate(360deg); }
+}
+
+.spinner { animation: spinner-turn 800ms linear infinite; }
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
