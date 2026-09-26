@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Avatar } from "@/components/avatar";
+import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
+import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -460,17 +462,18 @@ export default function ProfilePage() {
         }}
       >
         <div className="relative flex h-12 items-center justify-between">
-          <Link
+          {/* ROUND 4: the header-alignment rule - the same BackButton geometry as
+              every other header, with this header's own ink. */}
+          <BackButton
             href="/"
-            className="z-10 flex h-11 w-11 items-center justify-center rounded-full text-settings-ink transition-colors duration-ui hover:bg-white/40"
-            aria-label="Back to the chat list"
-          >
-            <Icon name="back" size={24} strokeWidth={2} />
-          </Link>
+            tone="none"
+            className="z-10 text-settings-ink hover:bg-white/40"
+            label="Back to the chat list"
+          />
           <h1 className="pointer-events-none absolute inset-x-0 text-center text-[21px] font-bold tracking-[-0.01em] text-settings-ink">
             Profile &amp; Settings
           </h1>
-          <span className="h-11 w-11" aria-hidden="true" />
+          <span className="h-12 w-12" aria-hidden="true" />
         </div>
 
         <div className="flex flex-col items-center px-2 pb-1 pt-3 text-center">
@@ -823,7 +826,11 @@ export default function ProfilePage() {
             </span>
             <span className="text-[14px] text-settings-quiet">Your mail is private</span>
           </div>
-          <p className="mt-3 text-[12.5px] text-settings-faint">PhoneMail v0.1.0</p>
+          {/* ROUND 4: the name carries the wordmark treatment here too. */}
+          <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-settings-faint">
+            <Wordmark as="span" size={13} />
+            <span>v0.1.0</span>
+          </p>
         </footer>
       </div>
 

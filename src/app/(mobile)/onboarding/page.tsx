@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Spinner } from "@/components/spinner";
+import { Wordmark } from "@/components/wordmark";
 
 import { useAuth } from "@/lib/useAuth";
 
@@ -141,16 +142,12 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
           <span className="h-10 w-10" aria-hidden="true" />
         )}
 
+        {/* ROUND 4: the brand mark here is the WORDMARK - the home screen's own
+            treatment - not a separate image-plus-word construction, so the name
+            is the same thing on every screen it appears on. */}
         {brand && (
-          <div className="flex items-center gap-2 rounded-full px-3 py-1">
-            <img
-              src="/brand/phonemail-logo.png"
-              alt=""
-              width={26}
-              height={26}
-              className="h-[26px] w-[26px] shrink-0 rounded-md object-cover"
-            />
-            <span className="font-headline text-base font-bold tracking-tight">PhoneMail</span>
+          <div className="flex items-center rounded-full px-3 py-1">
+            <Wordmark as="span" size={17} />
           </div>
         )}
 
@@ -172,6 +169,13 @@ export default function OnboardingPage() {
 
   const [step, setStep] = useState<Step>("welcome");
   const [mode, setMode] = useState<AuthMode>("signup");
+
+  // ROUND 4, TASK 1: which of the two flows this really is, settled by the
+  // NUMBER'S own state rather than by the door that was pressed. null = not yet
+  // asked. A registered number is a login whatever door it came through, and an
+  // unregistered number on the login door continues into signup instead of
+  // dead-ending.
+  const [registered, setRegistered] = useState<boolean | null>(null);
 
   // The address the success screen shows once the account exists.
   const [successAddress, setSuccessAddress] = useState("");
@@ -222,6 +226,28 @@ export default function OnboardingPage() {
 
   const normalizedPhone = phoneNumber.replace(/\D/g, "");
   const phoneValid = /^[6-9]\d{9}$/.test(normalizedPhone);
+
+  /**
+   * ROUND 4, TASK 1: ask whether this number already has an account. The answer
+   * decides the copy - "Welcome back" for a registered number, "let's create your
+   * account" for a new one - and, on success, whether the person sees the
+   * "account is ready" screen at all. A failed lookup is NOT fatal: it returns
+   * null and the flow falls back to the door that was pressed.
+   */
+  const lookupRegistration = useCallback(async (phone: string): Promise<boolean | null> => {
+    try {
+      const response = await fetch(
+        `/api/auth/registered?phoneNumber=${encodeURIComponent(phone)}`,
+      );
+      if (!response.ok) {
+        return null;
+      }
+      const body = (await response.json()) as { registered?: boolean };
+      return typeof body.registered === "boolean" ? body.registered : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const sendOtp = useCallback(
     async (phone: string) => {
@@ -296,6 +322,13 @@ export default function OnboardingPage() {
         // The address is derived the same way the server derives it, so the
         // success screen can show the real thing before the inbox loads.
         setSuccessAddress(`${normalizedPhone}@phonemail.com`);
+        // ROUND 4, TASK 1: a REGISTERED number is a LOGIN, so it goes straight to
+        // the inbox - there is no new account to celebrate. Only a genuinely new
+        // account sees the "your account is ready" screen.
+        if (registered) {
+          router.replace("/");
+          return;
+        }
         setStep("success");
       } catch {
         setOtpError("Network error. Please try again.");
@@ -303,7 +336,7 @@ export default function OnboardingPage() {
         setVerifying(false);
       }
     },
-    [normalizedPhone, signIn],
+    [normalizedPhone, registered, router, signIn],
   );
 
 
@@ -350,8 +383,8 @@ export default function OnboardingPage() {
             {/* The screen's own rhythm, from the owner's design: title, a wide gap,
                 the hero, the caption, a wide gap, then the legal line and the CTA.
                 One staggered entrance covers all four blocks. */}
-            <h1 className="enter enter-1 mt-4 w-full text-center font-display text-[26px] font-bold tracking-tight text-on-surface">
-              Welcome to PhoneMail
+            <h1 className="enter enter-1 mt-4 flex w-full flex-wrap items-center justify-center gap-x-2 text-center font-display text-[26px] font-bold tracking-tight text-on-surface">
+              Welcome to <Wordmark as="span" size={26} />
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
@@ -387,6 +420,7 @@ export default function OnboardingPage() {
                 className="btn-brand w-full"
                 onClick={() => {
                   setMode("signup");
+                  setRegistered(null);
                   setOtpError(null);
                   setStep("phone");
                 }}
@@ -398,6 +432,7 @@ export default function OnboardingPage() {
                 className="btn-quiet w-full"
                 onClick={() => {
                   setMode("login");
+                  setRegistered(null);
                   setOtpError(null);
                   // Straight to the number, then the code: logging in asks for
                   // nothing but what the OTP already proves.
@@ -417,10 +452,18 @@ export default function OnboardingPage() {
             <div className="flex w-full flex-col pt-4">
               <div className="flex flex-col">
                 <h1 className="font-headline text-[26px] font-bold leading-[34px] tracking-[-0.015em]">
-                  {mode === "login" ? "Welcome back" : "You're almost in!"}
+                  {registered === true
+                    ? "Welcome back"
+                    : registered === false
+                      ? "Let's create your account"
+                      : mode === "login"
+                        ? "Welcome back"
+                        : "You're almost in!"}
                 </h1>
                 <p className="mt-1 text-base leading-relaxed text-on-surface-variant">
-                  One number is all we need
+                  {registered === false
+                    ? "One number is all we need to create your account"
+                    : "One number is all we need"}
                 </p>
               </div>
 
@@ -507,6 +550,16 @@ export default function OnboardingPage() {
                   if (normalizedPhone.length !== 10) {
                     setPhoneError("Enter 10 digit mobile number");
                     return;
+                  }
+                  // ROUND 4, TASK 1: settle which of the two this is BEFORE asking
+                  // for a code, so the copy is right and a login on an unregistered
+                  // number continues into account creation rather than stalling.
+                  const known = await lookupRegistration(normalizedPhone);
+                  setRegistered(known);
+                  if (known === false) {
+                    setMode("signup");
+                  } else if (known === true) {
+                    setMode("login");
                   }
                   const ok = await sendOtp(normalizedPhone);
                   if (ok) {
@@ -642,8 +695,8 @@ export default function OnboardingPage() {
                 style={{ width: "min(156px, 44vw, 20vh)" }}
               />
 
-              <h1 className="enter enter-2 mt-8 font-display text-[27px] font-bold tracking-tight text-on-surface">
-                Your PhoneMail account is ready
+              <h1 className="enter enter-2 mt-8 flex flex-wrap items-center justify-center gap-x-2 font-display text-[27px] font-bold tracking-tight text-on-surface">
+                Your <Wordmark as="span" size={27} /> account is ready
               </h1>
               <p className="enter enter-3 mt-3 text-[16px] leading-[26px] text-on-surface-variant">
                 This is your address — anyone can write to it.

@@ -6,9 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
+import { BackButton } from "@/components/back-button";
 import { GroupInfo } from "@/components/group-info";
 import { MessageCard } from "@/components/message-card";
-import { Spinner } from "@/components/spinner";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { useAuth } from "@/lib/useAuth";
@@ -105,9 +105,6 @@ export default function GroupThreadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -212,46 +209,6 @@ export default function GroupThreadPage() {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, lastMessageId]);
 
-  async function handleSend(event: React.FormEvent) {
-    event.preventDefault();
-    if (sending || !draft.trim() || others.length === 0) {
-      return;
-    }
-
-    setSending(true);
-    setNotice(null);
-    setError(null);
-
-    try {
-      const response = await authorizedFetch("/api/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // LOCKED: the other members, all of them, always.
-          to: others,
-          subject: subject.toLowerCase().startsWith("re:") ? subject : `re: ${subject || "Group message"}`,
-          body: draft.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? "Could not send the message.");
-        return;
-      }
-
-      // Sending is silent: the message appears when the SMTP round trip has
-      // written the row, so there is nothing to announce.
-      setDraft("");
-      // The row appears when the SMTP round trip completes.
-      window.setTimeout(() => void load(false), 1500);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setSending(false);
-    }
-  }
-
   if (status !== "authenticated") {
     return (
       <main className="flex h-screen flex-col">
@@ -265,15 +222,7 @@ export default function GroupThreadPage() {
     <main className="flex h-screen flex-col">
       {/* The thread design plus the members header the brief asks for. */}
       <header className="sticky top-0 z-20 flex h-[84px] w-full items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
-        <Link
-          href="/"
-          aria-label="Back to the chat list"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </Link>
+        <BackButton href="/" tone="rail" label="Back to the chat list" />
         {/* Tapping the group opens its read-only details, and each member there is a person. */}
         <button
           type="button"
@@ -395,60 +344,36 @@ export default function GroupThreadPage() {
         </p>
       )}
 
+      {/* ROUND 4 - THE REPLAY MODEL, groups: the CREATOR does not get a free
+          composer either. Their message box is the NEW MAIL button, which opens
+          the multi-recipient traditional compose with the member set locked. The
+          members never had a composer - their per-mail Reply buttons are the
+          model - so this bar belongs to the creator alone. */}
       {isCreator && (
-      <form
-        className="sticky bottom-0 z-20 flex w-full flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-5 pb-5 pt-4 shadow-overlay"
-        onSubmit={handleSend}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] text-chat-meta">To (locked)</span>
-          {others.map((member) => (
-            <span
-              key={member}
-              className="flex h-9 items-center rounded-full bg-accent-soft px-3 text-[14px] font-medium text-accent"
-              title="Locked: the recipient set of this thread cannot be changed"
-            >
-              {member}
-            </span>
-          ))}
+        <div className="sticky bottom-0 z-20 flex w-full shrink-0 flex-col gap-2 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] text-chat-meta">To (locked)</span>
+            {others.map((member) => (
+              <span
+                key={member}
+                className="flex h-9 items-center rounded-full bg-accent-soft px-3 text-[14px] font-medium text-accent"
+                title="Locked: the recipient set of this thread cannot be changed"
+              >
+                {member}
+              </span>
+            ))}
+          </div>
           <Link
             href={`/compose?to=${encodeURIComponent(others.join(","))}&lockTo=1`}
-            aria-label="Add a recipient in the traditional view"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-chat-rail text-accent"
-            title="Add a recipient in the traditional view"
+            className="btn-brand w-full"
+            aria-label="Start a new mail to the group (recipients locked)"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M12 5v14M5 12h14" />
             </svg>
+            New mail
           </Link>
         </div>
-
-        <textarea
-          className="min-h-[56px] w-full resize-none rounded-[28px] border border-outline-variant bg-chat-field px-5 py-4 text-base text-on-surface outline-none placeholder:text-outline"
-          rows={1}
-          placeholder="Message the group"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          aria-label="Message the group"
-        />
-        {notice && <p className="text-sm text-accent">{notice}</p>}
-        <button
-          type="submit"
-          className="btn-brand w-full"
-          disabled={sending || others.length === 0}
-        >
-          {sending ? (
-            <Spinner label="Sending" />
-          ) : (
-            <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 12l16-8-6 16-2.6-6.4z" />
-              </svg>
-              Send to group
-            </>
-          )}
-        </button>
-      </form>
       )}
 
       {infoOpen && (
@@ -474,6 +399,16 @@ export default function GroupThreadPage() {
               memberAddresses[members.indexOf(memberSheet)] || `${memberSheet}@phonemail.com`,
           }}
           onClose={() => setMemberSheet(null)}
+          onSaved={(name) => {
+            const index = members.indexOf(memberSheet);
+            if (index >= 0) {
+              setMemberNames((current) => {
+                const next = [...current];
+                next[index] = name;
+                return next;
+              });
+            }
+          }}
         />
       )}
     </main>

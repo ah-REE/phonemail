@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChatListSkeleton } from "@/components/skeleton";
 import { Avatar } from "@/components/avatar";
 import { BottomBar } from "@/components/bottom-bar";
+import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -263,14 +264,11 @@ export default function HomePage() {
 
         {/* 1. Top bar */}
         <header className="flex h-[60px] w-full shrink-0 select-none items-center justify-between px-4">
-          {/* The reference sets the wordmark left, with the second half in the
-              brand gradient. */}
-          <h1 className="font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em] text-on-surface">
-            Phone
-            <span className="bg-gradient-to-r from-brand to-brand-violet bg-clip-text text-transparent">
-              Mail
-            </span>
-          </h1>
+          {/* The reference sets the wordmark left, with the second half in the brand
+              gradient. ROUND 4: that treatment now lives in the shared Wordmark
+              component - this screen is its origin, not a second copy of it - so
+              the name cannot drift between screens. */}
+          <Wordmark as="h1" size={22} />
 
           {/* The door into settings, and it is a PERSON mark - never a digit and
               never a badge. The count lived here once and read as somebody else's

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Wordmark } from "@/components/wordmark";
+
 /**
  * PhoneMail registration portal — phone + OTP only.
  *
@@ -101,7 +103,10 @@ export default function PortalPage() {
 
   return (
     <main style={styles.main}>
-      <h1 style={styles.title}>PhoneMail</h1>
+      {/* ROUND 4: the portal shows the same wordmark treatment as the app. */}
+      <h1 style={styles.title}>
+        <Wordmark as="span" size={32} />
+      </h1>
       <p style={styles.subtitle}>Register with your phone number. No password.</p>
 
       {step !== "done" && (

@@ -59,7 +59,11 @@ export interface MessageCardProps {
   attachments?: ReactNode;
   /** Tapping the body opens the traditional full view. */
   onOpen?: () => void;
-  /** The reveal panel: tag and move. Swipe-left territory. */
+  /**
+   * The reveal: ROUND 4 replaces the three-dots with a CHEVRON-DOWN that opens a
+   * four-action row (Move to Spam, Move to Trash, Favorite, Reply). Same
+   * swipe-left territory, a quieter and more conventional affordance.
+   */
   onMore?: () => void;
   moreOpen?: boolean;
   moreContent?: ReactNode;
@@ -206,14 +210,23 @@ export function MessageCard({
               <button
                 type="button"
                 onClick={onMore}
-                aria-label={moreOpen ? "Hide the tag and move panel" : "Tag or move this message"}
+                aria-label={moreOpen ? "Hide message actions" : "Show message actions"}
                 aria-expanded={moreOpen}
-                className="ml-0.5 -mr-1 flex h-6 w-6 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
+                className="ml-0.5 -mr-1 flex h-7 w-7 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <circle cx="5.5" cy="12" r="1.6" />
-                  <circle cx="12" cy="12" r="1.6" />
-                  <circle cx="18.5" cy="12" r="1.6" />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className={`transition-transform duration-ui ${moreOpen ? "rotate-180" : ""}`}
+                >
+                  <path d="M6 10l6 6 6-6" />
                 </svg>
               </button>
             ) : null}

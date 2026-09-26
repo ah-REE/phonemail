@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Wordmark } from "@/components/wordmark";
+
 /**
  * Desktop shell.
  *
@@ -13,8 +15,10 @@ export default function DesktopLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-wa-bg">
       <header className="flex items-center gap-4 border-b border-wa-line bg-wa-teal px-6 py-3 text-white">
+        {/* ROUND 4: the desktop shell carries the same wordmark, inverted for the
+            indigo chrome. */}
         <Link href="/desktop/inbox" className="text-xl font-semibold">
-          PhoneMail
+          <Wordmark as="span" size={22} invert />
         </Link>
         <nav className="flex items-center gap-4 text-sm">
           <Link href="/desktop/inbox" className="hover:underline">

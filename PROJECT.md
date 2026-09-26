@@ -2031,6 +2031,82 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), fifteenth session: ROUND 4 COMPLETED - the ten items, and the
+  reply model they turn on. Landed and verified on the loaded database.
+  - TASK 1, THE AUTH FLOW IS DECIDED BY THE NUMBER, not by the door. A new endpoint,
+    GET /api/auth/registered?phoneNumber=..., answers the one question the flow
+    actually has - does an account exist? - and the onboarding screen asks it BEFORE
+    it asks for a code. A registered number is a LOGIN whatever door it came
+    through ("Welcome back" -> OTP -> inbox, and no "account is ready" screen,
+    because no account was created); an unregistered number on the Log in door is
+    carried into account creation - "Let's create your account" - instead of
+    dead-ending. A failed lookup is not fatal: the flow falls back to the door that
+    was pressed. The endpoint answers a boolean and nothing else, because that is
+    the whole question.
+  - TASK 2, THE REPLY MODEL. There is NO free composer inside a thread any more: a
+    message box that mails whoever happens to be in the thread is how an intended
+    reply becomes a fresh send. Both threads' message boxes are the NEW MAIL button.
+    1:1 opens the traditional compose with To locked to the counterpart; the group's
+    CREATOR opens the multi-recipient compose with the member set locked, and
+    ordinary members keep only their per-mail Reply buttons - the broadcast model,
+    no composer. Every received mail carries a Reply action, and reply-once is still
+    the server's conditional claim; the UI now reflects it too, because the
+    affordance disappears once a mail has been answered. The paperclip chip stays
+    exactly as it was: an honest, documented empty state.
+  - TASK 3, THE MESSAGE CARD. The three-dots became a CHEVRON-DOWN whose reveal is a
+    four-action row - Move to Spam, Move to Trash, Favorite, Reply - each action a
+    56px target. Favorite is the EXISTING favorite tag (the value the Favorites chip
+    already filters on), so toggling it is one PATCH and no migration; the remaining
+    tags stay reachable on a quieter second line, so nothing the old panel could do
+    is lost. SUBJECT HONESTY: a mail that OPENED a subject renders "Subject:
+    <subject>" and only a reply renders "re: <subject>" - one helper (subjectHeading)
+    so the divider and the thread's subject pill cannot disagree about which a mail
+    is.
+  - TASK 4, CONTACTS. Saving from the detail sheet now hands the new name up and
+    closes the sheet in the same interaction, so the open chat adopts the name
+    immediately - no reload, nobody left dismissing a sheet that has nothing left to
+    say.
+  - TASK 5, ALIGNMENT AND WORDMARK, as two shared components rather than more copied
+    markup:
+      - components/back-button.tsx states THE header-alignment rule once - a 48x48
+        hit area, a 24px glyph, a 16px inset, the title on the header's own vertical
+        centre - and every header with a back arrow now uses it: the standard bar,
+        both thread headers, Terms, and the settings hero (which takes the rule's
+        geometry and its own ink). Before this the app had three different back
+        controls and the title sat at a different optical height on each.
+      - components/wordmark.tsx is the HOME screen's own treatment - "Phone" solid,
+        "Mail" in the brand gradient - and it is now used EVERYWHERE the name
+        appears: home (which is its origin, not a second copy of it), onboarding,
+        Terms, the portal, the settings footer and the desktop shell (inverted for
+        the indigo chrome). The gradient stops are existing tokens; no colour was
+        invented.
+  - A SIXTEENTH SUITE, ct13/round4_regression.mjs, 26 assertions, and mostly LIVE,
+    because the live ones are the ones a source grep cannot fake: the registration
+    lookup both ways (a real account true, 9999999999 false), a real new mail
+    delivered and read back, a real reply accepted (202), a SECOND reply to the same
+    mail refused (409), the reply visible to its recipient and still linked to the
+    mail it answers, a contact saved and reported by the live chat payload, and
+    source assertions for the shared back control, the shared wordmark and the
+    absence of any in-thread composer. The contact probe is state-safe: it restores
+    the previous name, or deletes the row it made, and asserts the address book is
+    exactly as it found it.
+  - ELEVEN ASSERTIONS WERE RE-POINTED, NOT DELETED, and every one of them was
+    grading something this round deliberately removed: ct2's typed-composer trio,
+    the chat-reference suite's two composer checks, the groupchat suite's
+    in-thread-send check, the settings reference's back-chevron and version-line
+    checks, and the two auth-screen checks that named the old success headline and
+    the mode-driven greeting. Each re-point keeps the INTENT rather than the
+    wording - a locked recipient set is still asserted (it travels in the New mail
+    link's compose URL now), the quiet version line is still asserted (it carries the
+    wordmark now) - and two new auth-screen assertions replace the one that no longer
+    describes the decision.
+  - VERIFICATION: 501 assertions across sixteen suites GREEN on the loaded database
+    in dev mode; build green; the fresh-clone evaluator simulation from ORIGIN is
+    recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the run (override renamed away, the devHint
+    confirmed before any OTP request), and REAL mode restored at the end with exactly
+    four healthy containers.
+
 - Day 7 (Sat Sep 26), fourteenth session: THE FRESH-CLONE EVALUATOR SIMULATION FINALLY
   RAN AGAIN, from ORIGIN, and it passed. It had not run for several sessions, and it
   was the one thing this session was told it must land.

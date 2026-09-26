@@ -50,9 +50,18 @@ function phoneOf(address: string): string {
 export function UserSheet({
   subject,
   onClose,
+  onSaved,
 }: {
   subject: UserSheetSubject;
   onClose: () => void;
+  /**
+   * ROUND 4: called with the name that now applies the moment a save succeeds,
+   * so the screen underneath can show it WITHOUT a reload - the thread adopts the
+   * name immediately, which is the whole point of having saved it. The sheet then
+   * closes itself: the save is the end of the interaction, and leaving the sheet
+   * open just makes the reader dismiss it.
+   */
+  onSaved?: (name: string | null) => void;
 }) {
   const { authorizedFetch } = useAuth();
 
@@ -106,7 +115,11 @@ export function UserSheet({
         return;
       }
       setNotice(nameDraft.trim() ? `Saved as ${nameDraft.trim()}.` : "Saved to your contacts.");
+      // ROUND 4: hand the new name up, then close. Order matters - the callback
+      // must fire while this component is still mounted.
+      onSaved?.(nameDraft.trim() || null);
       await loadContacts();
+      onClose();
     } catch {
       setError("Network error. Please try again.");
     } finally {

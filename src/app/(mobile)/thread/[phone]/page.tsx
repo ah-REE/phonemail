@@ -6,9 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
+import { BackButton } from "@/components/back-button";
 import { MailReader } from "@/components/mail-reader";
 import { MessageCard } from "@/components/message-card";
-import { Spinner } from "@/components/spinner";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
@@ -55,6 +55,17 @@ interface ThreadMessage {
   provisional?: boolean;
 }
 
+/**
+ * ROUND 4 - how a subject is labelled. A mail that OPENED a subject says
+ * "Subject: <subject>"; only a reply says "re: <subject>" (which is the subject
+ * the server already stores on a reply). One place, so the divider and the
+ * thread's subject pill cannot disagree about which of the two a mail is.
+ */
+function subjectHeading(subject: string, isReply: boolean): string {
+  const text = subject.trim() || "Conversation";
+  return isReply || text.toLowerCase().startsWith("re:") ? text : `Subject: ${text}`;
+}
+
 function formatWhen(iso: string): string {
   const date = new Date(iso);
   const today = new Date();
@@ -85,10 +96,6 @@ export default function ThreadPage() {
   const [replyPromptId, setReplyPromptId] = useState<string | null>(null);
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
-  // The composer's own state. The thread sends its own messages now, so this is
-  // no longer a label that navigates away.
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -224,50 +231,6 @@ export default function ThreadPage() {
   }
 
   /**
-   * The thread's composer: a normal new message to the counterpart. The recipient
-   * set is the counterpart, one person, so nothing here is locked - locking
-   * belongs to the reply flow, which is enforced server-side against the original
-   * message. The subject continues the conversation, which is what keeps a plain
-   * message from opening a new subject divider.
-   */
-  async function handleSend(event: React.FormEvent) {
-    event.preventDefault();
-    if (sending || !draft.trim()) {
-      return;
-    }
-
-    setSending(true);
-    setError(null);
-
-    try {
-      const response = await authorizedFetch("/api/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: [phone],
-          subject: subject.trim() || "Conversation",
-          body: draft.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? "Could not send the message.");
-        return;
-      }
-
-      // Sending succeeds silently: the message simply appears above, when the
-      // SMTP round trip completes and the row is written.
-      setDraft("");
-      window.setTimeout(() => void load(false), 1400);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  /**
    * The reply URL. Replying is the ONE place a recipient set is locked, and the
    * original message rides along so the composer can show what is being answered:
    * its subject becomes the reply's subject, and its opening words become the
@@ -324,15 +287,7 @@ export default function ThreadPage() {
   return (
     <main className="flex h-dvh max-h-dvh flex-col overflow-hidden">
       <header className="sticky top-0 z-20 flex h-[84px] w-full shrink-0 items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
-        <Link
-          href="/"
-          aria-label="Back to the chat list"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </Link>
+        <BackButton href="/" tone="rail" label="Back to the chat list" />
         {/* Tapping the person opens their details - which is how a person is saved. */}
         <button
           type="button"
@@ -395,11 +350,13 @@ export default function ThreadPage() {
             {formatWhen(messages[0]?.createdAt ?? new Date().toISOString()).split(",")[0]}
           </span>
         </div>
-        {/* The thread's subject as the mockup's centred pill. */}
+        {/* The thread's subject as the mockup's centred pill. ROUND 4: a mail
+            that opened a subject reads "Subject: <subject>"; only replies read
+            "re: <subject>". */}
         {headerSubject && headerSubject !== "Conversation" && (
           <div className="mb-4 flex justify-center">
             <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
-              {headerSubject}
+              {subjectHeading(headerSubject, false)}
             </span>
           </div>
         )}
@@ -430,7 +387,7 @@ export default function ThreadPage() {
               {newSubject && (
                 <div className="my-4 flex justify-center">
                   <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
-                    {message.subject}
+                    {subjectHeading(message.subject, Boolean(message.replyToId))}
                   </span>
                 </div>
               )}
@@ -471,38 +428,65 @@ export default function ThreadPage() {
                 }
                 moreOpen={tagOpenId === message.id}
                 moreContent={
-                  <div className="flex flex-wrap gap-2 border-t border-wa-line pt-2">
-                    {EMAIL_TAGS.map((tag) => (
+                  /* ROUND 4: the chevron opens a FOUR-ACTION row - Move to Spam,
+                     Move to Trash, Favorite, Reply - each a 56px target. The
+                     remaining tags stay reachable on a quieter second line so
+                     nothing the tag panel could do is lost. */
+                  <div className="flex flex-col gap-2 border-t border-wa-line pt-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
-                        key={tag}
                         type="button"
-                        className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                        onClick={() => void setTag(message.id, tag)}
+                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        onClick={() => void moveMessage(message.id, "spam")}
                       >
-                        {tag}
+                        Move to Spam
                       </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                      onClick={() => void setTag(message.id, null)}
-                    >
-                      clear
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                      onClick={() => void moveMessage(message.id, "spam")}
-                    >
-                      Move to Spam
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                      onClick={() => void moveMessage(message.id, "trash")}
-                    >
-                      Move to Trash
-                    </button>
+                      <button
+                        type="button"
+                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        onClick={() => void moveMessage(message.id, "trash")}
+                      >
+                        Move to Trash
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={message.tag === "favorite"}
+                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        onClick={() =>
+                          void setTag(message.id, message.tag === "favorite" ? null : "favorite")
+                        }
+                      >
+                        {message.tag === "favorite" ? "Favorite \u2713" : "Favorite"}
+                      </button>
+                      {!message.mine && !message.provisional && !message.repliedAt && (
+                        <Link
+                          href={replyHrefFor(message)}
+                          className="flex min-h-tap items-center rounded-full bg-msg-action px-4 text-sm font-semibold text-msg-accent"
+                        >
+                          Reply
+                        </Link>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] uppercase tracking-wide text-chat-meta">Tags</span>
+                      {EMAIL_TAGS.filter((tag) => tag !== "favorite").map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                          onClick={() => void setTag(message.id, tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                        onClick={() => void setTag(message.id, null)}
+                      >
+                        clear
+                      </button>
+                    </div>
                   </div>
                 }
                 footer={
@@ -560,72 +544,37 @@ export default function ThreadPage() {
       </div>
       )}
 
-      {/* The composer. The field here used to be a LABEL that opened compose with
-          the recipient list locked, so a normal new message could not be typed in
-          the conversation at all - the locked state had leaked out of reply mode
-          into the default flow. It is a real input now: type, send, and the
-          message appears above it. The paperclip stays because the design shows it,
-          reporting honestly that files have no backend; the camera keeps the
-          traditional compose one tap away. Hidden while the reader is showing,
-          where the reader's own Reply bar is the action. */}
+      {/* ROUND 4 - THE REPLY MODEL. There is no free composer inside a thread any
+          more: a message box that mails whoever happens to be in the thread is how
+          an intended reply accidentally becomes a fresh send. The bar is the NEW
+          MAIL button, and in a 1:1 it opens the traditional compose with To locked
+          to this counterpart - the one place a recipient set is locked. The
+          paperclip chip stays: the design shows it and it reports honestly that
+          files have no backend. Hidden while the reader is showing, where the
+          reader's own Reply bar is the action. */}
       {!onlyIncoming && (
-      <footer className="sticky bottom-0 z-20 flex w-full shrink-0 flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
-        <form
-          className="flex h-14 items-center gap-2 rounded-[28px] border border-outline-variant bg-chat-field px-4 text-on-surface-variant"
-          onSubmit={handleSend}
+      <footer className="sticky bottom-0 z-20 flex w-full shrink-0 items-center gap-2 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
+        <button
+          type="button"
+          aria-label="Attach documents"
+          title="Attachments are not built in this version"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface-variant"
+          onClick={() => setAttachNotice(true)}
         >
-          <button
-            type="button"
-            aria-label="Attach documents"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            onClick={() => setAttachNotice(true)}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
-            </svg>
-          </button>
-          <input
-            className="min-w-0 flex-1 bg-transparent text-sm text-on-surface outline-none placeholder:text-outline"
-            placeholder="Message"
-            aria-label="Write a message in this conversation"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <Link
-            href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
-            aria-label="Write to this number in the traditional view (locked recipients)"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
-              <circle cx="12" cy="13" r="3.2" />
-            </svg>
-          </Link>
-          <Link
-            href="/compose"
-            aria-label="Start a new message"
-            title="Start a new message"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-accent"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </Link>
-          <button
-            type="submit"
-            aria-label="Send"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-50"
-            disabled={sending || draft.trim().length === 0}
-          >
-            {sending ? (
-              <Spinner label="Sending" />
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 12l16-8-6 16-2.6-6.4z" />
-              </svg>
-            )}
-          </button>
-        </form>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+          </svg>
+        </button>
+        <Link
+          href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
+          className="btn-brand flex-1"
+          aria-label="Start a new mail to this number (To is locked)"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New mail
+        </Link>
       </footer>
       )}
 
@@ -653,6 +602,7 @@ export default function ThreadPage() {
             address: counterpartAddress || `${phone}@phonemail.com`,
           }}
           onClose={() => setSheetOpen(false)}
+          onSaved={(name) => setCounterpartName(name)}
         />
       )}
     </main>

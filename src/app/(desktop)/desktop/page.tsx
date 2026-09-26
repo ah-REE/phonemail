@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -124,7 +125,10 @@ export default function DesktopLoginPage() {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 px-6 py-16">
       <div>
-        <h1 className="text-2xl font-semibold">Sign in to PhoneMail</h1>
+        {/* ROUND 4: the same wordmark treatment wherever the name appears. */}
+        <h1 className="flex flex-wrap items-center gap-x-2 text-2xl font-semibold">
+          Sign in to <Wordmark as="span" size={24} />
+        </h1>
         <p className="mt-1 text-wa-muted">
           Your phone number is your email address. By continuing you agree to the{" "}
           <Link href="/portal" className="underline">

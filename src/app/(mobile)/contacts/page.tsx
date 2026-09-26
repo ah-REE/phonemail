@@ -340,6 +340,7 @@ export default function ContactsPage() {
             address: openContact.address,
           }}
           onClose={() => setOpenPhone(null)}
+          onSaved={() => void load()}
         />
       )}
     </main>
