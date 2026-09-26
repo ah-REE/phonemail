@@ -1343,6 +1343,46 @@ context instantly)*
     a real SMS-notifications toggle, delete-account), contacts, and the curated
     verified-sender registry with its honest badge.
 
+- Day 7 (Sat Sep 26), refined again on the owner's direction (same day):
+  - THE DOOR'S COLOUR IS NOW THE BRAND BLUE, taken from the owner's own mark:
+    the envelope in the logo runs #3a7bea into #1f4fa8, deepened slightly at
+    the light end (#3170e8 into #2a51c4) so white text stays legible on it. A
+    new .btn-brand carries it, and every primary in the onboarding flow uses
+    it, so the door, the code step, the password step and the success screen
+    read as one colour instead of blue outside and violet inside. This
+    replaces both the teal #00a98f and the accent violet on this flow.
+  - THE HERO IS REDRAWN TO SCALE. It is one square of
+    min(320px, 78vw, 40vh) rather than a fixed 320px box, and the mark (32.5%
+    of it) and the bloom (81%) are shares of that square - so on a narrow
+    phone, and on a short one, the hero shrinks to the space it is placed in
+    and nothing drifts out of proportion.
+  - THE IDLE LOOP IS REBUILT: the dotted orbit drifts one way over 120s while
+    the icon ring counter-drifts over 90s for parallax, so the satellites stay
+    upright; the envelope floats on its own height (6s) and the bloom behind
+    it breathes (7s); three soft rings leave the envelope every 4.5s, staggered
+    1.5s apart, the way a message goes out; and the two green dots blink like
+    status lights (3s). The dotted ring also now takes the stroke tone the
+    owner's own notes name (#c3cfdd). Every one of those loops is stopped by
+    the existing reduced-motion rule.
+  - LOG IN GOES STRAIGHT THROUGH THE CODE. The door's Log in button now goes
+    to the number and then the code, with no password in the way. The password
+    path is still whole and still working, but it is opt-in from the code step
+    ('Use my password instead') instead of standing at the door.
+  - Also fixed while in the file: the login screen's phone field carried a
+    double-escaped digit regex, so a pasted letter stayed visible in it; the
+    regex is now a plain digit class.
+  - Verified: build green; the welcome suite 23/23 (five of its checks asserted
+    the old hero - the CTA colour, the bloom tint, the fixed size, the loop
+    keyframes and the ring class names - and were updated to assert the new
+    design rather than deleted); the Phase 0 screens suite 26/26 (one check
+    named the old btn-primary class); this turn's brand suite 24/24; and the
+    DEPLOYED container was checked directly - it serves the new CSS (.btn-brand,
+    #3170e8, #2a51c4, hero-ping, hero-blink) and the new flow in its JS chunks
+    (the door, the code step's password link, the success copy, the fluid hero
+    width) - so the running app matches HEAD.
+  - Still the owner's to judge, since this is a look: the hero's new motion and
+    the blue against their mark.
+
 - Day 7:
 
 ---
