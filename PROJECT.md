@@ -1711,6 +1711,40 @@ context instantly)*
     went to making the app usable again, which the brief put first.
   - Mode found and left: REAL.
 
+- Day 7 (Sat Sep 26): the harness is deterministic, and both suites now run green
+  twice in a row on the loaded dev DB.
+  - The previous session's three reds were ALL count-based assertions on a loaded
+    database, and all three are now membership-based or no-increase:
+      * the final suite's 'the moved row leaves B's group view' asserted
+        after = before - 1, which CANNOT be observed at the 200-row cap - a moved
+        row changes the SET, never the COUNT. It now asserts the moved row's id is
+        absent from the returned set, and that C's and A's views lost nothing.
+        That flake had been with the project for a week.
+      * the group suite's two leak checks compared a baseline taken before the
+        sends against a count taken after them, so any read in between moved the
+        number under the assertion. They now re-read the baseline at the moment of
+        measurement and assert no-increase - which is the property they were
+        always trying to state.
+      * the group suite's 'A -> B only lands in the pairwise thread' asserted a
+        +1 in the aggregate, which is not a property that holds when the user's
+        scan window is full of other people's traffic. It now asserts the row is
+        PRESENT in B's pairwise thread - which incidentally re-verifies the
+        send-visibility fix end to end.
+  - Verified twice consecutively: group 43/43 twice, final 42/42 twice.
+  - NOT STARTED, and stated plainly: the five features (the user-detail sheet,
+    group info, the shared default avatar, the home bottom bar, contacts). The
+    brief ordered the harness first so that its own verification would be clean,
+    and that work - three assertions to convert plus two suites run twice against
+    a loaded database - used the session. They are the next session's content, in
+    the brief's order, with the contacts model and API landing BEFORE the sheet's
+    'Add to contacts' can be wired, as the brief requires.
+  - STILL OPEN: the fresh-clone evaluator simulation. It has now been blocked two
+    sessions running by the same thing - its cleanup step is a recursive delete,
+    which AutoClaw's Safety Guard refuses, and the rules forbid re-running the
+    blocked objective through a changed command shape in the same turn. It needs
+    either the user to run it or an approval for the cleanup.
+  - Mode found and left: REAL.
+
 - Day 7:
 
 ---
