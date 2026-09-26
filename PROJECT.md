@@ -1778,6 +1778,63 @@ context instantly)*
     named the literal avatar classes this session replaced (updated).
   - Mode found and left: REAL.
 
+- Day 7 (Sat Sep 26), third session: THE FIVE REMAINING FEATURES LAND, AND THE
+  EVALUATOR'S OWN PATH IS FINALLY EXERCISED.
+  - THE USER DETAIL SHEET (src/components/user-sheet.tsx): tapping the counterpart
+    in a pairwise thread, or any member in a group, opens who they are - the name in
+    force, the number, the mail address, and, when it differs, the name the other
+    account chose for itself. Add to contacts arrives PRE-FILLED with the name
+    already on screen, so the common case is one tap; if the person is already saved
+    the sheet says so and offers a rename and a remove instead. It asks
+    /api/contacts rather than trusting a flag from the thread, because the contact
+    list is the single source of truth for whether a person is saved.
+  - GROUP INFO (src/components/group-info.tsx): the group title opens a read-only
+    member list - the same list the thread key was derived from, so it cannot drift
+    from who is actually in the group. Every member opens the same detail sheet. No
+    rename and no leave, and not for want of trying: a group here is derived from its
+    messages, so there is no membership row to change and nothing to rename. The
+    screen says so rather than leaving the absence unexplained.
+  - CONTACTS (src/app/(mobile)/contacts/page.tsx): list, add and remove. Adding goes
+    through the send path's own resolution, so a number that cannot receive mail
+    cannot be saved either, and the server's 404 reason is shown verbatim.
+  - NAME OVERRIDES (src/lib/contacts.ts): one resolver, one precedence, applied in
+    all three read endpoints - the name YOU gave a person beats the name they chose,
+    which beats the number. An unnamed contact is absent from the map on purpose: it
+    has nothing to override with. Verified live rather than by inspection: saving a
+    name changed what the chat list row and the thread header displayed, and removing
+    the contact reverted them.
+  - THE HOME BOTTOM BAR (src/components/bottom-bar.tsx): Home, Contacts, Favorites.
+    Additive - the folder links and the filter chips stay where they were, and
+    Favorites is the same filter in both places rather than a second implementation.
+    It passes ?filter=favorites instead of duplicating the list on a second route;
+    the home reads that off the location in an effect, because useSearchParams would
+    force a Suspense boundary around a screen that prerenders fine without one.
+  - COMPOSE AUTOCOMPLETE: typing in To matches the address book by name or address,
+    and a recipient chip now shows the saved name instead of the raw number.
+  - THE LAST LETTER AVATARS ARE GONE: the profile header and the first-contact reader
+    carry the shared person mark, and the dead initial helper on the home list is
+    deleted. A regression assertion greps the tree for the patterns and requires
+    nothing to come back.
+  - VERIFICATION, loaded dev DB: a new feature suite (39 assertions) covers the
+    sheet's data and its add wiring, the group-info payload, the contacts round trip,
+    the overrides in both payloads, the bar's three targets, the routes' status codes,
+    and the absence of letter markup. THE WHOLE SET IS 292 OF 292, TWICE
+    CONSECUTIVELY.
+  - THE FRESH-CLONE SIMULATION RAN - what three sessions could not land, and the
+    blocker was the DELETE step, not the clone. Two commands and no deletion anywhere:
+    git clone https://github.com/ah-REE/phonemail.git into a fresh timestamped
+    directory, then docker compose up -d. Result: all four containers healthy, TEN
+    migrations applied to a CLEAN volume (Alias, Contact, Email, User), dev mode out of
+    the box because the clone carries no override file - and 292 OF 292 ON THE CLONE'S
+    EMPTY DATABASE as well. The evaluator's exact path works, which is now a proven
+    claim instead of an assumption.
+  - Two suite assertions were re-pointed rather than deleted: chatref asserted the
+    literal avatar classes this session replaced, and reader asserted the shell behind
+    the letter initial. Both now assert the mark that actually renders.
+  - The clone directory phonemail-clone-20260926-122047 is left in place on purpose -
+    nothing was deleted, and its docker volume is its own, separate from the dev stack.
+  - Mode found and left: REAL.
+
 - Day 7:
 
 ---
