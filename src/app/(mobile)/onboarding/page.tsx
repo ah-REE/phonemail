@@ -186,13 +186,13 @@ function HeroMark() {
 
       <circle cx="150" cy="150" r="149" fill="url(#hero-glow)" />
 
-      <g className="hero-ring" style={origin}>
+      <g className="hero-orbit" style={origin}>
         <circle
           cx="150"
           cy="150"
           r="130"
           fill="none"
-          stroke="#e2e8f0"
+          stroke="#c3cfdd"
           strokeWidth="1.2"
           strokeDasharray="1.5 7"
           strokeLinecap="round"
@@ -200,7 +200,7 @@ function HeroMark() {
       </g>
 
       <g
-        className="hero-ring-reverse"
+        className="hero-orbit-reverse"
         style={origin}
         fill="none"
         stroke="#cbd5e1"
@@ -244,9 +244,17 @@ function HeroMark() {
         </g>
       </g>
 
-      {/* the accents that never rotate */}
-      <circle cx="150" cy="20" r="3" fill="#22c55e" />
-      <circle cx="150" cy="280" r="3" fill="#22c55e" />
+      {/* Three soft rings leaving the envelope, the way a message goes out.
+          They scale from the mark's edge outward and fade before the orbit. */}
+      <g fill="none" stroke="#a4ccfc" strokeWidth="1.3" style={origin}>
+        <circle className="hero-ping" cx="150" cy="150" r="84" />
+        <circle className="hero-ping hero-ping-2" cx="150" cy="150" r="84" />
+        <circle className="hero-ping hero-ping-3" cx="150" cy="150" r="84" />
+      </g>
+
+      {/* the accents that never rotate - they blink like status lights */}
+      <circle className="hero-blink" cx="150" cy="20" r="3" fill="#22c55e" />
+      <circle className="hero-blink hero-blink-2" cx="150" cy="280" r="3" fill="#22c55e" />
       <circle cx="20" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
       <circle cx="280" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
 
@@ -577,25 +585,33 @@ export default function OnboardingPage() {
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
-              <div className="enter enter-2 relative mx-auto flex h-[320px] w-[320px] items-center justify-center">
-                {/* A soft accent bloom behind the ring, so the hero sits in light
-                    rather than on the page. */}
+              {/* One square that scales as a unit: capped at 320px, but smaller
+                  on a narrow phone and on a short one, so the hero always fits the
+                  space it is placed in. The mark and the bloom are shares of this
+                  square, so nothing drifts out of proportion at any size. */}
+              <div
+                className="enter enter-2 relative mx-auto flex aspect-square items-center justify-center"
+                style={{ width: "min(320px, 78vw, 40vh)" }}
+              >
+                {/* A soft brand-blue bloom behind the ring, so the hero sits in
+                    light rather than on the page - and breathes with the mark. */}
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute h-[260px] w-[260px] rounded-full"
+                  className="hero-breathe pointer-events-none absolute aspect-square w-[81%] rounded-full"
                   style={{
                     background:
-                      "radial-gradient(circle, rgba(75,61,245,0.12) 0%, rgba(12,59,54,0.07) 45%, rgba(0,0,0,0) 72%)",
+                      "radial-gradient(circle, rgba(49,112,232,0.18) 0%, rgba(49,112,232,0.07) 45%, rgba(0,0,0,0) 72%)",
                   }}
                 />
                 <HeroMark />
-                {/* The owner's own mark, transparent, resting inside the ring. */}
+                {/* The owner's own mark, transparent, resting inside the ring -
+                    32.5% of the square, so it holds its place at every size. */}
                 <img
                   src="/brand/phonemail-logo.png"
                   alt="PhoneMail"
                   width={104}
                   height={104}
-                  className="hero-float pointer-events-none absolute h-[104px] w-[104px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
+                  className="hero-float pointer-events-none absolute w-[32.5%] select-none drop-shadow-[0_14px_22px_rgba(31,79,168,0.30)]"
                 />
               </div>
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
@@ -618,7 +634,7 @@ export default function OnboardingPage() {
                   the login screen offers it right beside the password. */}
               <button
                 type="button"
-                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-pill bg-[#00a98f] text-[16px] font-bold uppercase tracking-wider text-white shadow-raised transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985]"
+                className="btn-brand w-full"
                 onClick={() => {
                   setMode("signup");
                   setPasswordError(null);
@@ -635,7 +651,9 @@ export default function OnboardingPage() {
                   setMode("login");
                   setPasswordError(null);
                   setOtpError(null);
-                  setStep("login-password");
+                  // Straight to the number, then the code: logging in asks for
+                  // nothing but what the OTP already proves.
+                  setStep("phone");
                 }}
               >
                 Log in
@@ -651,7 +669,7 @@ export default function OnboardingPage() {
             <div className="flex w-full flex-col pt-4">
               <div className="flex flex-col">
                 <h1 className="font-headline text-[26px] font-bold leading-[34px] tracking-[-0.015em]">
-                  You&apos;re almost in!
+                  {mode === "login" ? "Welcome back" : "You're almost in!"}
                 </h1>
                 <p className="mt-1 text-base leading-relaxed text-on-surface-variant">
                   Your phone number is your email address
@@ -739,7 +757,7 @@ export default function OnboardingPage() {
             <div className="mt-auto flex w-full flex-col gap-4 pt-6 pb-2">
               <button
                 type="button"
-                className="btn-primary w-full"
+                className="btn-brand w-full"
                 disabled={!phoneValid || sending}
                 onClick={async () => {
                   const ok = await sendOtp(normalizedPhone);
@@ -836,7 +854,7 @@ export default function OnboardingPage() {
             <div className="w-full">
               <button
                 type="button"
-                className="btn-primary flex w-full items-center justify-center gap-2"
+                className="btn-brand flex w-full items-center justify-center gap-2"
                 disabled={verifying || lockedOut || digits.some((digit) => digit === "")}
                 onClick={() => void verifyOtp(digits.join(""))}
               >
@@ -864,6 +882,21 @@ export default function OnboardingPage() {
                     </button>
                   )}
                 </p>
+                {/* Log in never asks for a password - but a person who set one may
+                    still prefer it, so the choice lives here rather than at the door. */}
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    className="mt-2 w-full text-center text-sm font-semibold text-accent underline-offset-4 hover:underline"
+                    onClick={() => {
+                      setOtpError(null);
+                      setPasswordError(null);
+                      setStep("login-password");
+                    }}
+                  >
+                    Use my password instead
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -908,7 +941,7 @@ export default function OnboardingPage() {
                   value={phoneNumber}
                   aria-label="Phone number"
                   onChange={(event) => {
-                    setPhoneNumber(event.target.value.replace(/\\D/g, "").slice(0, 10));
+                    setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 10));
                     setPasswordError(null);
                   }}
                 />
@@ -935,7 +968,7 @@ export default function OnboardingPage() {
             <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
               <button
                 type="button"
-                className="btn-primary w-full"
+                className="btn-brand w-full"
                 disabled={!phoneValid || password.length === 0 || signingIn}
                 onClick={() => void loginWithPassword()}
               >
@@ -1012,7 +1045,7 @@ export default function OnboardingPage() {
             <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
               <button
                 type="button"
-                className="btn-primary w-full"
+                className="btn-brand w-full"
                 disabled={savingPassword || password.length < 8 || confirm.length === 0}
                 onClick={() => void savePassword()}
               >
@@ -1056,7 +1089,7 @@ export default function OnboardingPage() {
 
             <button
               type="button"
-              className="btn-primary enter enter-4 w-full"
+              className="btn-brand enter enter-4 w-full"
               onClick={() => router.replace("/")}
             >
               Go to my inbox
