@@ -1501,6 +1501,20 @@ context instantly)*
     the deployed container serving the new hero width and the consent wording
     with real mode intact.
 
+- Day 7 (Sat Sep 26), the owner's screenshot said it plainly: the mark is an app
+  icon again, and the legal line is theirs, capitalised.
+  - At 236px the mark was about 46% of the screen width and it dominated the
+    door - the title, the line under it and the buttons all read as small
+    print beside it. It is 156px now (min(156px, 40vw, 20vh)): about 40%, and
+    still a little wider than the 134px it started at. The success screen's
+    156px now matches it exactly.
+  - 'Terms and Conditions' is capitalised, and the line sits in
+    text-on-surface-variant rather than the faint outline tone, which the
+    screenshot showed was easy to miss.
+  - Verified: build green; the welcome suite 15/15 (its legal-line check moved
+    to the readable token), the palette suite 27/27, the screens suite 26/26;
+    and the deployed bundle serving the 156px mark and the capitalised line.
+
 - Day 7:
 
 ---

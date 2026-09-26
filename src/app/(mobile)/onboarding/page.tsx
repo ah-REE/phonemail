@@ -352,16 +352,16 @@ export default function OnboardingPage() {
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
-              {/* Just the mark, at the centre of the space it is given - wide
-                  enough to be the first thing the eye lands on, and never wider
-                  than the screen allows. */}
+              {/* Just the mark, centred - sized like an app icon rather than a
+                  hero: about 40% of the screen, so the title, the line under it
+                  and the buttons all still hold their own. */}
               <img
                 src="/brand/phonemail-logo.png"
                 alt="PhoneMail"
-                width={236}
-                height={236}
+                width={156}
+                height={156}
                 className="enter enter-2 mx-auto aspect-square select-none object-contain"
-                style={{ width: "min(236px, 62vw, 32vh)" }}
+                style={{ width: "min(156px, 40vw, 20vh)" }}
               />
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
                 Your phone number is your email address.
@@ -371,10 +371,10 @@ export default function OnboardingPage() {
             <div className="enter enter-4 flex w-full flex-col items-center gap-5">
               {/* The owner's own wording, sitting directly above the button it is
                   about, with the one link that has a route. */}
-              <p className="px-2 text-center text-[13px] leading-relaxed text-outline">
+              <p className="px-2 text-center text-[13px] leading-relaxed text-on-surface-variant">
                 By clicking Create account you agree to accept the{" "}
                 <Link href="/terms" className="font-semibold text-accent">
-                  terms and conditions
+                  Terms and Conditions
                 </Link>
                 .
               </p>
