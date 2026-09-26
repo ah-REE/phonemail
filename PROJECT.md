@@ -1309,6 +1309,40 @@ context instantly)*
     screen; and the 'set your password' entry for existing accounts. All of it
     inside the current design system. The OTP flow stays untouched.
 
+- Day 7 (Sat Sep 26): PHASE 0, SCREENS LANDED - the phase is complete.
+  - Screen 1 is now a Login/Signup door: the hero, the owner's mark and the
+    consent line stay exactly as they were, and the single CTA became two -
+    'Create account' (signup) and 'Log in' (the password screen). OTP is
+    offered on BOTH paths, which is what keeps it primary.
+  - SIGNUP: phone -> OTP -> a NEW set-password step -> a NEW
+    registration-success screen -> inbox. The OTP is deliberately NOT verified
+    at the OTP step in signup mode: set-password verifies AND consumes it in
+    the same call that stores the hash, so (a) nobody is ever signed in without
+    the password they came to set, and (b) a valid code is never spent on a step
+    that changes nothing. A rejected or expired code returns the person to the
+    OTP step carrying the server's own message, not a guess.
+  - LOGIN: a NEW phone + password screen -> POST /api/auth/login -> inbox, with
+    'Log in with an OTP instead' beside the button at all times. Every refusal is
+    actionable rather than a dead end: a passwordless account is sent to the OTP
+    flow with the server's message, a wrong password shows the attempts left, and
+    a lockout shows the seconds to wait.
+  - The success screen states the account is ready, shows the new address
+    (selectable, so it can be copied), and carries one CTA to the inbox.
+  - All three new screens are built from the LIVE design system - the field /
+    btn-primary / btn-quiet classes, the display face, the entrance stagger, and
+    the owner's mark with its float - so the phase extends the redesign rather
+    than introducing a second visual language.
+  - Verified: build green; the screen assertions; the API flow re-run at 21/21
+    AFTER the screens landed (so the backend is proven intact under the new UI);
+    the full prior regression green in dev mode (welcome 23/23, reader 21/21,
+    names 27/27, alias 31/31, and group 43/43 + final 42/42 on a clean clone);
+    and dev mode confirmed (devHint) BEFORE any OTP request. One assertion
+    failure during this work was my own literal-string check - the copy wraps
+    across lines in the source - and was fixed and re-run to green.
+  - PHASE 0 IS COMPLETE. Phases 1-3 remain: settings completion (avatar upload,
+    a real SMS-notifications toggle, delete-account), contacts, and the curated
+    verified-sender registry with its honest badge.
+
 - Day 7:
 
 ---

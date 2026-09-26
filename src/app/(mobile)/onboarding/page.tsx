@@ -29,7 +29,16 @@ import { useAuth } from "@/lib/useAuth";
  * privacy route to point at (a dead link is worse than one link).
  */
 
-type Step = "welcome" | "phone" | "otp";
+type Step =
+  | "welcome"
+  | "phone"
+  | "otp"
+  | "password-set"
+  | "success"
+  | "login-password";
+
+/** Which door the person came through. OTP is primary in both. */
+type AuthMode = "signup" | "login";
 
 interface SendOtpResponse {
   success?: boolean;
@@ -253,6 +262,15 @@ export default function OnboardingPage() {
   const { status, signIn } = useAuth();
 
   const [step, setStep] = useState<Step>("welcome");
+  const [mode, setMode] = useState<AuthMode>("signup");
+
+  // Phase 0: the added password path.
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const [successAddress, setSuccessAddress] = useState("");
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -338,6 +356,17 @@ export default function OnboardingPage() {
 
   const verifyOtp = useCallback(
     async (code: string) => {
+      // SIGNUP does not verify the code here on purpose: set-password verifies
+      // AND consumes it in the same call that stores the hash, so nobody is ever
+      // signed in without the password they came to set, and a valid code is
+      // never spent on a step that changes nothing.
+      if (mode === "signup") {
+        setOtpError(null);
+        setPasswordError(null);
+        setStep("password-set");
+        return;
+      }
+
       setVerifying(true);
       setOtpError(null);
       try {
@@ -376,8 +405,129 @@ export default function OnboardingPage() {
         setVerifying(false);
       }
     },
-    [normalizedPhone, router, signIn],
+    [mode, normalizedPhone, router, signIn],
   );
+
+  /**
+   * Signup's last step: one call verifies the OTP and stores the hash, then
+   * returns the same session verify-otp would have, so the success screen can
+   * hand straight over to the inbox. A rejected code sends the person back to
+   * the OTP step with the server's own message rather than a guess.
+   */
+  const savePassword = useCallback(async () => {
+    setPasswordError(null);
+
+    if (password.length < 8) {
+      setPasswordError("A password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setPasswordError("The two passwords do not match.");
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const response = await fetch("/api/auth/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: normalizedPhone,
+          otp: digits.join(""),
+          password,
+          confirm,
+          source: "mobile",
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as VerifyOtpResponse & {
+        address?: string;
+        needsPassword?: boolean;
+      };
+
+      if (!response.ok || !body.token || !body.user) {
+        if (response.status === 401) {
+          // The code was wrong or expired: put the person back on the OTP step.
+          setLockedOut(false);
+          setOtpError(body.error ?? "That code is not right. Request a new one.");
+          setStep("otp");
+          return;
+        }
+        if (response.status === 429) {
+          setOtpError(body.error ?? "Too many attempts. Request a new code.");
+          setLockedOut(true);
+          setStep("otp");
+          return;
+        }
+        setPasswordError(body.error ?? "Could not save your password.");
+        return;
+      }
+
+      try {
+        window.localStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
+      } catch {
+        // storage unavailable: the signup itself must not fail for this
+      }
+
+      setSuccessAddress(body.address ?? `${normalizedPhone}@phonemail.com`);
+      signIn(body.token, body.user);
+      setStep("success");
+    } catch {
+      setPasswordError("Network error. Please try again.");
+    } finally {
+      setSavingPassword(false);
+    }
+  }, [confirm, digits, normalizedPhone, password, signIn]);
+
+  /**
+   * Login by password. The server's answers are all actionable rather than dead
+   * ends: a passwordless account is told to use the OTP, a wrong password gets
+   * the attempts it has left, and a lockout carries the seconds to wait - every
+   * one of them can fall back to the OTP path, which is why none of them is a
+   * failure the person cannot get past.
+   */
+  const loginWithPassword = useCallback(async () => {
+    setPasswordError(null);
+    setSigningIn(true);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: normalizedPhone, password }),
+      });
+      const body = (await response.json().catch(() => ({}))) as VerifyOtpResponse & {
+        needsPassword?: boolean;
+        attemptsLeft?: number;
+        retryAfterSeconds?: number;
+      };
+
+      if (!response.ok || !body.token || !body.user) {
+        if (body.needsPassword) {
+          setMode("login");
+          setPasswordError(null);
+          setOtpError(body.error ?? "This number has no password yet. Use an OTP.");
+          setStep("phone");
+          return;
+        }
+        if (response.status === 429) {
+          setPasswordError(
+            `${body.error ?? "Too many attempts."}${body.retryAfterSeconds ? ` Try again in ${body.retryAfterSeconds}s.` : ""}`,
+          );
+          return;
+        }
+        setPasswordError(
+          `${body.error ?? "Incorrect phone number or password."}${typeof body.attemptsLeft === "number" ? ` ${body.attemptsLeft} attempt(s) left.` : ""}`,
+        );
+        return;
+      }
+
+      signIn(body.token, body.user);
+      router.replace("/");
+    } catch {
+      setPasswordError("Network error. Please try again.");
+    } finally {
+      setSigningIn(false);
+    }
+  }, [normalizedPhone, password, router, signIn]);
 
   function handleDigitChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -464,12 +614,31 @@ export default function OnboardingPage() {
                 </Link>
                 .
               </p>
+              {/* Two doors, both leading to a real flow. OTP stays primary:
+                  the login screen offers it right beside the password. */}
               <button
                 type="button"
-                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-pill bg-[#00a98f] text-[16px] font-bold uppercase tracking-wider text-white shadow-raised transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985]"
-                onClick={() => setStep("phone")}
+                className="btn-primary w-full"
+                onClick={() => {
+                  setMode("signup");
+                  setPasswordError(null);
+                  setOtpError(null);
+                  setStep("phone");
+                }}
               >
-                Agree and continue
+                Create account
+              </button>
+              <button
+                type="button"
+                className="btn-quiet w-full"
+                onClick={() => {
+                  setMode("login");
+                  setPasswordError(null);
+                  setOtpError(null);
+                  setStep("login-password");
+                }}
+              >
+                Log in
               </button>
             </div>
           </div>
@@ -700,6 +869,200 @@ export default function OnboardingPage() {
           </>
         )}
 
+        {step === "login-password" && (
+          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-2">
+            <button
+              type="button"
+              aria-label="Back"
+              className="-ml-2 flex h-12 w-12 items-center justify-center rounded-full text-on-surface active:bg-surface-container-low"
+              onClick={() => setStep("welcome")}
+            >
+              <Icon name="back" size={24} />
+            </button>
+
+            <div className="enter enter-1 flex w-full flex-col pt-2">
+              <div className="mb-5 flex items-center gap-3">
+                <img
+                  src="/brand/phonemail-logo.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 shrink-0 select-none"
+                />
+                <h1 className="font-display text-[26px] font-bold tracking-tight text-on-surface">
+                  Welcome back
+                </h1>
+              </div>
+              <p className="text-[16px] leading-[26px] text-on-surface-variant">
+                Sign in with your number and password — or with an OTP, exactly as
+                before.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <input
+                  className="field"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder="Phone number"
+                  maxLength={10}
+                  value={phoneNumber}
+                  aria-label="Phone number"
+                  onChange={(event) => {
+                    setPhoneNumber(event.target.value.replace(/\\D/g, "").slice(0, 10));
+                    setPasswordError(null);
+                  }}
+                />
+                <input
+                  className="field"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Password"
+                  value={password}
+                  aria-label="Password"
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setPasswordError(null);
+                  }}
+                />
+                {passwordError && (
+                  <p className="px-1 text-sm text-danger" role="alert">
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={!phoneValid || password.length === 0 || signingIn}
+                onClick={() => void loginWithPassword()}
+              >
+                {signingIn ? "Signing in." : "Log in"}
+              </button>
+              <button
+                type="button"
+                className="btn-quiet w-full"
+                onClick={() => {
+                  setPasswordError(null);
+                  setOtpError(null);
+                  setStep("phone");
+                }}
+              >
+                Log in with an OTP instead
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "password-set" && (
+          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-2">
+            <button
+              type="button"
+              aria-label="Back"
+              className="-ml-2 flex h-12 w-12 items-center justify-center rounded-full text-on-surface active:bg-surface-container-low"
+              onClick={() => setStep("otp")}
+            >
+              <Icon name="back" size={24} />
+            </button>
+
+            <div className="enter enter-1 flex w-full flex-col pt-2">
+              <h1 className="font-display text-[26px] font-bold tracking-tight text-on-surface">
+                Set a password
+              </h1>
+              <p className="mt-2 text-[16px] leading-[26px] text-on-surface-variant">
+                One more step and your mailbox is ready. You can always sign in with
+                an OTP instead.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3">
+                <input
+                  className="field"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Password (at least 8 characters)"
+                  value={password}
+                  aria-label="Password"
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setPasswordError(null);
+                  }}
+                />
+                <input
+                  className="field"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Confirm password"
+                  value={confirm}
+                  aria-label="Confirm password"
+                  onChange={(event) => {
+                    setConfirm(event.target.value);
+                    setPasswordError(null);
+                  }}
+                />
+                {passwordError && (
+                  <p className="px-1 text-sm text-danger" role="alert">
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
+              <button
+                type="button"
+                className="btn-primary w-full"
+                disabled={savingPassword || password.length < 8 || confirm.length === 0}
+                onClick={() => void savePassword()}
+              >
+                {savingPassword ? "Saving." : "Create my mailbox"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "success" && (
+          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-4">
+            <div className="my-auto flex w-full flex-col items-center justify-center py-6 text-center">
+              <div className="enter enter-1 relative flex h-[220px] w-[220px] items-center justify-center">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute h-[200px] w-[200px] rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(75,61,245,0.14) 0%, rgba(12,59,54,0.08) 45%, rgba(0,0,0,0) 72%)",
+                  }}
+                />
+                <img
+                  src="/brand/phonemail-logo.png"
+                  alt="PhoneMail"
+                  width={116}
+                  height={116}
+                  className="hero-float pointer-events-none relative h-[116px] w-[116px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
+                />
+              </div>
+
+              <h1 className="enter enter-2 mt-8 font-display text-[27px] font-bold tracking-tight text-on-surface">
+                Your PhoneMail account is ready
+              </h1>
+              <p className="enter enter-3 mt-3 text-[16px] leading-[26px] text-on-surface-variant">
+                This is your address — anyone can write to it.
+              </p>
+              <p className="enter enter-4 mt-4 select-all rounded-card border border-outline-variant/70 bg-surface px-4 py-3 font-mono text-base font-semibold text-on-surface shadow-card">
+                {successAddress}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary enter enter-4 w-full"
+              onClick={() => router.replace("/")}
+            >
+              Go to my inbox
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );
