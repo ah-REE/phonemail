@@ -107,8 +107,8 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | No separate Inbox/Sent — everything is a chat | `GET /api/conversations` | Done |
 | Full-width search bar | Home | Done |
 | Filter chips: All, Unread, Attachments, Favorites | Home | Done — **Attachments is an affordance with an honest empty state; there is no attachment backend** (see limitations) |
-| Top-left menu: Home, Drafts, Spam, Trash | — | **Deviation** — the drawer was removed earlier (the owner asked for it), and this round removed the folder section from Settings and the in-thread move-to-folder actions, so nothing links to the three folder screens. The `folder` column and the folder API stay: harmless, and the screens still work if reached by URL |
-| Profile icon, top-right → settings | Home → `/profile` | Done — alias IDs, the display name, the notification switch and account deletion are all real |
+| Top-left menu: Home, Drafts, Spam, Trash | Settings → Folders | **Deviation, resolved elsewhere** — the slide-out drawer was removed at the owner's request; the three folders are rows in Settings instead, each opening its screen, with move-to-folder in a thread's reveal panel. The destination changed, the feature did not |
+| Profile icon, top-right → settings | Home → `/profile` | Done — alias IDs, the display name, the language row, the notification switch and account deletion are all real, and the folders live here |
 | Settings must also manage personal details and a profile picture | `/profile`, `PATCH /api/me` | **Partial** — the display name is real and editable, and it is what the profile header leads with. A profile PICTURE is not implemented: there is no upload and no serving route, the `User.avatar*` columns are unused scaffolding, and every account shows the one shared default mark. The Language row was removed instead of being faked (see the deviation below) |
 | SMS "new mail" notifications, on/off | `/profile` switch → `User.smsNotifications` → the gate in `src/lib/inbound.ts` | Done — the switch is real state the delivery path reads. It can only ever NARROW who is notified: the non-mobile registration gate must allow it too, so the spec's rule cannot be widened by a user setting |
 | Delete account | `/profile` → confirm → OTP → `DELETE /api/me/delete` | Done — a live one-time code is verified server-side before anything is removed, then emails, aliases, contacts and the user go in foreign-key order inside one transaction; the response reports exactly what was removed |
@@ -122,13 +122,12 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | Traditional-view reply: swipe right, or tap → full view → Reply | thread expand → Reply | **The spec's alternative is implemented** (tap → full view → Reply). Swipe-right itself opens the tag/folder panel, not a view picker |
 | Inside a chat, recipients cannot be added to To/CC | group composer + locked `lockTo` | Done |
 | Two or more recipients from Home = a group chat; later 1:1 mail stays 1:1 | derived thread keys | Done |
+| Group replies visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | Done — the creator broadcasts and keeps the composer; every other member replies from a mail, and that reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
 | Automatic phone and OTP detection | see the two rows above | Partial, as above |
 | Emails organised as chats | Done |
 | Manage alias IDs in settings | `/profile`, `/api/aliases` | Done |
 | Web: single screen, phone + OTP + one Next button, ToS line above it | `/portal` | **Partial** — the portal is a two-step phone → OTP flow; the consent line with its hyperlink is present |
 | Web home similar to Gmail, profile and settings | `/desktop`, `/desktop/profile`, `/desktop/settings` | Done — three-zone layout, token-consistent with the mobile design system |
-| Folders (Drafts/Spam/Trash) as a user-facing feature | — | **Deviation** — the folder section and every route to it were removed at the owner's request, with the in-thread move actions. Nothing links to those screens |
-| Language selection | — | **Deviation** — removed from Settings at the owner's request. The app is single-language by spec, so the row was decoration with nothing behind it |
 | Dockerize everything; `docker compose up -d` | `docker-compose.yml`, `Dockerfile`, `smtp/Dockerfile` | Done — re-verified from a fresh clone |
 
 ## Architecture
@@ -177,7 +176,7 @@ handler that stamps the cache name from the image's own `.next/BUILD_ID`, so a
 rebuild invalidates the old shell and an installed PWA picks up new code instead
 of serving a stale one.
 
-**Migrations are committed** (`prisma/migrations/`, 11 of them) and applied by the
+**Migrations are committed** (`prisma/migrations/`, 12 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
@@ -222,18 +221,21 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **357 assertions** across eleven suites, in dev mode through the real SMTP round
+- **407 assertions** across twelve suites, in dev mode through the real SMTP round
   trip: 15 for the onboarding forms, 26 for the auth screens, 27 for the palette, 21
   for the chat reference, 21 for the traditional reader, 27 for display names, 43 for
   the group chat, 42 for the final functional items (search-to-chat, the
   Favorites/Attachments chips, the group-folder add-on), 31 for aliases plus the
   non-member 403 path, 39 for contacts, and 65 for the click-through round 2 fixes:
   single-send, the free composer, self-sends, the notification switch, account
-  deletion, reply linkage and the input pass.
+  deletion, reply linkage and the input pass, and 50 for the round 3 items: the
+  contact and alias send, the group's per-viewer reply model, the restored settings
+  rows, the swipe reply and the live subject divider.
 - **Fresh-clone evaluator simulations** several times through the build, most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all eleven migrations applying on a clean volume,
-  all four services healthy, and the same 357 assertions green on that clone.
+  then `docker compose up -d`, all twelve migrations applying on a clean volume,
+  all four services healthy, and the same 404 runs green on that clone (one socket
+  assertion skips there: it needs a socket client from node_modules).
 - **Load numbers** (one run, dev mode, this machine, Node HTTP client):
   `GET /api/health` p50 **5.7 ms**, p95 **7.6 ms** over 30 sequential requests;
   `POST /api/auth/send-otp` **13.3 ms** and `POST /api/auth/verify-otp`
@@ -273,7 +275,7 @@ src/app/(desktop)/     the Gmail-style desktop client
 src/app/portal/        registration-only web portal
 src/app/api/           every endpoint (auth, emails, conversations, aliases, mail/inbound, ivr, health)
 src/lib/               domain logic (alias, threadKey, folders, inbound, notify, otp, socket, phone)
-prisma/                schema + 11 committed migrations
+prisma/                schema + 12 committed migrations
 smtp/                  the self-hosted SMTP service and its README
 design/                the Stitch exports the visual language was built from
 docs/                  SPEC.md (the organiser's task) and ivr-setup.md

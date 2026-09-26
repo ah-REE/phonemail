@@ -1960,6 +1960,77 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-151737 is
     left in place, by the same rule as before: nothing was deleted.
 
+- Day 7 (Sat Sep 26), fifth session: CLICK-THROUGH ROUND 3, and the group's reply
+  model is rebuilt exactly as the owner specified it.
+  - THE CONTACT SEND. The write path was never at fault: driving the API precisely
+    as the screen does, a selected contact's number sends and lands. The fault was
+    in the parser in front of it. parseRecipients ran every token through a
+    digit-only filter, so an ALIAS became the empty string and silently vanished -
+    while the field's own placeholder advertised Number or alias. Typing a saved
+    contact's NAME added nothing at all. The parser now keeps anything that is not
+    phone-shaped as an alias, a typed name that matches a saved contact selects
+    that contact, and the error names what is actually accepted. Asserted end to
+    end: a send via a selected contact, and a send to an alias the suite creates.
+  - THE GROUP DOUBLE IS REAL, AND IT WAS NOT THE SAME BUG AS ROUND 2's. A broadcast
+    is one row per recipient - that is what makes per-member read state possible -
+    and the group view showed every row, so a message to two members rendered
+    twice. Email now carries a submissionId shared by every fan-out row of one
+    SMTP submission, and the group thread collapses to one row per submission,
+    preferring the VIEWER's own row because that is the one carrying their read
+    state. Asserted: two rows in the database, one bubble in every member's
+    payload.
+  - THE HOME HEADER. The top-right slot rendered the unread COUNT where a person
+    mark belongs, which reads as somebody else's phone number. The mark is the
+    shared default now and the count is a badge on it; no per-user digits anywhere.
+  - SELF-SEND SMS: the gate gains its plainest rule, ahead of the others - a
+    message to your own number never texts you (skipped-self).
+  - THE CONTACTS TAB: tapping a contact opens the CONVERSATION (the chat-first
+    pattern; a compose screen with the recipient filled is a step that exists only
+    to be dismissed - the choice is documented in the file itself), the detail
+    sheet is its own button, the list filters as you type, the add form lives
+    behind a plus, and removal is immediate with the name override reverting as it
+    happens. Asserted live.
+  - READING: both threads scroll to whatever just arrived - a send or a live
+    message - through a sentinel that moves with the last bubble. A reply renders
+    the mail it answers on its own bubble. A new subject from the same counterpart
+    cuts the chat with a divider wherever it arrives, socket included.
+  - SETTINGS RESTORED: the Language row returns (English live; Hindi and Tamil
+    offered as coming-soon entries that cannot be chosen, because only English
+    ships) and the folder rows return - the screens never went away, only their
+    door - with the move-to-folder actions back in the reveal panel. BOTH README
+    deviation rows are removed: this is spec again.
+  - SWIPE RIGHT now reveals Reply in traditional view, the gesture the spec asks
+    for; swipe left keeps the tag and move panel.
+  - THE GROUP REPLY MODEL, built to the letter. The creator's mails are broadcasts
+    and the creator keeps the composer. Every other member loses it and gets a
+    Reply button on each mail; that reply is addressed to the member whose mail it
+    answers, carries the group thread key EXPLICITLY - validated server-side: the
+    sender must be a member, the row being answered must be in that thread, and
+    the reply must go to that row's author, never to the group at large, which
+    would be a broadcast wearing a reply's thread key - and is PRIVATE. The group
+    endpoint filters per viewer, so a reply lives in exactly two payloads, its
+    sender's and its recipient's; the socket event for a reply reaches its
+    recipient and nobody else. One reply per member per mail falls out of the
+    existing claim on the member's OWN fan-out row, so B replying does not block
+    C - per-member independence for free. Unread lands on the creator for replies
+    and on members for broadcasts, from the same row-scoped count as before.
+    THE ORDER OF CHECKS MATTERED AND WAS WRONG FIRST: the group validation now
+    runs BEFORE the reply-once claim, because the claim is a mutation - rejecting
+    a reply after taking it would burn the sender's one reply to that mail. Found
+    by a hostile assertion rather than by reading.
+  - VERIFICATION: 407 assertions across twelve suites green on the loaded
+    database, and 404 OF 404 on a fresh clone of origin. One socket assertion is
+    SKIPPED on the clone only: it needs a socket client from node_modules, which a
+    fresh clone has inside its container and not on the host; the same assertion
+    runs and passes on the loaded database.
+  - Three assertions moved this session, all following product decisions rather
+    than preferences: groupchat's row-by-recipient count (the collapse stopped it
+    being true, and it was order-dependent), and round 2's move-to-folder line,
+    which flipped back because the owner restored the actions. Three rounds, three
+    decisions, one line tracking them.
+  - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
+    is left in place, by the same rule as every session before it.
+
 - Day 7:
 
 ---
