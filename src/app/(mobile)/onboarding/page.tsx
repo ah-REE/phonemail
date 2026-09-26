@@ -364,7 +364,7 @@ export default function OnboardingPage() {
                 style={{ width: "min(156px, 40vw, 20vh)" }}
               />
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
-                A private inbox, ready in seconds.
+                Where Numbers Become Mail
               </p>
             </div>
 
@@ -426,14 +426,14 @@ export default function OnboardingPage() {
                     the country, a hairline divider, the number large and bold as
                     you type it, and a clear button that appears with it. */}
                 <div className="flex w-full items-center gap-3 rounded-[28px] border border-outline-variant bg-chat-field py-2 pl-3 pr-2 shadow-card transition-all duration-ui focus-within:border-accent">
-                  <span className="flex shrink-0 items-center gap-2 rounded-full bg-accent-soft px-3 py-2 text-base font-semibold text-accent">
+                  <span className="flex shrink-0 items-center gap-2 pl-1 text-[22px] font-bold text-on-surface">
                     <span className="select-none leading-none" aria-hidden="true">
                       🇮🇳
                     </span>
                     +91
                   </span>
 
-                  <span className="h-7 w-px shrink-0 bg-outline-variant" />
+                  <span className="h-7 w-px shrink-0 bg-outline-variant" aria-hidden="true" />
 
                   <input
                     className="min-w-0 flex-1 bg-transparent text-[22px] font-bold tracking-wide text-on-surface caret-accent outline-none placeholder:font-normal placeholder:text-outline"
@@ -452,7 +452,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       aria-label="Clear the number"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center text-on-surface-variant"
                       onClick={() => {
                         setPhoneNumber("");
                         setPhoneError(null);
@@ -522,23 +522,22 @@ export default function OnboardingPage() {
           <>
             <TopBar step={stepNumber} total={3} onBack={() => setStep("phone")} brand />
 
-            <div className="px-2">
+            <div className="mb-8 px-2">
               <h1 className="font-headline text-[26px] font-bold leading-[34px] tracking-[-0.015em]">
                 Verifying your number
               </h1>
-            </div>
-
-            <div className="mb-8 mt-1 flex items-center justify-center gap-1.5">
-              <p className="text-sm text-on-surface-variant">
-                OTP sent to <span className="font-semibold text-on-surface">+91 {normalizedPhone}</span>
-              </p>
-              <button
-                type="button"
-                className="min-h-0 text-sm font-semibold text-primary-container underline underline-offset-2"
-                onClick={() => setStep("phone")}
-              >
-                Edit
-              </button>
+              <div className="mt-1 flex items-center gap-1.5">
+                <p className="text-sm text-on-surface-variant">
+                  OTP sent to <span className="font-semibold text-on-surface">+91 {normalizedPhone}</span>
+                </p>
+                <button
+                  type="button"
+                  className="min-h-0 text-sm font-semibold text-accent underline underline-offset-2"
+                  onClick={() => setStep("phone")}
+                >
+                  Edit
+                </button>
+              </div>
             </div>
 
             <div className="mx-auto mb-8 flex items-center justify-center gap-1.5 rounded-full bg-surface-container-low px-4 py-1.5">
@@ -550,41 +549,32 @@ export default function OnboardingPage() {
               </span>
             </div>
 
-            {/* The same bar as the number field, six digits inside it: one
-                rounded shape, one hairline, and the digit you are on carries the
-                accent caret. */}
-            <div className="mb-8 flex w-full items-center gap-1 rounded-[28px] border border-outline-variant bg-chat-field py-2 pl-3 pr-2 shadow-card transition-all duration-ui focus-within:border-accent">
+            {/* Six cells, in the reference's material: white, one rounding, a
+                hairline that turns to the accent on the digit you have filled. */}
+            <div className="mb-8 flex w-full items-center justify-between gap-2">
               {digits.map((digit, index) => (
-                <input
+                <div
                   key={index}
-                  ref={(element) => {
-                    inputsRef.current[index] = element;
-                  }}
-                  className="min-w-0 flex-1 bg-transparent text-center text-[24px] font-bold tracking-wider text-on-surface caret-accent outline-none disabled:opacity-60"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={1}
-                  value={digit}
-                  disabled={verifying || lockedOut}
-                  onChange={(event) => handleDigitChange(index, event.target.value)}
-                  onKeyDown={(event) => handleDigitKeyDown(index, event.key)}
-                  aria-label={`Digit ${index + 1}`}
-                />
-              ))}
-              {digits.some((entry) => entry !== "") && (
-                <button
-                  type="button"
-                  aria-label="Clear the code"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container text-on-surface-variant"
-                  onClick={() => {
-                    setDigits(Array(OTP_LENGTH).fill(""));
-                    setOtpError(null);
-                    inputsRef.current[0]?.focus();
-                  }}
+                  className={`flex h-[58px] flex-1 items-center justify-center rounded-2xl border bg-surface shadow-card transition-all duration-ui ${
+                    digit ? "border-accent" : "border-outline-variant"
+                  }`}
                 >
-                  <Icon name="clear" size={20} />
-                </button>
-              )}
+                  <input
+                    ref={(element) => {
+                      inputsRef.current[index] = element;
+                    }}
+                    className="w-full bg-transparent text-center text-[24px] font-bold text-on-surface caret-accent outline-none disabled:opacity-60"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={1}
+                    value={digit}
+                    disabled={verifying || lockedOut}
+                    onChange={(event) => handleDigitChange(index, event.target.value)}
+                    onKeyDown={(event) => handleDigitKeyDown(index, event.key)}
+                    aria-label={`Digit ${index + 1}`}
+                  />
+                </div>
+              ))}
             </div>
 
             {devHint && (

@@ -50,6 +50,16 @@ const config: Config = {
           rail: "#eef2f9",
           meta: "#6b7280",
         },
+        /* The conversation tints, sampled from the owner's home reference: each
+           row gets a soft one, with the numeral in its deeper partner. */
+        avatar: {
+          sky: "#d9effe",
+          "sky-ink": "#1e3a8a",
+          violet: "#dac5fb",
+          "violet-ink": "#5b21b6",
+          mint: "#cffafe",
+          "mint-ink": "#0e7490",
+        },
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },

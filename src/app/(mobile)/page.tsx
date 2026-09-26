@@ -76,7 +76,7 @@ function UnreadBadge({ count }: { count: number }) {
     return null;
   }
   return (
-    <span className="mt-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary-container px-1.5 text-[11px] font-bold text-on-secondary-container">
+    <span className="mt-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-white">
       {count}
     </span>
   );
@@ -221,28 +221,61 @@ export default function HomePage() {
     { key: "attachments", label: "Attachments" },
   ];
 
+  // A soft tint per conversation, sampled from the owner's home reference.
+  const TINTS = [
+    "bg-avatar-sky text-avatar-sky-ink",
+    "bg-avatar-violet text-avatar-violet-ink",
+    "bg-avatar-mint text-avatar-mint-ink",
+    "bg-accent-soft text-accent",
+  ];
+  const tintFor = (seed: string) => {
+    let sum = 0;
+    for (let index = 0; index < seed.length; index += 1) sum += seed.charCodeAt(index);
+    return TINTS[sum % TINTS.length];
+  };
+
+  // What the reference's top-right badge counts.
+  const totalUnread =
+    threads.reduce((sum, thread) => sum + (thread.unread ?? 0), 0) +
+    groupThreads.reduce((sum, group) => sum + (group.unread ?? 0), 0);
+
   return (
     <main className="flex flex-1 flex-col">
       <div className="relative flex w-full flex-1 flex-col">
 
         {/* 1. Top bar */}
-        <header className="relative flex h-[60px] w-full shrink-0 select-none items-center justify-end px-4">
-          <h1 className="pointer-events-none absolute inset-x-0 text-center font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em]">
-            PhoneMail
+        <header className="flex h-[60px] w-full shrink-0 select-none items-center justify-between px-4">
+          {/* The reference sets the wordmark left, with the second half in the
+              brand gradient. */}
+          <h1 className="font-headline text-[22px] font-bold leading-[28px] tracking-[-0.01em] text-on-surface">
+            Phone
+            <span className="bg-gradient-to-r from-brand to-brand-violet bg-clip-text text-transparent">
+              Mail
+            </span>
           </h1>
 
+          {/* The reference puts the unread count here. It is also the only way into
+              settings since the slide-out menu went, so it stays a link - labelled
+              as one, rather than a badge that quietly navigates. */}
           <Link
             href="/profile"
-            aria-label="Profile and settings"
-            className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary-container font-headline text-base font-bold text-on-secondary-container"
+            aria-label={`Profile and settings - ${totalUnread} unread`}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-headline text-base font-bold text-accent"
           >
-            {initialOf(user?.phoneNumber ?? "")}
+            {totalUnread > 0 ? (
+              totalUnread
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="8.5" r="3.5" />
+                <path d="M5 20a7 7 0 0 1 14 0" />
+              </svg>
+            )}
           </Link>
         </header>
 
         {/* 2. Search */}
         <div className="w-full px-4 py-3">
-          <div className="flex h-11 w-full items-center rounded-full bg-surface-container-high px-4">
+          <div className="flex h-12 w-full items-center rounded-full bg-surface-container px-4">
             <span className="mr-3 shrink-0 text-outline" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                 <circle cx="11" cy="11" r="6.5" />
@@ -267,8 +300,8 @@ export default function HomePage() {
               type="button"
               className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-ui ${
                 filter === chip.key
-                  ? "bg-wa-teal text-white"
-                  : "bg-surface-container-high text-on-surface-variant"
+                  ? "bg-accent text-white"
+                  : "bg-surface-container text-on-surface"
               }`}
               onClick={() => setFilter(chip.key)}
             >
@@ -340,8 +373,15 @@ export default function HomePage() {
               href={`/thread/group/${encodeURIComponent(group.threadKey)}`}
               className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-base font-bold text-on-primary">
-                {group.members.length}
+              <span className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+                <span className="absolute left-0 top-0 h-9 w-9 rounded-full bg-avatar-sky" aria-hidden="true" />
+                <span className="absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white ring-2 ring-surface">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="9" cy="8" r="3.2" />
+                    <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+                    <path d="M16 5.6a3.2 3.2 0 0 1 0 6.3M17.5 19a5.5 5.5 0 0 0-2.2-4.4" />
+                  </svg>
+                </span>
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
                 <span className="truncate text-base font-bold">
@@ -365,7 +405,7 @@ export default function HomePage() {
               href={`/thread/${thread.counterpart}`}
               className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-container font-headline text-base font-bold text-on-primary">
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-headline text-base font-bold ${tintFor(thread.counterpart)}`}>
                 {initialOf(thread.counterpart)}
               </span>
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
@@ -389,10 +429,6 @@ export default function HomePage() {
               </svg>
             </span>
             <span>Your personal emails are end-to-end encrypted</span>
-            <span aria-hidden="true">·</span>
-            <span title="connection">
-              {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
-            </span>
           </div>
         </div>
 
@@ -401,10 +437,13 @@ export default function HomePage() {
           <Link
             href="/compose"
             aria-label="Compose email"
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container transition-opacity duration-ui active:opacity-90"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_10px_24px_-8px_rgba(37,99,235,0.55)] transition-all duration-ui ease-out-quint active:scale-[0.96]"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+            {/* Our own pencil, drawn so its mass sits centre: the body and tip in
+                one stroke, the ferrule in another. */}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M16.6 3.9l3.5 3.5-11 11-4.4 1 1-4.4z" />
+              <path d="M14.4 6.1l3.5 3.5" />
             </svg>
           </Link>
         </div>

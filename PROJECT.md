@@ -1636,6 +1636,37 @@ context instantly)*
     chat 21/21; and the deployed bundle serving the new bar geometry and the new
     copy. Real mode confirmed in the container.
 
+- Day 7 (Sat Sep 26): the home page rebuilt to the owner's reference, and four
+  smaller corrections with it.
+  - THE HOME IS NOW THE REFERENCE. The wordmark sits left with 'Mail' in the
+    brand gradient; the top-right carries the unread count in the soft tint; the
+    search field is a flat pill in the surface tint; the selected chip is the
+    accent with white on it; the rows carry tints sampled from the image (a blue
+    pair for a group avatar - a light back circle and an accent front holding two
+    people - plus #d9effe and #dac5fb for the other two); the footer keeps only
+    the encryption line; and the floating button is the reference's accent circle
+    with its blue shadow.
+  - TWO DEPARTURES, both stated rather than hidden. The reference's unread badge
+    is a mint green, and the owner asked the green out of this app two passes
+    earlier, so the badge is the accent - one line to put it back. And the
+    top-right badge is the only way into settings since the slide-out menu went,
+    so it stays a link - labelled as one, rather than a badge that quietly
+    navigates - and it falls back to a person glyph when nothing is unread
+    instead of sitting there reading 0.
+  - The pencil is drawn here rather than taken from a glyph set, as asked: the
+    body and tip in one stroke, the ferrule in another, centred by construction.
+  - The number step's country code loses its tinted chip and the clear button
+    loses its grey disc, both as asked - they are plain now, and the divider
+    between them stays.
+  - The code entry goes back to six cells, in the reference's material: white,
+    one rounding, a hairline that turns to the accent on a filled digit. The
+    'OTP sent to ...' line moved out of the centre to sit left under the heading,
+    with its Edit link beside it.
+  - The first screen's tagline is the owner's: 'Where Numbers Become Mail'.
+  - Verified: build green; the welcome 15/15, screens 26/26 and palette 27/27
+    suites; and the deployed bundles serving the new home, the six cells and the
+    tagline, with real mode confirmed in the container.
+
 - Day 7:
 
 ---
