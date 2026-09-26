@@ -109,7 +109,7 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | Filter chips: All, Unread, Attachments, Favorites | Home | Done — **Attachments is an affordance with an honest empty state; there is no attachment backend** (see limitations) |
 | Top-left menu: Home, Drafts, Spam, Trash | — | **Deviation** — the drawer was removed earlier (the owner asked for it), and this round removed the folder section from Settings and the in-thread move-to-folder actions, so nothing links to the three folder screens. The `folder` column and the folder API stay: harmless, and the screens still work if reached by URL |
 | Profile icon, top-right → settings | Home → `/profile` | Done — alias IDs, the display name, the notification switch and account deletion are all real |
-| Settings must also manage personal details and a profile picture | `/profile`, `PATCH /api/me`, `/api/me/avatar` | Done — the display name is edited here and the picture is served from Postgres; the Language row was removed instead of being faked (see the deviation below) |
+| Settings must also manage personal details and a profile picture | `/profile`, `PATCH /api/me` | **Partial** — the display name is real and editable, and it is what the profile header leads with. A profile PICTURE is not implemented: there is no upload and no serving route, the `User.avatar*` columns are unused scaffolding, and every account shows the one shared default mark. The Language row was removed instead of being faked (see the deviation below) |
 | SMS "new mail" notifications, on/off | `/profile` switch → `User.smsNotifications` → the gate in `src/lib/inbound.ts` | Done — the switch is real state the delivery path reads. It can only ever NARROW who is notified: the non-mobile registration gate must allow it too, so the spec's rule cannot be widened by a user setting |
 | Delete account | `/profile` → confirm → OTP → `DELETE /api/me/delete` | Done — a live one-time code is verified server-side before anything is removed, then emails, aliases, contacts and the user go in foreign-key order inside one transaction; the response reports exactly what was removed |
 | Compact subject above the message box | thread subject pill | Done |
@@ -177,7 +177,7 @@ handler that stamps the cache name from the image's own `.next/BUILD_ID`, so a
 rebuild invalidates the old shell and an installed PWA picks up new code instead
 of serving a stale one.
 
-**Migrations are committed** (`prisma/migrations/`, 9 of them) and applied by the
+**Migrations are committed** (`prisma/migrations/`, 11 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
@@ -207,8 +207,11 @@ Written down rather than hidden:
 - **Swipe-right** opens the tag/folder panel rather than the traditional-view
   reply picker; the spec's alternative path (tap → full view → Reply) is what
   ships.
-- **Personal details / profile picture** from the settings mockup are not built,
-  so they are not shown.
+- **Profile pictures.** There is no upload and no avatar route, so the
+  `User.avatarBytes` / `avatarMime` / `avatarUpdatedAt` columns are unused
+  scaffolding rather than a feature. Every account shows the same neutral person
+  mark and the display name is what identifies a person. The mockup's "personal
+  details" row is real as far as the display name goes - it is edited in Settings.
 - **npm advisories.** `npm audit --omit=dev` reports **5 advisories (1 moderate,
   4 high)** in the transitive tree. No dependency was upgraded during the build,
   because the verified artefact is the committed one; upgrading the chain
@@ -219,14 +222,18 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **247 assertions** across eight suites, in dev mode through the real SMTP round
-  trip: 43 for the group chat, 42 for the final functional items (search-to-chat,
-  the Favorites/Attachments chips, folders, the group-folder add-on) and 31 for
-  aliases plus the non-member 403 path.
+- **357 assertions** across eleven suites, in dev mode through the real SMTP round
+  trip: 15 for the onboarding forms, 26 for the auth screens, 27 for the palette, 21
+  for the chat reference, 21 for the traditional reader, 27 for display names, 43 for
+  the group chat, 42 for the final functional items (search-to-chat, the
+  Favorites/Attachments chips, the group-folder add-on), 31 for aliases plus the
+  non-member 403 path, 39 for contacts, and 65 for the click-through round 2 fixes:
+  single-send, the free composer, self-sends, the notification switch, account
+  deletion, reply linkage and the input pass.
 - **Fresh-clone evaluator simulations** several times through the build, most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all nine migrations applying on a clean volume,
-  all four services healthy, and the same 116 assertions green on that clone.
+  then `docker compose up -d`, all eleven migrations applying on a clean volume,
+  all four services healthy, and the same 357 assertions green on that clone.
 - **Load numbers** (one run, dev mode, this machine, Node HTTP client):
   `GET /api/health` p50 **5.7 ms**, p95 **7.6 ms** over 30 sequential requests;
   `POST /api/auth/send-otp` **13.3 ms** and `POST /api/auth/verify-otp`
@@ -266,7 +273,7 @@ src/app/(desktop)/     the Gmail-style desktop client
 src/app/portal/        registration-only web portal
 src/app/api/           every endpoint (auth, emails, conversations, aliases, mail/inbound, ivr, health)
 src/lib/               domain logic (alias, threadKey, folders, inbound, notify, otp, socket, phone)
-prisma/                schema + 7 committed migrations
+prisma/                schema + 11 committed migrations
 smtp/                  the self-hosted SMTP service and its README
 design/                the Stitch exports the visual language was built from
 docs/                  SPEC.md (the organiser's task) and ivr-setup.md

@@ -16,8 +16,10 @@ export const dynamic = "force-dynamic";
  * The JWT's `sub` is the only user this route can ever read or write, so it needs
  * no ownership check: an absent/invalid token is a 401 and nothing else.
  *
- * The response carries `hasAvatar` rather than the bytes: the picture itself is
- * served by /api/me/avatar so it can be cached as an image.
+ * The response carries `hasAvatar`, derived from avatarUpdatedAt. NOTE: no route
+ * serves those avatar columns and nothing writes them - they are unused scaffolding.
+ * Every account shows the shared default mark (src/components/avatar.tsx). This is
+ * recorded as a partial in the README's spec mapping.
  */
 
 const patchSchema = z
