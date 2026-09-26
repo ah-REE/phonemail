@@ -1582,6 +1582,33 @@ context instantly)*
     menu'; and every page answers, so the re-homed folders are genuinely
     reachable.
 
+- Day 7 (Sat Sep 26): the owner supplied the logo itself; it is now the app's
+  mark everywhere.
+  - The supplied image was the mark sitting on a grey/white checkerboard with a
+    faint watermark, so it was cut out rather than colour-keyed: the background
+    was flooded inwards from every border (a single-colour key leaves half a
+    checkerboard behind), the anti-aliased fringe was eaten, every speck except
+    the mark's own connected component was dropped (251 stray pixels), and the
+    silhouette was eroded one pixel and feathered. THE MARK IS NEVER RESAMPLED:
+    public/brand/phonemail-logo.png is 780x780 - the mark's own pixels, not a
+    scaled copy of them.
+  - It is used everywhere the brand appears: both onboarding heroes, the
+    onboarding bar's brand slot, the PWA icons (the mark at 78% of the tile on
+    the illustration's off-white, its aspect preserved), and - a place that was
+    simply missing before - a browser favicon and an Apple touch icon. The app
+    had no favicon of any kind until this pass.
+  - A note on the cut-out, so the judgement is on record: the visual review
+    flagged a faint trace along the mark's top edge. The numeric checks say the
+    only opaque thing left in the asset is the mark's own single connected
+    component - everything not attached to it is gone, and 251 stray pixels were
+    dropped - so that trace is the supplied artwork's own light top band rather
+    than background left behind. If it reads as dirty on a real screen, one more
+    pixel of erosion clears it.
+  - Verified: build green; the palette 27/27, welcome 15/15, screens 26/26 and
+    chat 21/21 suites; the deployed app serving the new asset at its full size
+    with the favicon, the Apple icon, both PWA icons and the manifest all
+    answering; and real mode confirmed in the container.
+
 - Day 7:
 
 ---
