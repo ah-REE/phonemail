@@ -115,39 +115,6 @@
   .enter-4 { animation-delay: 190ms; }
 }
 
-/* The hero's idle loop: the orbit drifts one way while the icons counter-rotate
-   so they stay upright, the app icon floats and the glow behind it breathes, and
-   the two status dots on the orbit breathe with it. Four slow loops, and none of
-   them hurries - a mail app should not fidget.
-
-   These are loops, not interaction easings - the two defined easings still govern
-   every transition - and the global reduced-motion rule stops all of them. */
-@keyframes hero-orbit {
-  to { transform: rotate(360deg); }
-}
-@keyframes hero-orbit-back {
-  to { transform: rotate(-360deg); }
-}
-@keyframes hero-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5%); }
-}
-@keyframes hero-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.75; }
-  50% { transform: scale(1.07); opacity: 1; }
-}
-@keyframes hero-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-.hero-orbit { animation: hero-orbit 150s linear infinite; }
-.hero-orbit-reverse { animation: hero-orbit-back 150s linear infinite; }
-.hero-float { animation: hero-float 6s ease-in-out infinite; }
-.hero-breathe { animation: hero-breathe 8s ease-in-out infinite; }
-.hero-dot { animation: hero-dot 4.5s ease-in-out infinite; }
-.hero-dot-2 { animation-delay: 2.25s; }
-
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }

@@ -161,81 +161,91 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
 }
 
 /**
- * The welcome hero, drawn from the owner's own brand illustration: the app icon
- * at the centre, a periwinkle ring hugging it, a dotted grey orbit around that,
- * six line icons of the illustration's own family sitting on the orbit (camera,
- * search, document, paperclip, envelope, settings) and two green status dots.
+ * The brand mark, drawn as vector art.
  *
- * Drawn rather than cropped, so it stays crisp at any size. The orbit drifts one
- * way and the icons counter-rotate against it, which is what keeps them upright.
+ * The owner's logo is a glossy blue envelope on an app tile: the mark's own blue
+ * running light to deep, an envelope whose folded flap is the light end of that
+ * blue, a hairline where the fold catches the light, and a soft shadow under the
+ * tile. This is that drawing, made of gradients and paths rather than pixels, so
+ * it is crisp at any size - which is what a hero needs.
+ *
+ * It does not move. Nothing here is animated on purpose.
  */
-function HeroMark() {
-  const origin = { transformBox: "view-box" as const, transformOrigin: "150px 150px" };
+function HeroMark({ idPrefix }: { idPrefix: string }) {
+  const glow = `${idPrefix}-glow`;
+  const tile = `${idPrefix}-tile`;
+  const flap = `${idPrefix}-flap`;
+  const gloss = `${idPrefix}-gloss`;
+  const shade = `${idPrefix}-shade`;
+  const envClip = `${idPrefix}-env`;
 
   return (
     <svg viewBox="0 0 300 300" className="h-full w-full" role="img" aria-label="PhoneMail">
-      {/* The ring that hugs the icon, in the illustration's periwinkle. */}
-      <circle cx="150" cy="150" r="98" fill="none" stroke="#dbeafe" strokeWidth="1.6" />
+      <defs>
+        {/* the light the mark sits in */}
+        <radialGradient id={glow} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.28" />
+          <stop offset="55%" stopColor="#60a5fa" stopOpacity="0.09" />
+          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+        </radialGradient>
 
-      {/* The orbit itself. */}
-      <g className="hero-orbit" style={origin}>
-        <circle
-          cx="150"
-          cy="150"
-          r="126"
-          fill="none"
-          stroke="#9ca3af"
-          strokeWidth="1.3"
-          strokeDasharray="1.5 7"
-          strokeLinecap="round"
-        />
+        {/* the tile: the mark's blue, lighter at the shoulder */}
+        <linearGradient id={tile} x1="0" y1="0" x2="0.35" y2="1">
+          <stop offset="0%" stopColor="#6aa6fb" />
+          <stop offset="45%" stopColor="#2f6fe4" />
+          <stop offset="100%" stopColor="#1c3f9c" />
+        </linearGradient>
+
+        {/* the folded flap: the light end of the same blue */}
+        <linearGradient id={flap} x1="0" y1="0" x2="0.55" y2="1">
+          <stop offset="0%" stopColor="#eaf3ff" />
+          <stop offset="50%" stopColor="#9cc9ff" />
+          <stop offset="100%" stopColor="#4a8af6" />
+        </linearGradient>
+
+        {/* the sheen across the tile's upper half */}
+        <linearGradient id={gloss} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+
+        {/* the shadow the tile casts */}
+        <radialGradient id={shade} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.32" />
+          <stop offset="65%" stopColor="#1e3a8a" stopOpacity="0.10" />
+          <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0" />
+        </radialGradient>
+
+        <clipPath id={envClip}>
+          <rect x="76" y="84" width="148" height="142" rx="18" />
+        </clipPath>
+      </defs>
+
+      {/* the light */}
+      <circle cx="150" cy="150" r="150" fill={`url(#${glow})`} />
+
+      {/* the shadow, and the tile itself */}
+      <ellipse cx="150" cy="250" rx="106" ry="26" fill={`url(#${shade})`} />
+      <rect x="46" y="46" width="208" height="208" rx="62" fill={`url(#${tile})`} />
+      <rect x="46" y="46" width="208" height="208" rx="62" fill={`url(#${gloss})`} />
+
+      {/* the envelope: body, then the folded flap over it */}
+      <g clipPath={`url(#${envClip})`}>
+        <rect x="76" y="84" width="148" height="142" fill="#2a63d8" />
+        <path d="M76 84 L150 158 L224 84 Z" fill={`url(#${flap})`} />
       </g>
 
-      {/* The two status dots sit on the orbit and never rotate. */}
-      <circle className="hero-dot" cx="253" cy="78" r="3" fill="#22c55e" />
-      <circle className="hero-dot hero-dot-2" cx="47" cy="222" r="3" fill="#22c55e" />
-
-      {/* The six icons, counter-rotating so they stay upright. */}
-      <g
-        className="hero-orbit-reverse"
-        style={origin}
+      {/* the fold catching the light, and the envelope's own edge */}
+      <path
+        d="M79 87 L150 158 L221 87"
         fill="none"
-        stroke="#d1d5db"
-        strokeWidth="1.6"
+        stroke="#ffffff"
+        strokeOpacity="0.85"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-      >
-        {/* camera - 10:30 */}
-        <g transform="translate(51 51)">
-          <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
-          <path d="M7 6l1.3-2h3.4L13 6" />
-          <circle cx="10" cy="11.5" r="2.7" />
-        </g>
-        {/* search - 1:30 */}
-        <g transform="translate(229 51)">
-          <circle cx="8.5" cy="8.5" r="5.5" />
-          <path d="M12.6 12.6l4.4 4.4" />
-        </g>
-        {/* document - 3:00 */}
-        <g transform="translate(266 140)">
-          <path d="M4.5 3.5h7L16 8v8.5H4.5z" />
-          <path d="M11.5 3.5V8H16" />
-        </g>
-        {/* paperclip - 4:30 */}
-        <g transform="translate(229 229)">
-          <path d="M15.2 8.2l-6.4 6.4a3.3 3.3 0 0 1-4.7-4.7l7.2-7.2a2.3 2.3 0 0 1 3.2 3.2l-7 7a1.3 1.3 0 0 1-1.8-1.8l6.2-6.2" />
-        </g>
-        {/* envelope - 7:30 */}
-        <g transform="translate(51 229)">
-          <rect x="2.5" y="5" width="15" height="11" rx="2" />
-          <path d="M3.4 6.4L10 11.2l6.6-4.8" />
-        </g>
-        {/* settings - 9:00 */}
-        <g transform="translate(14 140)">
-          <circle cx="10" cy="10" r="3.2" />
-          <path d="M10 2.4v2.3M10 15.3v2.3M17.6 10h-2.3M4.7 10H2.4M15.4 4.6l-1.6 1.6M6.2 13.8l-1.6 1.6M15.4 15.4l-1.6-1.6M6.2 6.2L4.6 4.6" />
-        </g>
-      </g>
+      />
+      <rect x="76" y="84" width="148" height="142" rx="18" fill="none" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1.2" />
     </svg>
   );
 }
@@ -429,34 +439,14 @@ export default function OnboardingPage() {
             </h1>
 
             <div className="my-auto flex w-full flex-col items-center justify-center py-6">
-              {/* One square that scales as a unit: capped at 320px, but smaller
-                  on a narrow phone and on a short one, so the hero always fits the
-                  space it is placed in. The mark and the bloom are shares of this
-                  square, so nothing drifts out of proportion at any size. */}
+              {/* One square that scales with the space it is given: capped, but
+                  smaller on a narrow phone and on a short one. The drawing is
+                  vector, so it stays sharp at every size and simply sits there. */}
               <div
-                className="enter enter-2 relative mx-auto flex aspect-square items-center justify-center"
-                style={{ width: "min(320px, 78vw, 40vh)" }}
+                className="enter enter-2 mx-auto flex aspect-square items-center justify-center"
+                style={{ width: "min(300px, 76vw, 40vh)" }}
               >
-                {/* A soft brand-blue bloom behind the ring, so the hero sits in
-                    light rather than on the page - and breathes with the mark. */}
-                <span
-                  aria-hidden="true"
-                  className="hero-breathe pointer-events-none absolute aspect-square w-[74%] rounded-full"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(59,130,246,0.28) 0%, rgba(59,130,246,0.11) 42%, rgba(0,0,0,0) 70%)",
-                  }}
-                />
-                <HeroMark />
-                {/* The owner's own mark, at the centre of its own orbit - 46% of
-                    the square, so it holds its place at every size. */}
-                <img
-                  src="/brand/phonemail-logo.png"
-                  alt="PhoneMail"
-                  width={134}
-                  height={134}
-                  className="hero-float pointer-events-none absolute w-[42%] select-none drop-shadow-[0_16px_26px_rgba(37,108,243,0.32)]"
-                />
+                <HeroMark idPrefix="hero" />
               </div>
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
                 Your phone number is your email address.
@@ -733,24 +723,10 @@ export default function OnboardingPage() {
           <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-4">
             <div className="my-auto flex w-full flex-col items-center justify-center py-6 text-center">
               <div
-                className="enter enter-1 relative flex aspect-square items-center justify-center"
-                style={{ width: "min(220px, 58vw, 26vh)" }}
+                className="enter enter-1 mx-auto flex aspect-square items-center justify-center"
+                style={{ width: "min(190px, 52vw, 23vh)" }}
               >
-                <span
-                  aria-hidden="true"
-                  className="hero-breathe pointer-events-none absolute aspect-square w-[86%] rounded-full"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(59,130,246,0.24) 0%, rgba(59,130,246,0.10) 42%, rgba(0,0,0,0) 70%)",
-                  }}
-                />
-                <img
-                  src="/brand/phonemail-logo.png"
-                  alt="PhoneMail"
-                  width={116}
-                  height={116}
-                  className="hero-float pointer-events-none relative w-[53%] select-none drop-shadow-[0_16px_26px_rgba(37,108,243,0.32)]"
-                />
+                <HeroMark idPrefix="done" />
               </div>
 
               <h1 className="enter enter-2 mt-8 font-display text-[27px] font-bold tracking-tight text-on-surface">

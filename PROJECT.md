@@ -1443,6 +1443,30 @@ context instantly)*
   - Still the owner's to judge, because this is a look: the hero's balance and
     the palette in the flesh.
 
+- Day 7 (Sat Sep 26), still the owner's direction: THE HERO IS ONE CLEAN VECTOR
+  DRAWING, AND IT DOES NOT MOVE.
+  - The hero was the last thing still not right. It is now a single
+    self-contained SVG and nothing else: the brand's app tile drawn from the
+    mark's own blue (light at the shoulder #6aa6fb, mid #2f6fe4, deep
+    #1c3f9c), an envelope whose folded flap is the light end of that same blue
+    (#eaf3ff -> #9cc9ff -> #4a8af6), a hairline where the fold catches the
+    light, a sheen across the tile's upper half, a soft shadow under the tile
+    and a soft light behind it. The raster mark is no longer composited in,
+    and the orbit, the six icons and the dotted ring are gone.
+  - EVERY HERO ANIMATION IS GONE - the drift, the icon counter-rotation, the
+    float, the breathe, the dots - and the keyframes went with them. The owner
+    said it did not need to move; it now does not. The page's staggered
+    entrance on the other four blocks stays, since that is the screen arriving
+    rather than the drawing moving.
+  - The success screen uses the same drawing at a smaller size, and both
+    instances carry their own gradient ids, so rendering two on one page
+    cannot collide.
+  - Verified: build green; the welcome suite 20/20, the palette and hero suite
+    26/26, the onboarding screens 26/26 - all three updated where they had
+    asserted the animated orbit rather than deleted - and the deployed
+    container recreated and checked to serve the new drawing with the real
+    credentials still in place.
+
 - Day 7:
 
 ---
