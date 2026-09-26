@@ -618,7 +618,7 @@ export default function OnboardingPage() {
                   the login screen offers it right beside the password. */}
               <button
                 type="button"
-                className="btn-primary w-full"
+                className="flex h-[56px] w-full cursor-pointer items-center justify-center rounded-pill bg-[#00a98f] text-[16px] font-bold uppercase tracking-wider text-white shadow-raised transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985]"
                 onClick={() => {
                   setMode("signup");
                   setPasswordError(null);
