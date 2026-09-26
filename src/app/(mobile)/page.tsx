@@ -310,7 +310,7 @@ export default function HomePage() {
             <button
               key={chip.key}
               type="button"
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-ui ${
+              className={`shrink-0 rounded-full px-3.5 py-1 text-[13px] font-semibold transition-colors duration-ui ${
                 filter === chip.key
                   ? "bg-accent text-white"
                   : "bg-surface-container text-on-surface"
@@ -445,7 +445,7 @@ export default function HomePage() {
                 <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
               </svg>
             </span>
-            <span>Your personal emails are end-to-end encrypted</span>
+            <span>Your mail stays between you and the people you write to</span>
           </div>
         </div>
 

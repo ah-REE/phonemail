@@ -550,7 +550,7 @@ export default function OnboardingPage() {
                 <Icon name="lock" size={14} />
               </span>
               <span className="text-[11px] uppercase tracking-wide text-on-surface-variant">
-                End-to-End Secure Channel
+                Your mailbox is private
               </span>
             </div>
 

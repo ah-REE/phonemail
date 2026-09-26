@@ -2031,6 +2031,32 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), eleventh session: ROUND 4, PART ONE - honesty, the bubble's
+  trailing void, three settings-polish items and a quieter home chip row. LANDED AND
+  VERIFIED. Part two of the round - the auth-flow continuation, the reply model, the
+  alias rules, the header-alignment rule, the wordmark pass and the contact-sheet
+  behaviour - is NOT in this commit and is listed at the end.
+  - HONESTY FIRST, because it was the item that mattered most: THE UI NO LONGER CLAIMS
+    END-TO-END ENCRYPTION. RSA was never built, and the app was saying it was - on the
+    OTP screen (End-to-End Secure Channel), in the home footer, in the settings footer
+    and on the mail reader's sender badge. All four now say something true: the mailbox
+    is private, the mail stays between you and the people you write to, the sender is
+    known. A claim is not decoration; a false one is a lie with good typography.
+  - THE BUBBLE HUGS ITS TEXT: px-3.5 py-2.5 became px-3.5 pb-1.5 pt-2.5, so there is no
+    dead band between the last line of a message and the edge of its bubble.
+  - SETTINGS POLISH: the edit badge is now unmistakably the circle it always claimed to
+    be (aspect-square, a 3px white ring so it separates from the avatar it overlaps);
+    the SMS switch came down from 52x30 to 42x24 with a 20px knob, which still travels
+    its whole track; and the Language row traded its globe for the conventional
+    translation mark - an A meeting a script - because a globe says world where the row
+    means translation.
+  - THE HOME FILTER CHIPS are shorter: px-4 py-1.5 at 16px became px-3.5 py-1 at 13px.
+  - A NEW SUITE, ct8/polish_regression.mjs, 10 assertions, SOURCE-ONLY - and the honesty
+    one really does grep every .ts/.tsx under src rather than trusting a list of files
+    somebody remembered to update. It skips comment lines, because it grades what a
+    READER is told rather than what the source explains to itself.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), ninth session: THE CHAT IS BUBBLES. The owner settled the
   conflict this session had flagged, and settled it against the card:
   "the chat message design is LEFT/RIGHT BUBBLES - WhatsApp-style - with the

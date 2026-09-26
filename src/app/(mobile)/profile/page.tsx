@@ -48,6 +48,7 @@ type IconName =
   | "logout"
   | "pencil"
   | "person"
+  | "translate"
   | "trash";
 
 function Icon({
@@ -119,6 +120,15 @@ function Icon({
         <>
           <path d="M6.5 16.5h11l-1.4-2.2V10a4.1 4.1 0 0 0-8.2 0v4.3z" {...stroke} />
           <path d="M10.4 19a1.7 1.7 0 0 0 3.2 0" {...stroke} />
+        </>
+      )}
+      {/* The conventional language mark: an A meeting a script - which says
+          "translation" where a globe only said "world". */}
+      {name === "translate" && (
+        <>
+          <path d="M3 6h9M7.5 4.5V6c0 4-2 7-4.5 8.5" {...stroke} />
+          <path d="M4.5 11c1.6 2.4 3.6 4 5.5 4.8" {...stroke} />
+          <path d="M13 21l4-10 4 10M14.6 17.4h4.8" {...stroke} />
         </>
       )}
       {name === "trash" && (
@@ -470,7 +480,7 @@ export default function ProfilePage() {
                 field rather than reporting something that already happened. */}
             <button
               type="button"
-              className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-settings-brand text-white shadow-card transition-transform duration-ui active:scale-95"
+              className="absolute -bottom-0.5 -right-0.5 flex aspect-square h-10 w-10 items-center justify-center rounded-full bg-settings-brand text-white ring-[3px] ring-white shadow-card transition-transform duration-ui active:scale-95"
               aria-label="Change your display name"
               onClick={() => {
                 nameFieldRef.current?.focus();
@@ -673,7 +683,7 @@ export default function ProfilePage() {
             <div className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3">
               <span className="flex min-w-0 items-center gap-4">
                 <Chip>
-                  <Icon name="globe" size={21} />
+                  <Icon name="translate" size={21} />
                 </Chip>
                 <label className="text-[17px] font-semibold text-settings-ink" htmlFor="language">
                   Language
@@ -724,13 +734,13 @@ export default function ProfilePage() {
                 aria-label="SMS notifications for new mail"
                 disabled={smsSaving}
                 onClick={() => void toggleSms()}
-                className={`relative flex h-[30px] w-[52px] shrink-0 items-center rounded-full transition-colors duration-ui disabled:opacity-60 ${
+                className={`relative flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors duration-ui disabled:opacity-60 ${
                   smsNotifications ? "bg-settings-brand" : "bg-settings-track"
                 }`}
               >
                 <span
-                  className={`absolute h-[26px] w-[26px] rounded-full bg-white shadow-card transition-all duration-ui ${
-                    smsNotifications ? "left-[24px]" : "left-[2px]"
+                  className={`absolute h-[20px] w-[20px] rounded-full bg-white shadow-card transition-all duration-ui ${
+                    smsNotifications ? "left-[20px]" : "left-[2px]"
                   }`}
                 />
               </button>
@@ -802,7 +812,7 @@ export default function ProfilePage() {
             <span className="shrink-0 text-settings-quiet">
               <Icon name="lock" size={16} />
             </span>
-            <span className="text-[14px] text-settings-quiet">End-to-end encrypted</span>
+            <span className="text-[14px] text-settings-quiet">Your mail is private</span>
           </div>
           <p className="mt-3 text-[12.5px] text-settings-faint">PhoneMail v0.1.0</p>
         </footer>

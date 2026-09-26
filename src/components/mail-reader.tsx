@@ -20,7 +20,7 @@ import { Avatar } from "@/components/avatar";
  *  - the strip reads "Verified Government Sender" in the mockup. Nothing in this
  *    app verifies who a sender is, so the strip states what IS true instead:
  *    "New sender" for the first message from a number you have not written to,
- *    "End-to-End secure" otherwise.
+ *    "Known sender" otherwise.
  *  - the green verified tick beside the sender name is omitted for the same
  *    reason - it would assert a check that never ran.
  */
@@ -66,7 +66,7 @@ export function MailReader({
           </svg>
         </span>
         <p className="text-xs font-medium text-on-surface-variant">
-          {newSender ? "New sender" : "End-to-End secure"}
+          {newSender ? "New sender" : "Known sender"}
         </p>
       </div>
 

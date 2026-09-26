@@ -131,7 +131,7 @@ export function MessageCard({
         <div
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          className={`${radius} ${shell} relative px-3.5 py-2.5 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-ui active:scale-[0.995]`}
+          className={`${radius} ${shell} relative px-3.5 pb-1.5 pt-2.5 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-ui active:scale-[0.995]`}
         >
           {isNew && (
             <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-msg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
