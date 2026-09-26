@@ -45,8 +45,19 @@
     @apply min-h-tap;
   }
 
-  /* One focus treatment, in the accent, visible on the canvas and on the chrome. */
+  /* Caret-only focus on text entry. A browser matches :focus-visible for a text
+     field even when it was reached with a mouse, which is the box that appeared
+     around a field the owner had simply clicked into. Text fields now show the
+     caret and their own accent border (.field), and the ring stays for the
+     controls reached by keyboard - links and buttons - where it is a real
+     affordance rather than noise. */
   :focus-visible {
+    @apply outline-none;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
   }
 

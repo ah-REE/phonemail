@@ -162,7 +162,7 @@ export default function ContactsPage() {
             id="contact-address"
             className="min-w-0 flex-1 rounded-full border border-outline-variant bg-chat-field px-4 py-3 text-base text-on-surface outline-none placeholder:text-outline"
             inputMode="tel"
-            placeholder="9876543210 or their alias"
+            placeholder="Number or alias"
             value={addAddress}
             onChange={(event) => setAddAddress(event.target.value)}
           />

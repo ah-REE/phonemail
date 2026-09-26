@@ -111,6 +111,10 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
         subject: message.subject,
         body: message.body,
         threadKey,
+        // Messaging your own number: you wrote it, so you have obviously seen it.
+        // Born read means no unread badge can appear for a message you sent
+        // yourself, which is the only sensible reading of an email to yourself.
+        isRead: recipient.id === sender.id,
       },
       select: { id: true, subject: true, body: true },
     });
@@ -123,15 +127,18 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
       preview: email.body.slice(0, PREVIEW_LENGTH),
     });
 
-    // Best-effort SMS notification, gated by how the recipient registered.
-    // Never allowed to fail the delivery.
-    const smsNotification = shouldNotify(recipient.registeredVia)
-      ? await notifyNewMail({
-          recipientPhone: recipient.phoneNumber,
-          senderAddress: fromAddress,
-          subject: email.subject,
-        })
-      : "skipped-mobile";
+    // Best-effort SMS notification, gated by how the recipient registered AND by
+    // the recipient's own switch. Never allowed to fail the delivery. The switch
+    // wins: an explicit "no" from the person is not overridden by anything.
+    const smsNotification = !recipient.smsNotifications
+      ? "skipped-disabled"
+      : shouldNotify(recipient.registeredVia)
+        ? await notifyNewMail({
+            recipientPhone: recipient.phoneNumber,
+            senderAddress: fromAddress,
+            subject: email.subject,
+          })
+        : "skipped-mobile";
 
     deliveries.push({
       emailId: email.id,

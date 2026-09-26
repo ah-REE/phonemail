@@ -145,7 +145,7 @@ export default function DesktopLoginPage() {
           id="phone"
           className="field flex-1"
           inputMode="numeric"
-          placeholder="9876543210"
+          placeholder="Mobile number"
           maxLength={10}
           value={phoneNumber}
           onChange={(event) => {

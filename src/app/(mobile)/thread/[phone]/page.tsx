@@ -7,9 +7,11 @@ import { useParams, useRouter } from "next/navigation";
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
 import { MailReader } from "@/components/mail-reader";
+import { Spinner } from "@/components/spinner";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
+import { appendProvisional, mergeThreadMessages } from "@/lib/threadMerge";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -76,6 +78,10 @@ export default function ThreadPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
+  // The composer's own state. The thread sends its own messages now, so this is
+  // no longer a label that navigates away.
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -113,7 +119,9 @@ export default function ThreadPage() {
           wasUnread: !message.mine && !message.isRead,
         }));
 
-        setMessages(incoming);
+        // The server's answer wins, and a provisional bubble whose message has
+        // now arrived for real is dropped - one message, one bubble.
+        setMessages((current) => mergeThreadMessages(current, incoming));
         setSubject(body.subject ?? "");
         setCounterpartAddress(body.counterpartAddress ?? "");
         setCounterpartName(body.counterpartName ?? null);
@@ -153,9 +161,8 @@ export default function ThreadPage() {
       if (!event?.from || event.from !== counterpartAddress) {
         return;
       }
-      setMessages((current) => [
-        ...current,
-        {
+      setMessages((current) =>
+        appendProvisional(current, {
           id: `pending-${Date.now()}`,
           mine: false,
           from: event.from as string,
@@ -167,8 +174,11 @@ export default function ThreadPage() {
           repliedAt: null,
           tag: null,
           provisional: true,
-        },
-      ]);
+        }),
+      );
+      // Then let the server confirm it, so the provisional bubble is replaced by
+      // the real row instead of standing beside it.
+      window.setTimeout(() => void load(false), 1500);
     },
     onFallbackPoll: () => void load(false),
   });
@@ -200,28 +210,70 @@ export default function ThreadPage() {
   }
 
   /**
-   * Day 6 folders: moving a message is one PATCH on its folder, exactly like a
-   * tag. It leaves the conversation (folder is recipient-scoped state) and
-   * appears on the Spam or Trash screen.
+   * The thread's composer: a normal new message to the counterpart. The recipient
+   * set is the counterpart, one person, so nothing here is locked - locking
+   * belongs to the reply flow, which is enforced server-side against the original
+   * message. The subject continues the conversation, which is what keeps a plain
+   * message from opening a new subject divider.
    */
-  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
-    setTagOpenId(null);
-    setError(null);
-    const response = await authorizedFetch(`/api/emails/${messageId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder }),
-    });
-    if (!response.ok) {
-      setError("Could not move that message.");
+  async function handleSend(event: React.FormEvent) {
+    event.preventDefault();
+    if (sending || !draft.trim()) {
       return;
     }
-    void load(false);
+
+    setSending(true);
+    setError(null);
+
+    try {
+      const response = await authorizedFetch("/api/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: [phone],
+          subject: subject.trim() || "Conversation",
+          body: draft.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? "Could not send the message.");
+        return;
+      }
+
+      // Sending succeeds silently: the message simply appears above, when the
+      // SMTP round trip completes and the row is written.
+      setDraft("");
+      window.setTimeout(() => void load(false), 1400);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  /**
+   * The reply URL. Replying is the ONE place a recipient set is locked, and the
+   * original message rides along so the composer can show what is being answered:
+   * its subject becomes the reply's subject, and its opening words become the
+   * quoted context above the input. On the server the reply attaches to that exact
+   * message id, so answering an older mail in a thread is answered correctly even
+   * after a newer one has arrived.
+   */
+  function replyHrefFor(message: ThreadMessage): string {
+    const params = new URLSearchParams({
+      to: phone,
+      replyTo: message.id,
+      origSubject: message.subject,
+      quote: message.body.replace(/\s+/g, " ").slice(0, 160),
+    });
+    return `/compose?${params.toString()}`;
   }
 
   if (status !== "authenticated") {
     return (
-      <main className="flex h-screen flex-col">
+      <main className="flex h-dvh max-h-dvh flex-col overflow-hidden">
         <AppBar title={phone} backHref="/" />
         <ThreadSkeleton />
       </main>
@@ -236,8 +288,8 @@ export default function ThreadPage() {
     messages.length === 1 && !messages[0].mine && !messages[0].provisional ? messages[0] : null;
 
   return (
-    <main className="flex h-screen flex-col">
-      <header className="sticky top-0 z-20 flex h-[84px] w-full items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
+    <main className="flex h-dvh max-h-dvh flex-col overflow-hidden">
+      <header className="sticky top-0 z-20 flex h-[84px] w-full shrink-0 items-center gap-3 rounded-b-[24px] bg-chat-sheet px-4 shadow-card">
         <Link
           href="/"
           aria-label="Back to the chat list"
@@ -280,7 +332,7 @@ export default function ThreadPage() {
       )}
 
       {onlyIncoming ? (
-        <div className="flex-1 overflow-y-auto bg-surface-container-lowest">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-container-lowest">
           <MailReader
             name={counterpartName?.trim() || phone}
             address={counterpartAddress || `${phone}@phonemail.com`}
@@ -290,15 +342,11 @@ export default function ThreadPage() {
             stateLabel={onlyIncoming.tag ? `Inbox • ${onlyIncoming.tag}` : "Inbox"}
             referenceId={onlyIncoming.id}
             newSender={!onlyIncoming.repliedAt}
-            replyHref={
-              onlyIncoming.repliedAt
-                ? undefined
-                : `/compose?to=${encodeURIComponent(phone)}&replyTo=${encodeURIComponent(onlyIncoming.id)}`
-            }
+            replyHref={onlyIncoming.repliedAt ? undefined : replyHrefFor(onlyIncoming)}
           />
         </div>
       ) : (
-      <div ref={listRef} className="flex-1 overflow-y-auto bg-chat-canvas px-4 py-3">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto bg-chat-canvas px-4 py-3">
         {/* The mockup's date divider, then its subject pill. */}
         <div className="mb-4 flex justify-center">
           <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
@@ -313,12 +361,24 @@ export default function ThreadPage() {
             </span>
           </div>
         )}
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
+          // A new subject opens a new chapter of the same conversation: the chat
+          // simply continues, and the subject marks where it turned. A reply to an
+          // OLDER message still lands in its own chronological place.
+          const newSubject = index > 0 && messages[index - 1].subject !== message.subject;
 
           return (
-            <div key={message.id} className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
+            <div key={message.id}>
+              {newSubject && (
+                <div className="my-4 flex justify-center">
+                  <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
+                    {message.subject}
+                  </span>
+                </div>
+              )}
+              <div className={`mb-2 flex items-end gap-2 ${message.mine ? "justify-end" : "justify-start"}`}>
               {!message.mine && (
                 <Avatar size={40} className="mb-0.5" />
               )}
@@ -391,7 +451,7 @@ export default function ThreadPage() {
                     <p className="whitespace-pre-wrap text-base leading-[30px]">{message.body}</p>
                     {!message.mine && !message.provisional && !message.repliedAt && (
                       <Link
-                        href={`/compose?to=${encodeURIComponent(phone)}&replyTo=${encodeURIComponent(message.id)}`}
+                        href={replyHrefFor(message)}
                         className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-wa-teal text-base font-bold text-white"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -435,7 +495,7 @@ export default function ThreadPage() {
                       <span className="text-xs text-wa-muted">Replied</span>
                     ) : (
                       <Link
-                        href={`/compose?to=${encodeURIComponent(phone)}&replyTo=${encodeURIComponent(message.id)}`}
+                        href={replyHrefFor(message)}
                         className="min-h-tap text-sm font-semibold text-wa-teal"
                       >
                         Reply
@@ -471,22 +531,9 @@ export default function ThreadPage() {
                     >
                       clear
                     </button>
-                    <button
-                      type="button"
-                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                      onClick={() => void moveMessage(message.id, "spam")}
-                    >
-                      Spam
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-tap rounded border border-wa-line px-2 text-sm"
-                      onClick={() => void moveMessage(message.id, "trash")}
-                    >
-                      Trash
-                    </button>
                   </div>
                 )}
+              </div>
               </div>
             </div>
           );
@@ -494,15 +541,20 @@ export default function ThreadPage() {
       </div>
       )}
 
-      {/* The mockup's bottom bar: paperclip on the left, the message field, and
-          the traditional-compose button in the camera slot on the right. The field
-          opens compose - the app has no inline sender - and the paperclip is
-          present because the design shows it, reporting honestly that files have
-          no backend yet. Hidden while the reader is showing, where the reader's
-          own Reply bar is the action. */}
+      {/* The composer. The field here used to be a LABEL that opened compose with
+          the recipient list locked, so a normal new message could not be typed in
+          the conversation at all - the locked state had leaked out of reply mode
+          into the default flow. It is a real input now: type, send, and the
+          message appears above it. The paperclip stays because the design shows it,
+          reporting honestly that files have no backend; the camera keeps the
+          traditional compose one tap away. Hidden while the reader is showing,
+          where the reader's own Reply bar is the action. */}
       {!onlyIncoming && (
-      <footer className="sticky bottom-0 z-20 flex w-full flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
-        <div className="flex h-14 items-center gap-2 rounded-[28px] border border-outline-variant bg-chat-field px-4 text-on-surface-variant">
+      <footer className="sticky bottom-0 z-20 flex w-full shrink-0 flex-col gap-3 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
+        <form
+          className="flex h-14 items-center gap-2 rounded-[28px] border border-outline-variant bg-chat-field px-4 text-on-surface-variant"
+          onSubmit={handleSend}
+        >
           <button
             type="button"
             aria-label="Attach documents"
@@ -513,7 +565,13 @@ export default function ThreadPage() {
               <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
             </svg>
           </button>
-          <span className="flex-1 truncate text-sm">Message {phone}</span>
+          <input
+            className="min-w-0 flex-1 bg-transparent text-sm text-on-surface outline-none placeholder:text-outline"
+            placeholder="Message"
+            aria-label="Write a message in this conversation"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
           <Link
             href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
             aria-label="Write to this number in the traditional view (locked recipients)"
@@ -534,16 +592,21 @@ export default function ThreadPage() {
               <path d="M12 5v14M5 12h14" />
             </svg>
           </Link>
-        </div>
-        <Link
-          href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-[28px] bg-accent text-base font-bold text-white shadow-raised transition-all duration-fast ease-out-quint active:scale-[0.985]"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M4 12l16-8-6 16-2.6-6.4z" />
-          </svg>
-          Write to {phone}
-        </Link>
+          <button
+            type="submit"
+            aria-label="Send"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-50"
+            disabled={sending || draft.trim().length === 0}
+          >
+            {sending ? (
+              <Spinner label="Sending" />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12l16-8-6 16-2.6-6.4z" />
+              </svg>
+            )}
+          </button>
+        </form>
       </footer>
       )}
 

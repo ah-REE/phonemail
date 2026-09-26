@@ -98,7 +98,7 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | SMS notification, exact template, only for non-mobile registrants | `src/lib/notify.ts`, gate on `User.registeredVia` | Done — the text is the spec's exactly: `You have received an email from <sender>. Subject: <subject>.` Gated to `portal`/`desktop`/`ivr`, 60s per-recipient throttle, can never fail a delivery |
 | Use free trial providers (Twilio et al.) | `src/lib/otp.ts`, PROJECT.md §9 | Superseded — trial accounts hit KYC/trial walls; the shipped transport is a self-hosted gateway through the developer's own phone. History in PROJECT.md §9 |
 | Mobile: WhatsApp design language | `src/app/(mobile)`, tokens in `tailwind.config.ts` | Done — from the Stitch exports in `design/` |
-| Screen 1: language selection | `/onboarding` step 1 | **Superseded** - the owner's new welcome screen replaced it ("Welcome to PhoneMail", a 290px aura with the mark, the tagline, the consent line and one "Agree and continue" CTA). Language is now a setting on the profile screen rather than an onboarding step |
+| Screen 1: language selection | `/onboarding` step 1 | **Superseded** - the owner's new welcome screen replaced it ("Welcome to PhoneMail", a 290px aura with the mark, the tagline, the consent line and one "Agree and continue" CTA). the language step is gone from onboarding, and the Language row it moved to was itself removed this round (see the deviation below) |
 | Screen 2: Terms & Conditions | consent line + `/terms` | Deliberate change: the organiser's amended spec replaced the separate screen with an acknowledgement line under the send button — which is what ships |
 | Screen 3: phone verification, auto-detected and pre-filled | `/onboarding` step 2 | **Partial, platform-limited** — a web page cannot read the SIM; the last number that signed up on this device is pre-filled instead, and it stays editable |
 | Screen 4: OTP auto-detected and verified | `/onboarding` step 3 | **Partial** — the code auto-submits on the sixth digit; WebOTP (SMS Retriever) is not implemented |
@@ -107,12 +107,14 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | No separate Inbox/Sent — everything is a chat | `GET /api/conversations` | Done |
 | Full-width search bar | Home | Done |
 | Filter chips: All, Unread, Attachments, Favorites | Home | Done — **Attachments is an affordance with an honest empty state; there is no attachment backend** (see limitations) |
-| Top-left menu: Home, Drafts, Spam, Trash | Home drawer | Done |
-| Profile icon, top-right → settings | Home → `/profile` | Done — alias IDs and language are real |
-| Settings must also manage personal details and a profile picture | — | **Not built** — aliases and language are; the other two rows are deliberately absent rather than dead |
+| Top-left menu: Home, Drafts, Spam, Trash | — | **Deviation** — the drawer was removed earlier (the owner asked for it), and this round removed the folder section from Settings and the in-thread move-to-folder actions, so nothing links to the three folder screens. The `folder` column and the folder API stay: harmless, and the screens still work if reached by URL |
+| Profile icon, top-right → settings | Home → `/profile` | Done — alias IDs, the display name, the notification switch and account deletion are all real |
+| Settings must also manage personal details and a profile picture | `/profile`, `PATCH /api/me`, `/api/me/avatar` | Done — the display name is edited here and the picture is served from Postgres; the Language row was removed instead of being faked (see the deviation below) |
+| SMS "new mail" notifications, on/off | `/profile` switch → `User.smsNotifications` → the gate in `src/lib/inbound.ts` | Done — the switch is real state the delivery path reads. It can only ever NARROW who is notified: the non-mobile registration gate must allow it too, so the spec's rule cannot be widened by a user setting |
+| Delete account | `/profile` → confirm → OTP → `DELETE /api/me/delete` | Done — a live one-time code is verified server-side before anything is removed, then emails, aliases, contacts and the user go in foreign-key order inside one transaction; the response reports exactly what was removed |
 | Compact subject above the message box | thread subject pill | Done |
 | All mail from one sender stays in one chat | `GET /api/conversations` | Done |
-| New mail shows its subject; replies link to the original | thread + reply-once | Done |
+| New mail shows its subject; replies link to the original | thread + reply-once | Done — a new subject renders as a divider at its chronological position, the chat simply continues, and a reply carries the original mail's subject as `re: <original>` plus a quoted preview above the input, linked to that exact message id |
 | Replying hides the Subject field | `/compose` | **Deviation** — the subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are replying to |
 | Each message can be replied to only once | `POST /api/emails` claim, `Email.repliedAt` | Done — a conditional update, so a race cannot double-reply |
 | Long mail → tap → traditional view | thread expand | Done |
@@ -125,6 +127,8 @@ Every line of `docs/SPEC.md`, where it lives, and its honest status.
 | Manage alias IDs in settings | `/profile`, `/api/aliases` | Done |
 | Web: single screen, phone + OTP + one Next button, ToS line above it | `/portal` | **Partial** — the portal is a two-step phone → OTP flow; the consent line with its hyperlink is present |
 | Web home similar to Gmail, profile and settings | `/desktop`, `/desktop/profile`, `/desktop/settings` | Done — three-zone layout, token-consistent with the mobile design system |
+| Folders (Drafts/Spam/Trash) as a user-facing feature | — | **Deviation** — the folder section and every route to it were removed at the owner's request, with the in-thread move actions. Nothing links to those screens |
+| Language selection | — | **Deviation** — removed from Settings at the owner's request. The app is single-language by spec, so the row was decoration with nothing behind it |
 | Dockerize everything; `docker compose up -d` | `docker-compose.yml`, `Dockerfile`, `smtp/Dockerfile` | Done — re-verified from a fresh clone |
 
 ## Architecture

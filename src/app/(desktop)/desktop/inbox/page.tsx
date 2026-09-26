@@ -294,7 +294,7 @@ export default function DesktopInboxPage() {
             <h2 className="text-lg font-semibold">New message</h2>
             <input
               className="field"
-              placeholder="To (9876543210)"
+              placeholder="To (number or alias)"
               value={compose.to}
               onChange={(event) => setCompose({ ...compose, to: event.target.value })}
               required

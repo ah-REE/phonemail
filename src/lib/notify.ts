@@ -34,7 +34,13 @@ export function notificationText(senderAddress: string, subject: string): string
   return `You have received an email from ${senderAddress}. Subject: ${subject}.`;
 }
 
-export type NotificationOutcome = "sent" | "throttled" | "dev-mode" | "failed" | "skipped-mobile";
+export type NotificationOutcome =
+  | "sent"
+  | "throttled"
+  | "dev-mode"
+  | "failed"
+  | "skipped-mobile"
+  | "skipped-disabled";
 
 /**
  * The spec's gate: an SMS notification goes only to someone who registered

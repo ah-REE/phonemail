@@ -68,13 +68,24 @@ function ComposeForm() {
   const presetTo = searchParams.get("to") ?? "";
   const replyToId = searchParams.get("replyTo") ?? "";
   const isReply = Boolean(replyToId);
+
+  // Replying: the thread hands over the original message's subject and opening
+  // words, so the subject is re: of THAT mail (not of whatever arrived last) and
+  // the composer can show what is being answered, the way a chat quotes a reply.
+  const originalSubject = searchParams.get("origSubject") ?? "";
+  const quotedFrom = searchParams.get("quote") ?? "";
+  const replySubject = originalSubject
+    ? originalSubject.toLowerCase().startsWith("re:")
+      ? originalSubject
+      : `re: ${originalSubject}`
+    : "re: ";
   // Task 4: the thread's compose button opens this screen with the recipient
   // already chosen and locked - the same affordance a reply has.
   const lockRecipients = isReply || searchParams.get("lockTo") === "1";
 
   const [recipients, setRecipients] = useState<string[]>(() => parseRecipients(presetTo));
   const [draftRecipient, setDraftRecipient] = useState("");
-  const [subject, setSubject] = useState(isReply ? "re: " : "");
+  const [subject, setSubject] = useState(isReply ? replySubject : "");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -217,7 +228,7 @@ function ComposeForm() {
     event.preventDefault();
     setError(null);
     setNotice(null);
-    if (!validate()) {
+    if (busy || !validate()) {
       return;
     }
 
@@ -253,7 +264,10 @@ function ComposeForm() {
       // The message reached the mail service, so the draft has done its job.
       clearDraft();
       const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
-      setNotice(`Handed to the mail service for ${addresses.join(", ")}.`);
+      // Sending is silent on purpose: the message simply appears in the thread
+      // once the SMTP round trip has written the row. Saying "handed to the mail
+      // service" narrates an implementation detail the sender does not need.
+      void addresses;
       // Back to the thread so the new message appears when delivery completes.
       // A group send opens the derived group thread - the server hands us the key.
       const groupKey = payload.threadKey ?? null;
@@ -322,7 +336,7 @@ function ComposeForm() {
               id="to"
               className="min-w-32 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-on-surface-variant"
               inputMode="tel"
-              placeholder="9876543210, 9876543211"
+              placeholder="Number or alias"
               value={draftRecipient}
               onChange={(event) => setDraftRecipient(event.target.value)}
               onBlur={() => addRecipientsFrom(draftRecipient)}
@@ -405,6 +419,19 @@ function ComposeForm() {
           <p className="text-sm text-wa-alert" role="alert">
             {fieldErrors.subject}
           </p>
+        )}
+
+        {isReply && (quotedFrom || originalSubject) && (
+          <div className="mx-4 mb-1 flex items-start gap-2 rounded-2xl border-l-4 border-accent bg-surface-container-low px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold text-on-surface">
+                {originalSubject || "the original message"}
+              </p>
+              {quotedFrom && (
+                <p className="truncate text-[13px] text-on-surface-variant">{quotedFrom}</p>
+              )}
+            </div>
+          </div>
         )}
 
         <label className="sr-only" htmlFor="body">

@@ -119,6 +119,8 @@ export interface RecipientUser {
   id: string;
   phoneNumber: string;
   registeredVia: string;
+  /** The recipient's own switch for "new mail" SMS. Defaults to true. */
+  smsNotifications: boolean;
 }
 
 /**
@@ -139,7 +141,7 @@ export async function lookupRecipientUsers(tokens: string[]): Promise<Map<string
     phoneTokens.length > 0
       ? prisma.user.findMany({
           where: { phoneNumber: { in: phoneTokens } },
-          select: { id: true, phoneNumber: true, registeredVia: true },
+          select: { id: true, phoneNumber: true, registeredVia: true, smsNotifications: true },
         })
       : Promise.resolve([]),
     aliasTokens.length > 0
@@ -147,7 +149,14 @@ export async function lookupRecipientUsers(tokens: string[]): Promise<Map<string
           where: { localPart: { in: aliasTokens } },
           select: {
             localPart: true,
-            user: { select: { id: true, phoneNumber: true, registeredVia: true } },
+            user: {
+              select: {
+                id: true,
+                phoneNumber: true,
+                registeredVia: true,
+                smsNotifications: true,
+              },
+            },
           },
         })
       : Promise.resolve([]),

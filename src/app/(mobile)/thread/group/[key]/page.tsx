@@ -174,7 +174,7 @@ export default function GroupThreadPage() {
 
   async function handleSend(event: React.FormEvent) {
     event.preventDefault();
-    if (!draft.trim() || others.length === 0) {
+    if (sending || !draft.trim() || others.length === 0) {
       return;
     }
 
@@ -200,8 +200,9 @@ export default function GroupThreadPage() {
         return;
       }
 
+      // Sending is silent: the message appears when the SMTP round trip has
+      // written the row, so there is nothing to announce.
       setDraft("");
-      setNotice("Handed to the mail service.");
       // The row appears when the SMTP round trip completes.
       window.setTimeout(() => void load(false), 1500);
     } catch {

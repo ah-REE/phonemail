@@ -59,9 +59,12 @@ const OTP_LENGTH = 6;
  *
  * The spec asks for the number to be "automatically detected and pre-filled".
  * A browser cannot read the SIM, so that is impossible on the web - this is the
- * honest equivalent: the last number that successfully signed up here is
- * remembered in localStorage (deliberately NOT the session store, so it
- * survives closing the tab and is unrelated to being signed in).
+ * honest equivalent: the last number that successfully signed up is remembered.
+ *
+ * sessionStorage, NOT localStorage: the token already lives per-tab, so a second
+ * tab is a second, independent session - and it was showing the first tab's
+ * number on a screen meant to be fresh. Storage scope now matches session scope:
+ * the number comes back within its own tab, and a new tab starts empty.
  */
 const LAST_PHONE_KEY = "***";
 
@@ -189,7 +192,7 @@ export default function OnboardingPage() {
   // Pre-fill the last number used on this device, if any.
   useEffect(() => {
     try {
-      const remembered = window.localStorage.getItem(LAST_PHONE_KEY);
+      const remembered = window.sessionStorage.getItem(LAST_PHONE_KEY);
       if (remembered && /^[6-9]\d{9}$/.test(remembered)) {
         setPhoneNumber(remembered);
       }
@@ -285,7 +288,7 @@ export default function OnboardingPage() {
         }
 
         try {
-          window.localStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
+          window.sessionStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
         } catch {
           // storage unavailable: the signup itself must not fail for this
         }
@@ -439,7 +442,7 @@ export default function OnboardingPage() {
                     className="min-w-0 flex-1 bg-transparent text-[22px] font-bold tracking-wide text-on-surface caret-accent outline-none placeholder:font-normal placeholder:text-outline"
                     inputMode="numeric"
                     autoComplete="tel"
-                    placeholder="9876543210"
+                    placeholder="Mobile number"
                     maxLength={10}
                     value={phoneNumber}
                     onChange={(event) => {
@@ -484,11 +487,6 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
-                {phoneNumber.length > 0 && !phoneValid && (
-                  <p className="px-1 text-sm text-wa-alert" role="alert">
-                    Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9.
-                  </p>
-                )}
                 {phoneError && (
                   <p className="px-1 text-sm text-wa-alert" role="alert">
                     {phoneError}
@@ -497,12 +495,19 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            <div className="mt-auto flex w-full flex-col gap-4 pt-6 pb-2">
+            <div className="mt-auto flex w-full flex-col gap-4 pt-6 pb-6">
               <button
                 type="button"
                 className="btn-brand w-full"
-                disabled={!phoneValid || sending}
+                disabled={sending}
                 onClick={async () => {
+                  // Validation lives HERE, on submit, and nowhere else: nothing is
+                  // said while the number is being typed. The field already caps
+                  // input at ten digits, so this only catches a short number.
+                  if (normalizedPhone.length !== 10) {
+                    setPhoneError("Enter 10 digit mobile number");
+                    return;
+                  }
                   const ok = await sendOtp(normalizedPhone);
                   if (ok) {
                     setStep("otp");

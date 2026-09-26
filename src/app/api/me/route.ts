@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/me - the signed-in user's profile.
- * PATCH /api/me - set or clear the display name.
+ * PATCH /api/me - set or clear the display name, and flip the new-mail SMS switch.
+ * DELETE /api/me/delete - close the account (see that route).
  *
  * The JWT's `sub` is the only user this route can ever read or write, so it needs
  * no ownership check: an absent/invalid token is a 401 and nothing else.
@@ -19,9 +20,16 @@ export const dynamic = "force-dynamic";
  * served by /api/me/avatar so it can be cached as an image.
  */
 
-const patchSchema = z.object({
-  displayName: z.union([z.string().max(DISPLAY_NAME_MAX * 4), z.null()]),
-});
+const patchSchema = z
+  .object({
+    displayName: z.union([z.string().max(DISPLAY_NAME_MAX * 4), z.null()]).optional(),
+    // The owner's switch for the "you have new mail" SMS. A partial update is the
+    // point: flipping the switch must not require re-sending the name.
+    smsNotifications: z.boolean().optional(),
+  })
+  .refine((value) => value.displayName !== undefined || value.smsNotifications !== undefined, {
+    message: "Nothing to update.",
+  });
 
 export async function GET(request: Request) {
   const user = requireUser(request);
@@ -37,6 +45,7 @@ export async function GET(request: Request) {
       displayName: true,
       createdAt: true,
       avatarUpdatedAt: true,
+      smsNotifications: true,
     },
   });
 
@@ -52,6 +61,7 @@ export async function GET(request: Request) {
         displayName: profile.displayName,
         createdAt: profile.createdAt,
         hasAvatar: Boolean(profile.avatarUpdatedAt),
+        smsNotifications: profile.smsNotifications,
       },
     },
     { status: 200 },
@@ -79,22 +89,29 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const data: { displayName?: string | null; smsNotifications?: boolean } = {};
+
   // null clears the name; a string is trimmed and validated.
-  let nextValue: string | null;
-  if (parsed.data.displayName === null) {
-    nextValue = null;
-  } else {
-    const problem = displayNameProblem(parsed.data.displayName);
-    if (problem) {
-      return NextResponse.json({ error: problem }, { status: 400 });
+  if (parsed.data.displayName !== undefined) {
+    if (parsed.data.displayName === null) {
+      data.displayName = null;
+    } else {
+      const problem = displayNameProblem(parsed.data.displayName);
+      if (problem) {
+        return NextResponse.json({ error: problem }, { status: 400 });
+      }
+      data.displayName = parsed.data.displayName.trim();
     }
-    nextValue = parsed.data.displayName.trim();
+  }
+
+  if (parsed.data.smsNotifications !== undefined) {
+    data.smsNotifications = parsed.data.smsNotifications;
   }
 
   const updated = await prisma.user.update({
     where: { id: user.sub },
-    data: { displayName: nextValue },
-    select: { id: true, phoneNumber: true, displayName: true },
+    data,
+    select: { id: true, phoneNumber: true, displayName: true, smsNotifications: true },
   });
 
   return NextResponse.json(
@@ -103,6 +120,7 @@ export async function PATCH(request: Request) {
         id: updated.id,
         phoneNumber: updated.phoneNumber,
         displayName: updated.displayName,
+        smsNotifications: updated.smsNotifications,
       },
     },
     { status: 200 },

@@ -114,7 +114,7 @@ export default function PortalPage() {
             name="phoneNumber"
             inputMode="numeric"
             autoComplete="tel"
-            placeholder="9876543210"
+            placeholder="Mobile number"
             value={phoneNumber}
             onChange={(event) => setPhoneNumber(event.target.value)}
             disabled={step === "otp"}
@@ -132,7 +132,7 @@ export default function PortalPage() {
                 name="otp"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="123456"
+                placeholder="6-digit code"
                 value={otp}
                 onChange={(event) => setOtp(event.target.value)}
                 style={styles.input}

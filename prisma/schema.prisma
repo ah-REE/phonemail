@@ -49,6 +49,13 @@ model User {
   /// 'mobile' — the safe side is no SMS.
   registeredVia String @default("mobile")
 
+  /// The owner's switch for the "you have new mail" SMS. TRUE by default: the
+  /// account opted into mail notifications when it was created, and only an
+  /// explicit "no" from Settings turns them off. The delivery gate requires BOTH
+  /// this and a non-mobile registration path, so the switch can only ever narrow
+  /// who is notified - never widen it beyond what the spec allows.
+  smsNotifications Boolean @default(true)
+
   sentEmails     Email[] @relation("SentEmails")
   receivedEmails Email[] @relation("ReceivedEmails")
 
