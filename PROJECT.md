@@ -2031,6 +2031,39 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), fifteenth session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION, from ORIGIN at this commit, with the sixteen suites run AGAINST THE
+  CLONE.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-000116). The clone came down at HEAD 4399eed -
+    the commit this session's work was just pushed as - with 146 tracked files, 12
+    migrations, and correctly NO docker-compose.override.yml (it is gitignored).
+  - ONLY the main APP container was stopped for the duration, because
+    docker-compose.yml hardcodes 3000:3000 and a clone can never bind while the main
+    stack holds it - the same port finding the last two simulations paid for. The
+    clone's own compose file was NOT edited: what is being tested is what origin
+    actually serves. The main stack was restored afterwards, four healthy containers.
+  - docker compose up -d --build in the clone brought all four services healthy, the
+    twelve migrations applied on a clean volume, and the clone SERVED: / , /onboarding ,
+    /profile and /contacts all answered 200. Its send-otp answers WITH a devHint even
+    though the clone is not in dev mode - the app behaving correctly, falling back to
+    the fixed dev code rather than pretending to send SMS it has no credentials for.
+  - THE SUITES RAN AGAINST THE CLONE: all sixteen, 500 of 501 assertions green, with
+    ONE SKIP - ct3's socket assertion, which imports socket.io-client from
+    node_modules and a fresh clone only has it inside its container. The same
+    assertion runs and passes on the loaded database, so nothing is unverified there.
+  - A SCOPE MISTAKE WORTH RECORDING, because it looked like a failure and was not: the
+    first clone pass ran ct2 and ct3 WITHOUT COMPOSE_DIR, so their DB-inspecting
+    assertions queried the MAIN stack's Postgres while the app under test was the
+    clone - and correctly found no rows. Re-run with COMPOSE_DIR=<clone>, both are
+    green (ct2 64/64, ct3 51/51 plus the one skip). The harness already documents that
+    knob; the invocation had ignored it. On the loaded database the same suites pass
+    without it, because there the app and the database ARE the same stack.
+  - Mode found and left: REAL - dev mode only for the runs (the override renamed away,
+    the devHint confirmed before any OTP request), then the override restored and four
+    healthy containers confirmed. The clone directory is left in place, by the same
+    rule as every session before it.
+
 - Day 7 (Sat Sep 26), fifteenth session: ROUND 4 COMPLETED - the ten items, and the
   reply model they turn on. Landed and verified on the loaded database.
   - TASK 1, THE AUTH FLOW IS DECIDED BY THE NUMBER, not by the door. A new endpoint,
