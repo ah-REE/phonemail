@@ -233,7 +233,9 @@ claim made anywhere else.
   deletion, reply linkage and the input pass, and 50 for the round 3 items: the
   contact and alias send, the group's per-viewer reply model, the restored settings
   rows, the swipe reply, the live subject divider, the message-card design and the
-  settings screen. `ct5/settings_ref.mjs` is the one suite that is source-only: it
+  settings screen, and the header and list-preview fixes (ct6/fixes_regression.mjs -
+  the suite that proves a preview by sending real mail and re-reading the row).
+  `ct5/settings_ref.mjs` is the one suite that is source-only: it
   grades a design, which lives in the source and the tokens, so it needs no server,
   no OTP and no mode - and is never a reason to touch one.
 - **Fresh-clone evaluator simulations** several times through the build, most
