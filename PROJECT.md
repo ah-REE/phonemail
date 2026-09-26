@@ -1383,6 +1383,66 @@ context instantly)*
   - Still the owner's to judge, since this is a look: the hero's new motion and
     the blue against their mark.
 
+- Day 7 (Sat Sep 26), on the owner's direction: THE APP IS PAINTED FROM ITS
+  OWN LOGO, the hero is rebuilt, and the app is OTP-only.
+  - THE PALETTE IS SAMPLED, NOT INVENTED. The mark is 77% blue (mean #256cf3,
+    deepest #01067c) and 11% cyan (#34cafd) on white; the brand illustration
+    around it adds the violet where the envelope's flaps cross (#7c3aed), the
+    green of its two status dots (#22c55e), the periwinkle of the ring that
+    hugs the icon (#dbeafe), the cool greys of the orbit (#9ca3af / #d1d5db)
+    and an off-white canvas (#f9fafb). Every token in the system is now one of
+    those or a step between two of them: canvas #f8fafc, chrome the
+    illustration's indigo #1e3a8a, accent the mark's own blue #256cf3 with
+    #dbeafe as its soft tint, success #22c55e, outline #9ca3af/#d1d5db, and ONE
+    gradient - #256cf3 into #6d3fe0, the mark's blue running into the
+    illustration's violet - which every primary action now wears.
+  - The token called 'pine' was renamed 'navy': a token named after a tree
+    holding an indigo is a lie waiting to confuse whoever reads the config.
+    The shadows went cool, the canvas tint became the mark's blue from one
+    corner and the violet from the other, the manifest and the browser chrome
+    dropped their WhatsApp-era colours (#efeae2/#075e54 -> #f8fafc/#1e3a8a),
+    the off-palette utility classes (text-slate-*, bg-teal-50) were repointed
+    at tokens, and the PWA icons are the mark on the illustration's off-white.
+  - THE HERO IS REDRAWN FROM THE ILLUSTRATION rather than around the earlier
+    drawing: a periwinkle ring wrapping the icon, a dotted grey orbit at r=126,
+    six line icons of the illustration's own family on it (camera, search,
+    document, paperclip, envelope, settings), and the two green status dots.
+    Four slow loops and nothing else: the orbit drifts while the icons
+    counter-rotate (150s), the icon floats (6s), the glow breathes (8s), the
+    dots breathe (4.5s). The rings that left the envelope and the blinking are
+    gone - they read as fidgeting in a mail app.
+  - TWO REAL BUGS FOUND WHILE WORKING ON THIS.
+    (1) THE SUCCESS SCREEN COULD NEVER RENDER. Signing in flips the session to
+        authenticated, and the onboarding guard bounced straight to the inbox,
+        so the screen that shows the new address was skipped every time. The
+        guard now exempts that step.
+    (2) THE MARK OVERLAPPED ITS OWN RING. The first build put the mark at 46%,
+        but its ink reaches 1.284 x its half-side (measured from the file), so
+        its corners crossed the periwinkle ring. The mark is 42% and the ring
+        r=98, and the suite now asserts that clearance numerically so it cannot
+        come back.
+  - OTP ONLY, EVERYWHERE. The password screens, the password link and both
+    password routes are gone: /api/auth/login and /api/auth/set-password now
+    answer 404. Signing up is: number, code, account, address. The
+    'one-time password' copy reads 'one-time code'. User.passwordHash stays in
+    the schema - dropping a column is a destructive migration that buys
+    nothing - and nothing reads or writes it.
+  - A SAFETY-GATE LESSON, found by the check rather than assumed. After
+    switching back to real mode, 'docker compose up -d --build' left the app
+    container from the dev run, so the gate credentials read as the
+    placeholders while the compose config resolved the real ones. Restoring the
+    override is not enough on its own: force-recreate the app service and
+    re-read the container's own environment before calling the session real.
+  - Verified: build green; the palette/hero/OTP suite 34/34; the onboarding
+    screens 26/26; the welcome suite 23/23; the reader suite 21/21 in dev mode
+    (a full OTP login, so the only authentication path is exercised end to
+    end), then real mode restored and confirmed in the container's environment;
+    and against the deployed container: every page 200, both password routes
+    404, send-otp and verify-otp live, and the served CSS carrying the indigo,
+    the periwinkle, the mark's blue and the orbit grey.
+  - Still the owner's to judge, because this is a look: the hero's balance and
+    the palette in the flesh.
+
 - Day 7:
 
 ---

@@ -29,13 +29,7 @@ import { useAuth } from "@/lib/useAuth";
  * privacy route to point at (a dead link is worse than one link).
  */
 
-type Step =
-  | "welcome"
-  | "phone"
-  | "otp"
-  | "password-set"
-  | "success"
-  | "login-password";
+type Step = "welcome" | "phone" | "otp" | "success";
 
 /** Which door the person came through. OTP is primary in both. */
 type AuthMode = "signup" | "login";
@@ -167,100 +161,81 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
 }
 
 /**
- * The welcome hero, recreated from the owner's design: a dotted ring, six grey
- * line icons sitting on it, two green dots at 12 and 6 o'clock, faint side dots,
- * and an open envelope with its flap folded down over the body at the centre.
+ * The welcome hero, drawn from the owner's own brand illustration: the app icon
+ * at the centre, a periwinkle ring hugging it, a dotted grey orbit around that,
+ * six line icons of the illustration's own family sitting on the orbit (camera,
+ * search, document, paperclip, envelope, settings) and two green status dots.
  *
- * Drawn rather than cropped, so it stays crisp at any size and can breathe.
+ * Drawn rather than cropped, so it stays crisp at any size. The orbit drifts one
+ * way and the icons counter-rotate against it, which is what keeps them upright.
  */
 function HeroMark() {
   const origin = { transformBox: "view-box" as const, transformOrigin: "150px 150px" };
+
   return (
     <svg viewBox="0 0 300 300" className="h-full w-full" role="img" aria-label="PhoneMail">
-      <defs>
-        <radialGradient id="hero-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#e8f1fb" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#e8f1fb" stopOpacity="0" />
-        </radialGradient>
-      </defs>
+      {/* The ring that hugs the icon, in the illustration's periwinkle. */}
+      <circle cx="150" cy="150" r="98" fill="none" stroke="#dbeafe" strokeWidth="1.6" />
 
-      <circle cx="150" cy="150" r="149" fill="url(#hero-glow)" />
-
+      {/* The orbit itself. */}
       <g className="hero-orbit" style={origin}>
         <circle
           cx="150"
           cy="150"
-          r="130"
+          r="126"
           fill="none"
-          stroke="#c3cfdd"
-          strokeWidth="1.2"
+          stroke="#9ca3af"
+          strokeWidth="1.3"
           strokeDasharray="1.5 7"
           strokeLinecap="round"
         />
       </g>
 
+      {/* The two status dots sit on the orbit and never rotate. */}
+      <circle className="hero-dot" cx="253" cy="78" r="3" fill="#22c55e" />
+      <circle className="hero-dot hero-dot-2" cx="47" cy="222" r="3" fill="#22c55e" />
+
+      {/* The six icons, counter-rotating so they stay upright. */}
       <g
         className="hero-orbit-reverse"
         style={origin}
         fill="none"
-        stroke="#cbd5e1"
+        stroke="#d1d5db"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* chat bubble - 10:30 */}
-        <g transform="translate(48 48)">
-          <path d="M10 3.5h-5A1.5 1.5 0 0 0 3.5 5v6A1.5 1.5 0 0 0 5 12.5h1v3l3-3h6A1.5 1.5 0 0 0 16.5 11V5A1.5 1.5 0 0 0 15 3.5z" />
-          <circle cx="7" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
-          <circle cx="10" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
-          <circle cx="13" cy="8" r="0.7" fill="#cbd5e1" stroke="none" />
-        </g>
-        {/* plus - 1:30 */}
-        <g transform="translate(232 48)">
-          <path d="M10 4v12M4 10h12" />
-        </g>
-        {/* at - 9:00 */}
-        <g transform="translate(10 140)">
-          <circle cx="10" cy="10" r="6" />
-          <circle cx="10" cy="10" r="2.3" />
-          <path d="M16 10v1.4a2 2 0 0 0 3.6 0V10" />
-        </g>
-        {/* phone - 3:00 */}
-        <g transform="translate(270 140)">
-          <rect x="6" y="2.5" width="8" height="15" rx="2" />
-          <path d="M8.6 5.6h2.8M9.4 15.4h1.2" />
-        </g>
-        {/* camera - 7:30 */}
-        <g transform="translate(48 232)">
+        {/* camera - 10:30 */}
+        <g transform="translate(51 51)">
           <rect x="2.5" y="6" width="15" height="11" rx="2.5" />
-          <path d="M7 6l1.2-2h3.6L13 6" />
-          <circle cx="10" cy="11.5" r="2.8" />
+          <path d="M7 6l1.3-2h3.4L13 6" />
+          <circle cx="10" cy="11.5" r="2.7" />
         </g>
-        {/* bell - 4:30 */}
-        <g transform="translate(232 232)">
-          <path d="M6 14.5V9.5a4 4 0 0 1 8 0v5" />
-          <path d="M4.5 14.5h11" />
-          <path d="M8.6 17.2a1.6 1.6 0 0 0 2.8 0" />
+        {/* search - 1:30 */}
+        <g transform="translate(229 51)">
+          <circle cx="8.5" cy="8.5" r="5.5" />
+          <path d="M12.6 12.6l4.4 4.4" />
+        </g>
+        {/* document - 3:00 */}
+        <g transform="translate(266 140)">
+          <path d="M4.5 3.5h7L16 8v8.5H4.5z" />
+          <path d="M11.5 3.5V8H16" />
+        </g>
+        {/* paperclip - 4:30 */}
+        <g transform="translate(229 229)">
+          <path d="M15.2 8.2l-6.4 6.4a3.3 3.3 0 0 1-4.7-4.7l7.2-7.2a2.3 2.3 0 0 1 3.2 3.2l-7 7a1.3 1.3 0 0 1-1.8-1.8l6.2-6.2" />
+        </g>
+        {/* envelope - 7:30 */}
+        <g transform="translate(51 229)">
+          <rect x="2.5" y="5" width="15" height="11" rx="2" />
+          <path d="M3.4 6.4L10 11.2l6.6-4.8" />
+        </g>
+        {/* settings - 9:00 */}
+        <g transform="translate(14 140)">
+          <circle cx="10" cy="10" r="3.2" />
+          <path d="M10 2.4v2.3M10 15.3v2.3M17.6 10h-2.3M4.7 10H2.4M15.4 4.6l-1.6 1.6M6.2 13.8l-1.6 1.6M15.4 15.4l-1.6-1.6M6.2 6.2L4.6 4.6" />
         </g>
       </g>
-
-      {/* Three soft rings leaving the envelope, the way a message goes out.
-          They scale from the mark's edge outward and fade before the orbit. */}
-      <g fill="none" stroke="#a4ccfc" strokeWidth="1.3" style={origin}>
-        <circle className="hero-ping" cx="150" cy="150" r="84" />
-        <circle className="hero-ping hero-ping-2" cx="150" cy="150" r="84" />
-        <circle className="hero-ping hero-ping-3" cx="150" cy="150" r="84" />
-      </g>
-
-      {/* the accents that never rotate - they blink like status lights */}
-      <circle className="hero-blink" cx="150" cy="20" r="3" fill="#22c55e" />
-      <circle className="hero-blink hero-blink-2" cx="150" cy="280" r="3" fill="#22c55e" />
-      <circle cx="20" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
-      <circle cx="280" cy="150" r="1.8" fill="#94a3b8" opacity="0.55" />
-
-      {/* The mark itself is the owner's artwork, placed over this ring by the
-          screen - see the welcome step. */}
-
     </svg>
   );
 }
@@ -272,12 +247,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>("welcome");
   const [mode, setMode] = useState<AuthMode>("signup");
 
-  // Phase 0: the added password path.
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
+  // The address the success screen shows once the account exists.
   const [successAddress, setSuccessAddress] = useState("");
 
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -308,10 +278,12 @@ export default function OnboardingPage() {
   // Already signed in? The app shell is where you belong.
   // Only bounce a CONFIRMED session; never act while the phase is unknown.
   useEffect(() => {
-    if (status === "authenticated") {
+    // Never bounce the success screen: the person has just signed in and has not
+    // seen their address yet, which is the whole point of that step.
+    if (status === "authenticated" && step !== "success") {
       router.replace("/");
     }
-  }, [status, router]);
+  }, [status, router, step]);
 
   // "resend in Xs" countdown, driven by the server's own numbers.
   useEffect(() => {
@@ -364,17 +336,6 @@ export default function OnboardingPage() {
 
   const verifyOtp = useCallback(
     async (code: string) => {
-      // SIGNUP does not verify the code here on purpose: set-password verifies
-      // AND consumes it in the same call that stores the hash, so nobody is ever
-      // signed in without the password they came to set, and a valid code is
-      // never spent on a step that changes nothing.
-      if (mode === "signup") {
-        setOtpError(null);
-        setPasswordError(null);
-        setStep("password-set");
-        return;
-      }
-
       setVerifying(true);
       setOtpError(null);
       try {
@@ -406,136 +367,19 @@ export default function OnboardingPage() {
           // storage unavailable: the signup itself must not fail for this
         }
         signIn(body.token, body.user);
-        router.replace("/");
+        // The address is derived the same way the server derives it, so the
+        // success screen can show the real thing before the inbox loads.
+        setSuccessAddress(`${normalizedPhone}@phonemail.com`);
+        setStep("success");
       } catch {
         setOtpError("Network error. Please try again.");
       } finally {
         setVerifying(false);
       }
     },
-    [mode, normalizedPhone, router, signIn],
+    [normalizedPhone, signIn],
   );
 
-  /**
-   * Signup's last step: one call verifies the OTP and stores the hash, then
-   * returns the same session verify-otp would have, so the success screen can
-   * hand straight over to the inbox. A rejected code sends the person back to
-   * the OTP step with the server's own message rather than a guess.
-   */
-  const savePassword = useCallback(async () => {
-    setPasswordError(null);
-
-    if (password.length < 8) {
-      setPasswordError("A password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setPasswordError("The two passwords do not match.");
-      return;
-    }
-
-    setSavingPassword(true);
-    try {
-      const response = await fetch("/api/auth/set-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phoneNumber: normalizedPhone,
-          otp: digits.join(""),
-          password,
-          confirm,
-          source: "mobile",
-        }),
-      });
-      const body = (await response.json().catch(() => ({}))) as VerifyOtpResponse & {
-        address?: string;
-        needsPassword?: boolean;
-      };
-
-      if (!response.ok || !body.token || !body.user) {
-        if (response.status === 401) {
-          // The code was wrong or expired: put the person back on the OTP step.
-          setLockedOut(false);
-          setOtpError(body.error ?? "That code is not right. Request a new one.");
-          setStep("otp");
-          return;
-        }
-        if (response.status === 429) {
-          setOtpError(body.error ?? "Too many attempts. Request a new code.");
-          setLockedOut(true);
-          setStep("otp");
-          return;
-        }
-        setPasswordError(body.error ?? "Could not save your password.");
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
-      } catch {
-        // storage unavailable: the signup itself must not fail for this
-      }
-
-      setSuccessAddress(body.address ?? `${normalizedPhone}@phonemail.com`);
-      signIn(body.token, body.user);
-      setStep("success");
-    } catch {
-      setPasswordError("Network error. Please try again.");
-    } finally {
-      setSavingPassword(false);
-    }
-  }, [confirm, digits, normalizedPhone, password, signIn]);
-
-  /**
-   * Login by password. The server's answers are all actionable rather than dead
-   * ends: a passwordless account is told to use the OTP, a wrong password gets
-   * the attempts it has left, and a lockout carries the seconds to wait - every
-   * one of them can fall back to the OTP path, which is why none of them is a
-   * failure the person cannot get past.
-   */
-  const loginWithPassword = useCallback(async () => {
-    setPasswordError(null);
-    setSigningIn(true);
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: normalizedPhone, password }),
-      });
-      const body = (await response.json().catch(() => ({}))) as VerifyOtpResponse & {
-        needsPassword?: boolean;
-        attemptsLeft?: number;
-        retryAfterSeconds?: number;
-      };
-
-      if (!response.ok || !body.token || !body.user) {
-        if (body.needsPassword) {
-          setMode("login");
-          setPasswordError(null);
-          setOtpError(body.error ?? "This number has no password yet. Use an OTP.");
-          setStep("phone");
-          return;
-        }
-        if (response.status === 429) {
-          setPasswordError(
-            `${body.error ?? "Too many attempts."}${body.retryAfterSeconds ? ` Try again in ${body.retryAfterSeconds}s.` : ""}`,
-          );
-          return;
-        }
-        setPasswordError(
-          `${body.error ?? "Incorrect phone number or password."}${typeof body.attemptsLeft === "number" ? ` ${body.attemptsLeft} attempt(s) left.` : ""}`,
-        );
-        return;
-      }
-
-      signIn(body.token, body.user);
-      router.replace("/");
-    } catch {
-      setPasswordError("Network error. Please try again.");
-    } finally {
-      setSigningIn(false);
-    }
-  }, [normalizedPhone, password, router, signIn]);
 
   function handleDigitChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -597,21 +441,21 @@ export default function OnboardingPage() {
                     light rather than on the page - and breathes with the mark. */}
                 <span
                   aria-hidden="true"
-                  className="hero-breathe pointer-events-none absolute aspect-square w-[81%] rounded-full"
+                  className="hero-breathe pointer-events-none absolute aspect-square w-[74%] rounded-full"
                   style={{
                     background:
-                      "radial-gradient(circle, rgba(49,112,232,0.18) 0%, rgba(49,112,232,0.07) 45%, rgba(0,0,0,0) 72%)",
+                      "radial-gradient(circle, rgba(59,130,246,0.28) 0%, rgba(59,130,246,0.11) 42%, rgba(0,0,0,0) 70%)",
                   }}
                 />
                 <HeroMark />
-                {/* The owner's own mark, transparent, resting inside the ring -
-                    32.5% of the square, so it holds its place at every size. */}
+                {/* The owner's own mark, at the centre of its own orbit - 46% of
+                    the square, so it holds its place at every size. */}
                 <img
                   src="/brand/phonemail-logo.png"
                   alt="PhoneMail"
-                  width={104}
-                  height={104}
-                  className="hero-float pointer-events-none absolute w-[32.5%] select-none drop-shadow-[0_14px_22px_rgba(31,79,168,0.30)]"
+                  width={134}
+                  height={134}
+                  className="hero-float pointer-events-none absolute w-[42%] select-none drop-shadow-[0_16px_26px_rgba(37,108,243,0.32)]"
                 />
               </div>
               <p className="enter enter-3 mx-auto mt-6 max-w-[300px] text-center text-[17px] leading-[26px] text-on-surface-variant">
@@ -630,14 +474,13 @@ export default function OnboardingPage() {
                 </Link>
                 .
               </p>
-              {/* Two doors, both leading to a real flow. OTP stays primary:
-                  the login screen offers it right beside the password. */}
+              {/* Two doors, one authentication. Both collect a number, both
+                  prove it with a one-time code - the only way into PhoneMail. */}
               <button
                 type="button"
                 className="btn-brand w-full"
                 onClick={() => {
                   setMode("signup");
-                  setPasswordError(null);
                   setOtpError(null);
                   setStep("phone");
                 }}
@@ -649,7 +492,6 @@ export default function OnboardingPage() {
                 className="btn-quiet w-full"
                 onClick={() => {
                   setMode("login");
-                  setPasswordError(null);
                   setOtpError(null);
                   // Straight to the number, then the code: logging in asks for
                   // nothing but what the OTP already proves.
@@ -725,7 +567,7 @@ export default function OnboardingPage() {
                     <Icon name="lock" size={16} />
                   </span>
                   <p className="text-sm leading-snug text-on-surface-variant">
-                    We will send you a one-time password to verify your number and secure your mailbox.
+                    We will send you a one-time code to verify your number and secure your mailbox.
                   </p>
                 </div>
 
@@ -882,189 +724,24 @@ export default function OnboardingPage() {
                     </button>
                   )}
                 </p>
-                {/* Log in never asks for a password - but a person who set one may
-                    still prefer it, so the choice lives here rather than at the door. */}
-                {mode === "login" && (
-                  <button
-                    type="button"
-                    className="mt-2 w-full text-center text-sm font-semibold text-accent underline-offset-4 hover:underline"
-                    onClick={() => {
-                      setOtpError(null);
-                      setPasswordError(null);
-                      setStep("login-password");
-                    }}
-                  >
-                    Use my password instead
-                  </button>
-                )}
               </div>
             </div>
           </>
         )}
 
-        {step === "login-password" && (
-          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-2">
-            <button
-              type="button"
-              aria-label="Back"
-              className="-ml-2 flex h-12 w-12 items-center justify-center rounded-full text-on-surface active:bg-surface-container-low"
-              onClick={() => setStep("welcome")}
-            >
-              <Icon name="back" size={24} />
-            </button>
-
-            <div className="enter enter-1 flex w-full flex-col pt-2">
-              <div className="mb-5 flex items-center gap-3">
-                <img
-                  src="/brand/phonemail-logo.png"
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 shrink-0 select-none"
-                />
-                <h1 className="font-display text-[26px] font-bold tracking-tight text-on-surface">
-                  Welcome back
-                </h1>
-              </div>
-              <p className="text-[16px] leading-[26px] text-on-surface-variant">
-                Sign in with your number and password — or with an OTP, exactly as
-                before.
-              </p>
-
-              <div className="mt-6 flex flex-col gap-3">
-                <input
-                  className="field"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="Phone number"
-                  maxLength={10}
-                  value={phoneNumber}
-                  aria-label="Phone number"
-                  onChange={(event) => {
-                    setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 10));
-                    setPasswordError(null);
-                  }}
-                />
-                <input
-                  className="field"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="Password"
-                  value={password}
-                  aria-label="Password"
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setPasswordError(null);
-                  }}
-                />
-                {passwordError && (
-                  <p className="px-1 text-sm text-danger" role="alert">
-                    {passwordError}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
-              <button
-                type="button"
-                className="btn-brand w-full"
-                disabled={!phoneValid || password.length === 0 || signingIn}
-                onClick={() => void loginWithPassword()}
-              >
-                {signingIn ? "Signing in." : "Log in"}
-              </button>
-              <button
-                type="button"
-                className="btn-quiet w-full"
-                onClick={() => {
-                  setPasswordError(null);
-                  setOtpError(null);
-                  setStep("phone");
-                }}
-              >
-                Log in with an OTP instead
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "password-set" && (
-          <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-2">
-            <button
-              type="button"
-              aria-label="Back"
-              className="-ml-2 flex h-12 w-12 items-center justify-center rounded-full text-on-surface active:bg-surface-container-low"
-              onClick={() => setStep("otp")}
-            >
-              <Icon name="back" size={24} />
-            </button>
-
-            <div className="enter enter-1 flex w-full flex-col pt-2">
-              <h1 className="font-display text-[26px] font-bold tracking-tight text-on-surface">
-                Set a password
-              </h1>
-              <p className="mt-2 text-[16px] leading-[26px] text-on-surface-variant">
-                One more step and your mailbox is ready. You can always sign in with
-                an OTP instead.
-              </p>
-
-              <div className="mt-6 flex flex-col gap-3">
-                <input
-                  className="field"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Password (at least 8 characters)"
-                  value={password}
-                  aria-label="Password"
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setPasswordError(null);
-                  }}
-                />
-                <input
-                  className="field"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Confirm password"
-                  value={confirm}
-                  aria-label="Confirm password"
-                  onChange={(event) => {
-                    setConfirm(event.target.value);
-                    setPasswordError(null);
-                  }}
-                />
-                {passwordError && (
-                  <p className="px-1 text-sm text-danger" role="alert">
-                    {passwordError}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-auto flex w-full flex-col gap-3 pb-8 pt-6">
-              <button
-                type="button"
-                className="btn-brand w-full"
-                disabled={savingPassword || password.length < 8 || confirm.length === 0}
-                onClick={() => void savePassword()}
-              >
-                {savingPassword ? "Saving." : "Create my mailbox"}
-              </button>
-            </div>
-          </div>
-        )}
-
         {step === "success" && (
           <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[390px] flex-col px-6 pb-6 pt-4">
             <div className="my-auto flex w-full flex-col items-center justify-center py-6 text-center">
-              <div className="enter enter-1 relative flex h-[220px] w-[220px] items-center justify-center">
+              <div
+                className="enter enter-1 relative flex aspect-square items-center justify-center"
+                style={{ width: "min(220px, 58vw, 26vh)" }}
+              >
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute h-[200px] w-[200px] rounded-full"
+                  className="hero-breathe pointer-events-none absolute aspect-square w-[86%] rounded-full"
                   style={{
                     background:
-                      "radial-gradient(circle, rgba(75,61,245,0.14) 0%, rgba(12,59,54,0.08) 45%, rgba(0,0,0,0) 72%)",
+                      "radial-gradient(circle, rgba(59,130,246,0.24) 0%, rgba(59,130,246,0.10) 42%, rgba(0,0,0,0) 70%)",
                   }}
                 />
                 <img
@@ -1072,7 +749,7 @@ export default function OnboardingPage() {
                   alt="PhoneMail"
                   width={116}
                   height={116}
-                  className="hero-float pointer-events-none relative h-[116px] w-[116px] select-none drop-shadow-[0_12px_20px_rgba(16,26,23,0.20)]"
+                  className="hero-float pointer-events-none relative w-[53%] select-none drop-shadow-[0_16px_26px_rgba(37,108,243,0.32)]"
                 />
               </div>
 

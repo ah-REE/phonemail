@@ -5,11 +5,12 @@
 /*
  * Global hooks for the design system. Tokens live in tailwind.config.ts.
  *
- * Redesign (Refinement): the canvas is warm paper, the chrome is deep pine, one
- * electric violet carries every action, and there are three deliberate shadows
- * instead of none. The elder-friendly floor is unchanged: the root stays 18px
- * and every tap target stays at least 56px. Motion uses the two easings defined
- * in the config, and nothing else.
+ * The palette is the owner's logo: the canvas is the illustration's off-white,
+ * the chrome its indigo, the action the mark's own blue, and the one gradient is
+ * the mark's blue running into the illustration's violet. There are three
+ * deliberate shadows instead of none. The elder-friendly floor is unchanged: the
+ * root stays 18px and every tap target stays at least 56px. Motion uses the two
+ * easings defined in the config, and nothing else.
  */
 @layer base {
   html {
@@ -20,10 +21,11 @@
 
   body {
     @apply bg-paper font-body text-on-surface antialiased;
-    /* A faint paper grain, drawn with gradients so nothing is fetched. */
+    /* A faint tint, drawn with gradients so nothing is fetched: the mark's blue
+       from one corner, the illustration's violet from the other. */
     background-image:
-      radial-gradient(120% 80% at 12% -10%, rgba(75, 61, 245, 0.05) 0%, transparent 60%),
-      radial-gradient(100% 70% at 100% 0%, rgba(12, 59, 54, 0.05) 0%, transparent 55%);
+      radial-gradient(120% 80% at 12% -10%, rgba(59, 130, 246, 0.07) 0%, transparent 60%),
+      radial-gradient(100% 70% at 100% 0%, rgba(124, 58, 237, 0.06) 0%, transparent 55%);
     background-attachment: fixed;
   }
 
@@ -43,7 +45,7 @@
     @apply min-h-tap;
   }
 
-  /* One focus treatment, in the accent, visible on paper and on pine. */
+  /* One focus treatment, in the accent, visible on the canvas and on the chrome. */
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-paper;
   }
@@ -73,14 +75,14 @@
     @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-pill border border-outline-variant bg-surface px-6 text-label-lg text-on-surface transition-all duration-fast ease-out-quint hover:border-outline hover:bg-surface-container-low active:scale-[0.985] disabled:opacity-55;
   }
 
-  /* The brand blue, taken from the owner's own mark: the envelope in the logo
-     runs #3a7bea into #1f4fa8, deepened slightly at the light end so white stays
-     legible on it. The onboarding doors use it, so the button, the mark and the
-     hero are all one colour. */
+  /* The brand gradient: the mark's own blue (#3b82f6) running into the violet the
+     illustration shows where the envelope's flaps cross (#7c3aed). The stops sit
+     at 4.7:1 and 5.8:1 against white, so the label stays legible across the whole
+     sweep. Every primary action in the app uses this one. */
   .btn-brand {
     @apply inline-flex min-h-tap items-center justify-center gap-2 rounded-pill px-6 text-label-lg text-white transition-all duration-fast ease-out-quint hover:brightness-110 active:scale-[0.985] active:brightness-95 disabled:opacity-55 disabled:shadow-none;
-    background-image: linear-gradient(180deg, #3170e8 0%, #2a51c4 100%);
-    box-shadow: 0 14px 28px -12px rgba(42, 81, 196, 0.55);
+    background-image: linear-gradient(160deg, #256cf3 0%, #6d3fe0 100%);
+    box-shadow: 0 14px 28px -14px rgba(52, 102, 224, 0.6);
   }
 
   .field {
@@ -113,12 +115,10 @@
   .enter-4 { animation-delay: 190ms; }
 }
 
-/* The hero's idle loop, rebuilt. Four calm things happen at once, none of them
-   hurrying: the dotted orbit drifts one way while the icon ring counter-drifts
-   for parallax, so the satellites stay upright; the envelope floats on its own
-   height (so it scales with the hero) and the bloom behind it breathes; a soft
-   ring leaves the envelope every four and a half seconds, the way a message goes
-   out; and the two green dots blink like status lights.
+/* The hero's idle loop: the orbit drifts one way while the icons counter-rotate
+   so they stay upright, the app icon floats and the glow behind it breathes, and
+   the two status dots on the orbit breathe with it. Four slow loops, and none of
+   them hurries - a mail app should not fidget.
 
    These are loops, not interaction easings - the two defined easings still govern
    every transition - and the global reduced-motion rule stops all of them. */
@@ -133,29 +133,20 @@
   50% { transform: translateY(-5%); }
 }
 @keyframes hero-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.09); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.07); opacity: 1; }
 }
-@keyframes hero-ping {
-  0% { transform: scale(0.6); opacity: 0; }
-  15% { opacity: 0.45; }
-  70% { opacity: 0.13; }
-  100% { transform: scale(1.32); opacity: 0; }
-}
-@keyframes hero-blink {
+@keyframes hero-dot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.55; }
 }
 
-.hero-orbit { animation: hero-orbit 120s linear infinite; }
-.hero-orbit-reverse { animation: hero-orbit-back 90s linear infinite; }
+.hero-orbit { animation: hero-orbit 150s linear infinite; }
+.hero-orbit-reverse { animation: hero-orbit-back 150s linear infinite; }
 .hero-float { animation: hero-float 6s ease-in-out infinite; }
-.hero-breathe { animation: hero-breathe 7s ease-in-out infinite; }
-.hero-ping { animation: hero-ping 4.5s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
-.hero-ping-2 { animation-delay: 1.5s; }
-.hero-ping-3 { animation-delay: 3s; }
-.hero-blink { animation: hero-blink 3s ease-in-out infinite; }
-.hero-blink-2 { animation-delay: 1.5s; }
+.hero-breathe { animation: hero-breathe 8s ease-in-out infinite; }
+.hero-dot { animation: hero-dot 4.5s ease-in-out infinite; }
+.hero-dot-2 { animation-delay: 2.25s; }
 
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.6; }

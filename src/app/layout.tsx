@@ -48,8 +48,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // The chrome colour matches the deep-pine bars.
-  themeColor: "#0c3b36",
+  // The chrome colour matches the deep-navy bars.
+  themeColor: "#1e3a8a",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,

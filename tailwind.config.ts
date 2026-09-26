@@ -3,71 +3,78 @@ import type { Config } from "tailwindcss";
 /**
  * Design system.
  *
- * Redesign (Refinement): the structure, flows and content are untouched; the
- * visual system is rebuilt. The previous layer was a correct but characterless
- * Material/WhatsApp pastiche - a cool blue-white canvas, mid-teal chrome, one
- * type size and no depth. This one is built around a single idea: digital mail
- * that feels like paper.
+ * The palette is the OWNER'S LOGO, sampled rather than invented. The mark is a
+ * glossy blue envelope: 77% of its solid pixels are blue (mean #256cf3, deepest
+ * #01067c) and 11% cyan (#34cafd), on white. The brand illustration around it
+ * adds the violet where the envelope's flaps cross (#7c3aed), the green of the
+ * two status dots (#22c55e), the periwinkle of the ring that hugs the icon
+ * (#dbeafe), the cool greys of the orbit (#9ca3af / #d1d5db) and an off-white
+ * canvas (#f9fafb).
  *
- *   canvas   warm paper, not a cool white
- *   chrome   deep pine, so the bars read as ink on paper rather than plastic
- *   accent   ONE electric violet, reserved for the action the screen wants
+ * Every colour below is one of those, or a step between two of them.
+ *
+ *   canvas   the illustration's off-white, cooled a touch
+ *   chrome   the illustration's indigo - mail that reads as ink on paper
+ *   accent   the mark's own blue, with the periwinkle as its soft tint
+ *   brand    the mark's blue running into the illustration's violet
  *   type     a characterful display face over a very legible body face
- *   depth    three warm-tinted shadows instead of none
+ *   depth    three cool-tinted shadows instead of none
  *
- * Token NAMES are unchanged (and the wa-* aliases repointed), so every screen
- * adopts the new system the moment this file changes - which is what makes a
- * Refinement safe across a whole app.
+ * Token NAMES are otherwise unchanged (and the wa-* aliases repointed), so every
+ * screen adopts the system the moment this file changes - which is what makes a
+ * repaint safe across a whole app. 'navy' became 'navy' because a token called
+ * navy holding an indigo is a lie waiting to confuse somebody.
  */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        /* ---------- the new system ---------- */
-        paper: { DEFAULT: "#faf7f3", sunken: "#f4efe8" },
-        pine: { DEFAULT: "#0c3b36", deep: "#082926", soft: "#14514a" },
-        accent: { DEFAULT: "#4b3df5", soft: "#edebff", ink: "#ffffff" },
-        success: { DEFAULT: "#12b76a", soft: "#d6f5e5" },
+        /* ---------- the system, out of the logo ---------- */
+        paper: { DEFAULT: "#f8fafc", sunken: "#eef2f7" },
+        navy: { DEFAULT: "#1e3a8a", deep: "#16296b", soft: "#3358c0" },
+        accent: { DEFAULT: "#256cf3", soft: "#dbeafe", ink: "#ffffff" },
+        brand: { DEFAULT: "#3b82f6", violet: "#7c3aed", cyan: "#bde3ff", sky: "#60a5fa" },
+        success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },
 
         /* ---------- the semantic set (names kept) ---------- */
         surface: {
           DEFAULT: "#ffffff",
-          dim: "#ded7cb",
-          bright: "#faf7f3",
-          variant: "#e7dfd4",
+          dim: "#e2e8f0",
+          bright: "#f8fafc",
+          variant: "#e8eef6",
           container: {
             lowest: "#ffffff",
-            low: "#f6f1ea",
-            DEFAULT: "#f2ece4",
-            high: "#efe8df",
-            highest: "#e7dfd4",
+            low: "#f6f9fc",
+            DEFAULT: "#eff4f9",
+            high: "#e9eff6",
+            highest: "#e2e8f0",
           },
         },
-        "on-surface": { DEFAULT: "#101a17", variant: "#4c5a55" },
-        outline: { DEFAULT: "#8a8279", variant: "#dcd5cc" },
-        primary: { DEFAULT: "#0c3b36", container: "#14514a" },
-        "on-primary": { DEFAULT: "#f3fbf8", container: "#a8e0d2" },
-        "primary-fixed": { DEFAULT: "#a8e0d2", dim: "#7cc4b3" },
-        secondary: { DEFAULT: "#12b76a", container: "#c9f5de" },
-        "on-secondary": { DEFAULT: "#ffffff", container: "#065f36" },
-        "surface-tint": "#0c3b36",
+        "on-surface": { DEFAULT: "#0f172a", variant: "#48566b" },
+        outline: { DEFAULT: "#9ca3af", variant: "#d1d5db" },
+        primary: { DEFAULT: "#1e3a8a", container: "#3358c0" },
+        "on-primary": { DEFAULT: "#f2f7ff", container: "#c7d9f7" },
+        "primary-fixed": { DEFAULT: "#c7d9f7", dim: "#93b3ea" },
+        secondary: { DEFAULT: "#22c55e", container: "#dcfce7" },
+        "on-secondary": { DEFAULT: "#ffffff", container: "#0b5c2e" },
+        "surface-tint": "#1e3a8a",
         error: { DEFAULT: "#e5484d", container: "#ffe6e6" },
         "on-error": { DEFAULT: "#ffffff", container: "#8c1d22" },
 
         /* ---------- legacy aliases, repointed ---------- */
         wa: {
-          bg: "#faf7f3",
+          bg: "#f8fafc",
           panel: "#ffffff",
-          ink: "#101a17",
-          muted: "#4c5a55",
-          line: "#efe8df",
-          outline: "#dcd5cc",
-          teal: "#0c3b36",
-          green: "#12b76a",
-          bubble: "#eef7f1",
+          ink: "#0f172a",
+          muted: "#48566b",
+          line: "#e9eff6",
+          outline: "#d1d5db",
+          teal: "#1e3a8a",
+          green: "#22c55e",
+          bubble: "#eef4ff",
           alert: "#e5484d",
         },
       },
@@ -101,12 +108,13 @@ const config: Config = {
       minHeight: { tap: "56px" },
       minWidth: { tap: "56px" },
       maxWidth: { phone: "480px" },
-      /* Three warm-tinted shadows. Depth is the thing the old system lacked
+      /* Three cool-tinted shadows - blue-slate rather than warm, so they agree
+         with the logo's palette. Depth is the thing the old system lacked
          entirely; these are deliberate, not decorative. */
       boxShadow: {
-        card: "0 1px 2px rgba(16,26,23,0.04), 0 6px 18px -12px rgba(16,26,23,0.16)",
-        raised: "0 2px 6px rgba(16,26,23,0.06), 0 16px 32px -18px rgba(16,26,23,0.22)",
-        overlay: "0 24px 60px -24px rgba(16,26,23,0.34)",
+        card: "0 1px 2px rgba(15,23,42,0.04), 0 6px 18px -12px rgba(15,23,42,0.16)",
+        raised: "0 2px 6px rgba(15,23,42,0.06), 0 16px 32px -18px rgba(15,23,42,0.22)",
+        overlay: "0 24px 60px -24px rgba(15,23,42,0.34)",
         "inset-line": "inset 0 1px 0 rgba(255,255,255,0.6)",
       },
       transitionDuration: { ui: "220ms", fast: "140ms", slow: "380ms" },

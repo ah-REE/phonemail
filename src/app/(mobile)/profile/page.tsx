@@ -209,7 +209,7 @@ export default function ProfilePage() {
 
   return (
     <main className="flex flex-1 flex-col bg-[#F8FAFC]">
-      <header className="relative z-10 flex w-full flex-col bg-pine text-white">
+      <header className="relative z-10 flex w-full flex-col bg-navy text-white">
         <div className="relative flex h-14 items-center justify-between px-3">
           <Link
             href="/"
@@ -226,17 +226,17 @@ export default function ProfilePage() {
 
         <div className="flex flex-col items-center px-5 pb-8 pt-2 text-center">
           <div className="relative">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-pine-deep ring-4 ring-white/15">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-navy-deep ring-4 ring-white/15">
               <span className="select-none font-headline text-3xl font-bold text-white">{initial}</span>
             </div>
-            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-pine bg-success text-white">
+            <div className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-navy bg-success text-white">
               <Icon name="check" size={14} />
             </div>
           </div>
           <h2 className="mt-3.5 font-headline text-[22px] font-extrabold leading-tight tracking-tight text-white">
             {user?.phoneNumber ?? "Unknown"}
           </h2>
-          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-pine-deep/80 px-4 py-1.5">
+          <div className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-navy-deep/80 px-4 py-1.5">
             <span className="select-all text-[13px] font-semibold tracking-wide text-success">
               {address}
             </span>
@@ -247,19 +247,19 @@ export default function ProfilePage() {
       <div className="flex flex-1 flex-col space-y-6 px-4 pb-6 pt-6">
 
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Personal details
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
             <form className="flex min-h-[64px] w-full items-center gap-2 px-4 py-4" onSubmit={saveName}>
               <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-pine">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
                   <Icon name="globe" size={20} />
                 </div>
-                <span className="text-[15px] font-medium text-slate-900">Name</span>
+                <span className="text-[15px] font-medium text-on-surface">Name</span>
               </div>
               <input
-                className="min-w-0 flex-1 bg-transparent text-right text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
+                className="min-w-0 flex-1 bg-transparent text-right text-[15px] text-on-surface outline-none placeholder:text-outline"
                 placeholder="Your name"
                 maxLength={40}
                 value={nameDraft}
@@ -268,35 +268,35 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-pine disabled:opacity-60"
+                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-navy disabled:opacity-60"
                 disabled={nameSaving}
               >
                 {nameSaving ? "Saving" : "Save"}
               </button>
             </form>
           </div>
-          <p className="mt-2 px-1 text-[12px] text-slate-500">
+          <p className="mt-2 px-1 text-[12px] text-on-surface-variant">
             Shown to people you write to. Leave it empty to show your number instead.
           </p>
-          {nameNotice && <p className="mt-2 px-1 text-[14px] text-pine">{nameNotice}</p>}
+          {nameNotice && <p className="mt-2 px-1 text-[14px] text-navy">{nameNotice}</p>}
         </section>
 
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Alias IDs
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
             {aliases.length === 0 ? (
-              <p className="px-4 py-3.5 text-[14px] text-slate-500">
+              <p className="px-4 py-3.5 text-[14px] text-on-surface-variant">
                 No aliases yet. An alias is a second address for this account.
               </p>
             ) : (
               aliases.map((alias) => (
                 <div
                   key={alias.id}
-                  className="flex min-h-[64px] w-full items-center justify-between border-b border-slate-100 px-4 py-4"
+                  className="flex min-h-[64px] w-full items-center justify-between border-b border-surface-container-low px-4 py-4"
                 >
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-slate-900">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-on-surface">
                     {alias.address}
                   </span>
                   <button
@@ -311,11 +311,11 @@ export default function ProfilePage() {
               ))
             )}
             <form
-              className="flex min-h-[64px] w-full items-center gap-2 border-t border-slate-100 px-4 py-4"
+              className="flex min-h-[64px] w-full items-center gap-2 border-t border-surface-container-low px-4 py-4"
               onSubmit={addAlias}
             >
               <input
-                className="min-w-0 flex-1 bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400"
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-on-surface outline-none placeholder:text-outline"
                 placeholder="Add an alias, e.g. john.doe"
                 autoCapitalize="none"
                 autoComplete="off"
@@ -324,18 +324,18 @@ export default function ProfilePage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-pine disabled:opacity-60"
+                className="shrink-0 rounded-full bg-success px-4 py-1.5 text-[14px] font-semibold text-navy disabled:opacity-60"
                 disabled={busy || draft.trim().length === 0}
               >
                 {busy ? "Adding" : "Add"}
               </button>
             </form>
           </div>
-          <p className="mt-2 px-1 text-[12px] text-slate-500">
+          <p className="mt-2 px-1 text-[12px] text-on-surface-variant">
             3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
             account exactly like mail sent to the number.
           </p>
-          {notice && <p className="mt-2 px-1 text-[14px] text-pine">{notice}</p>}
+          {notice && <p className="mt-2 px-1 text-[14px] text-navy">{notice}</p>}
           {error && (
             <p className="mt-2 px-1 text-[14px] text-danger" role="alert">
               {error}
@@ -344,20 +344,20 @@ export default function ProfilePage() {
         </section>
 
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Preferences
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
             <div className="flex min-h-[64px] w-full items-center justify-between bg-white px-4 py-4">
               <div className="flex items-center gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-pine">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-navy">
                   <Icon name="globe" size={20} />
                 </div>
-                <span className="text-[15px] font-medium text-slate-900">Language</span>
+                <span className="text-[15px] font-medium text-on-surface">Language</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[14px] font-normal text-slate-600">English (India)</span>
-                <span className="text-slate-400">
+                <span className="text-[14px] font-normal text-on-surface-variant">English (India)</span>
+                <span className="text-outline">
                   <Icon name="chevron" size={20} />
                 </span>
               </div>
@@ -366,13 +366,13 @@ export default function ProfilePage() {
         </section>
 
         <section>
-          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <h3 className="mb-2.5 px-1 text-[11px] font-bold uppercase tracking-wider text-outline">
             Actions
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-outline-variant/80 bg-white">
             <button
               type="button"
-              className="flex min-h-[64px] w-full items-center justify-between px-4 py-4 text-left transition-colors duration-ui hover:bg-slate-50"
+              className="flex min-h-[64px] w-full items-center justify-between px-4 py-4 text-left transition-colors duration-ui hover:bg-paper"
               onClick={() => {
                 signOut();
                 router.replace("/onboarding");
@@ -382,9 +382,9 @@ export default function ProfilePage() {
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
                   <Icon name="logout" size={20} />
                 </div>
-                <span className="text-[15px] font-medium text-slate-900">Sign out</span>
+                <span className="text-[15px] font-medium text-on-surface">Sign out</span>
               </div>
-              <span className="text-slate-400">
+              <span className="text-outline">
                 <Icon name="chevron" size={20} />
               </span>
             </button>
@@ -392,13 +392,13 @@ export default function ProfilePage() {
         </section>
 
         <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-6">
-          <div className="inline-flex max-w-[340px] items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2">
-            <span className="shrink-0 text-slate-400">
+          <div className="inline-flex max-w-[340px] items-center justify-center gap-2 rounded-xl border border-outline-variant/80 bg-white px-4 py-2">
+            <span className="shrink-0 text-outline">
               <Icon name="lock" size={15} />
             </span>
-            <span className="text-[12px] leading-snug text-slate-600">End-to-end encrypted</span>
+            <span className="text-[12px] leading-snug text-on-surface-variant">End-to-end encrypted</span>
           </div>
-          <p className="mt-2.5 font-mono text-[12px] text-slate-400">PhoneMail v0.1.0</p>
+          <p className="mt-2.5 font-mono text-[12px] text-outline">PhoneMail v0.1.0</p>
         </footer>
       </div>
     </main>

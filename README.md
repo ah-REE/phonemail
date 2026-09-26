@@ -173,7 +173,7 @@ handler that stamps the cache name from the image's own `.next/BUILD_ID`, so a
 rebuild invalidates the old shell and an installed PWA picks up new code instead
 of serving a stale one.
 
-**Migrations are committed** (`prisma/migrations/`, 7 of them) and applied by the
+**Migrations are committed** (`prisma/migrations/`, 9 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
@@ -215,13 +215,13 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **116 assertions** across three suites, in dev mode through the real SMTP round
+- **247 assertions** across eight suites, in dev mode through the real SMTP round
   trip: 43 for the group chat, 42 for the final functional items (search-to-chat,
   the Favorites/Attachments chips, folders, the group-folder add-on) and 31 for
   aliases plus the non-member 403 path.
 - **Fresh-clone evaluator simulations** several times through the build, most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all seven migrations applying on a clean volume,
+  then `docker compose up -d`, all nine migrations applying on a clean volume,
   all four services healthy, and the same 116 assertions green on that clone.
 - **Load numbers** (one run, dev mode, this machine, Node HTTP client):
   `GET /api/health` p50 **5.7 ms**, p95 **7.6 ms** over 30 sequential requests;
