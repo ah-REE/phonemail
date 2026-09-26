@@ -2031,6 +2031,36 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), thirteenth session: THE GROUPCHAT FAILURE, ROOT-CAUSED AND FIXED.
+  It was the one thing left standing between the suite and green, and a possible hole
+  in the group visibility model outranks every feature that was still on the list, so
+  it went first and alone.
+  - THE VERDICT, WITH EVIDENCE: THE FILTER IS CORRECT. Driven live against the real API
+    - A broadcasts to B and C, B replies to that broadcast, A's thread is re-read - the
+    reply row appears for A, flagged, linked, and not marked as A's own. A's thread came
+    back with 13 bubbles, 8 of them A's and 5 from members. There is no visibility hole.
+  - THE ROOT CAUSE IS THE TEST'S DETERMINISM, and it is a genuinely instructive one.
+    The assertion 'A sees the members' mail, not only their own' sat at a point in the
+    suite where NO member had sent anything yet - only A's broadcast existed. It passed
+    for several sessions because the group key is DERIVED from the member set and is
+    therefore STABLE, so reply rows left behind by EARLIER SUITE RUNS were still sitting
+    in that thread. The assertion was not testing the code; it was testing the database's
+    history. It failed the moment the history happened not to contain a member row.
+  - THE FIX IS DETERMINISM, NOT A RE-POINT: the suite now has a member REPLY to this
+    run's own broadcast before the assertion, and the assertion names the exact mail it
+    just made - so it cannot pass on leftovers. Two assertions were added (the broadcast
+    from this run is there to answer; the member reply is accepted) and the group suite
+    is 45/45.
+  - The lesson is the same one this project keeps paying for, in its fourth costume:
+    state that survives between runs makes a test lie. The harness fix, the 200-row cap,
+    the user setting that persists, and now the derived group key - same disease.
+  - NOT DONE from this round, and not claimed: the auth-flow continuation in both
+    directions, the reply model (a Reply button per mail plus the thread's message box
+    becoming a New Mail button, with the README spec-mapping updates that go with it),
+    the chevron reveal and its four-action row, Subject: versus re: display, the contact
+    sheet closing on save, the header-alignment sweep and the wordmark pass.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), twelfth session: ROUND 4, PART TWO - the ALIAS RULES and THE
   FULL REGRESSION that part one had skipped, on the brief's own instruction.
   - ONE ALIAS PER ACCOUNT, enforced by count rather than by hope: the create route
