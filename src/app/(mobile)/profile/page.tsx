@@ -140,7 +140,7 @@ const FOLDER_ROWS: { href: string; label: string; paths: string[] }[] = [
 /** The heading above every card: small, grey, letterspaced, uppercase. */
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mb-2.5 px-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-settings-faint">
+    <h3 className="mb-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-settings-faint">
       {children}
     </h3>
   );
@@ -171,7 +171,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 function InsetRule() {
-  return <span className="absolute left-[82px] right-0 top-0 h-px bg-settings-line" aria-hidden="true" />;
+  return <span className="absolute left-[78px] right-0 top-0 h-px bg-settings-line" aria-hidden="true" />;
 }
 
 export default function ProfilePage() {
@@ -439,13 +439,13 @@ export default function ProfilePage() {
           top-left into its deepest blue at the bottom-right, cuts the panel's
           bottom corners round, and floats the header on the pale top of it. */}
       <header
-        className="relative flex w-full flex-col rounded-b-[30px] px-5 pb-8 pt-3"
+        className="relative flex w-full flex-col rounded-b-[30px] px-5 pb-6 pt-2"
         style={{
           backgroundImage:
             "radial-gradient(115% 85% at 100% 100%, #7ba5f0 0%, rgba(123,165,240,0) 58%), radial-gradient(120% 70% at 8% 0%, #e8f0ff 0%, rgba(232,240,255,0) 62%), linear-gradient(152deg, #e8f0ff 0%, #dce9ff 34%, #c3d9fb 68%, #8fb6f7 100%)",
         }}
       >
-        <div className="relative flex h-14 items-center justify-between">
+        <div className="relative flex h-12 items-center justify-between">
           <Link
             href="/"
             className="z-10 flex h-11 w-11 items-center justify-center rounded-full text-settings-ink transition-colors duration-ui hover:bg-white/40"
@@ -459,7 +459,7 @@ export default function ProfilePage() {
           <span className="h-11 w-11" aria-hidden="true" />
         </div>
 
-        <div className="flex flex-col items-center px-2 pb-2 pt-4 text-center">
+        <div className="flex flex-col items-center px-2 pb-1 pt-3 text-center">
           <div className="relative">
             <Avatar
               size={108}
@@ -481,7 +481,7 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          <h2 className="mt-4 text-[27px] font-bold leading-tight tracking-[-0.018em] text-settings-ink">
+          <h2 className="mt-3 text-[27px] font-bold leading-tight tracking-[-0.018em] text-settings-ink">
             {savedName?.trim() || user?.phoneNumber || "Unknown"}
           </h2>
           {savedName?.trim() ? (
@@ -507,12 +507,16 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-7 px-5 pb-6 pt-7">
+      {/* DENSITY PASS (owner's note): every option was swimming in space. The rule is
+          now one rhythm - a heading sits 6px above its card, rows are 64px not 72px
+          with 12px of padding rather than 16px, and sections are 20px apart rather
+          than 28px. The 64px rows are still well clear of the 56px touch floor. */}
+      <div className="flex flex-1 flex-col gap-5 px-5 pb-5 pt-5">
         {/* ---------------------------------------------------------- PERSONAL */}
         <section>
           <SectionHeading>Personal details</SectionHeading>
           <Card>
-            <form className="flex min-h-[76px] w-full items-center gap-4 px-5 py-4" onSubmit={saveName}>
+            <form className="flex min-h-[64px] w-full items-center gap-4 px-4 py-3" onSubmit={saveName}>
               <Chip>
                 <Icon name="person" size={21} />
               </Chip>
@@ -542,7 +546,7 @@ export default function ProfilePage() {
               </button>
             </form>
           </Card>
-          <p className="mt-2.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
+          <p className="mt-1.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
             Shown to people you write to. Leave it empty to show your number instead.
           </p>
           {nameNotice && <p className="mt-2 px-1 text-[14px] text-settings-ink">{nameNotice}</p>}
@@ -552,7 +556,7 @@ export default function ProfilePage() {
         <section>
           <SectionHeading>Alias IDs</SectionHeading>
           <Card>
-            <div className="p-5">
+            <div className="p-4">
               {aliases.length === 0 ? (
                 <p className="text-[15px] leading-[1.45] text-[#344054]">
                   No aliases yet. An alias is a second address for this account.
@@ -607,7 +611,7 @@ export default function ProfilePage() {
               </form>
             </div>
           </Card>
-          <p className="mt-2.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
+          <p className="mt-1.5 px-1 text-[14px] leading-[1.45] text-settings-quiet">
             3-20 characters: lowercase letters, digits and dots. Mail sent to an alias reaches this
             account exactly like mail sent to the number.
           </p>
@@ -629,7 +633,7 @@ export default function ProfilePage() {
               <Link
                 key={row.href}
                 href={row.href}
-                className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 transition-colors duration-ui hover:bg-settings-canvas"
+                className="relative flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3 transition-colors duration-ui hover:bg-settings-canvas"
               >
                 {index > 0 && <InsetRule />}
                 <span className="flex min-w-0 items-center gap-4">
@@ -666,7 +670,7 @@ export default function ProfilePage() {
           <Card>
             {/* Language is the other carried-over row. English is the one language
                 that ships; the other two say so rather than pretending. */}
-            <div className="flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4">
+            <div className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3">
               <span className="flex min-w-0 items-center gap-4">
                 <Chip>
                   <Icon name="globe" size={21} />
@@ -696,7 +700,7 @@ export default function ProfilePage() {
               </span>
             </div>
 
-            <div className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4">
+            <div className="relative flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3">
               <InsetRule />
               <span className="flex min-w-0 items-center gap-4">
                 <Chip>
@@ -746,7 +750,7 @@ export default function ProfilePage() {
           <Card>
             <button
               type="button"
-              className="flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-ui hover:bg-settings-canvas"
+              className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors duration-ui hover:bg-settings-canvas"
               onClick={() => {
                 signOut();
                 router.replace("/onboarding");
@@ -768,7 +772,7 @@ export default function ProfilePage() {
                 row's label; its background stays plain white. */}
             <button
               type="button"
-              className="relative flex min-h-[72px] w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-ui hover:bg-settings-canvas"
+              className="relative flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors duration-ui hover:bg-settings-canvas"
               onClick={() => {
                 setDeleteOpen(true);
                 setDeleteStep("confirm");
@@ -793,7 +797,7 @@ export default function ProfilePage() {
           </Card>
         </section>
 
-        <footer className="mt-auto flex flex-col items-center justify-center pb-2 pt-3">
+        <footer className="mt-auto flex flex-col items-center justify-center pb-1 pt-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-settings-track/80 bg-white px-5 py-2.5">
             <span className="shrink-0 text-settings-quiet">
               <Icon name="lock" size={16} />

@@ -2031,6 +2031,75 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 7 (Sat Sep 26), eighth session: THE THREE CHAT FIXES and THE SETTINGS
+  DENSITY PASS. Landed and verified; the chat redesign that follows them is NOT in
+  this commit and is called out at the end of this entry.
+  - FIX 1, THE HEADER IS A PERSON: the thread header showed the SUBJECT as its
+    second line, so the one row that should say who you are writing to said what
+    the mail is about. It now shows the counterpart's address under their name and
+    never the subject. The group header's fallback stopped reaching for the subject
+    too, and now reports the member count alongside the names. The subject's home
+    remains the thread body, where the dividers and the reply context already live.
+  - FIX 2, NO CONNECTION WORD: the header printed live / polling / connecting - a
+    label that only teaches the reader to ignore it. There is no text now. A single
+    quiet dot appears ONLY when the socket is not live, which is the one case where
+    it is news. The desktop rail's 'Live:' prefix went the same way.
+  - FIX 3, THE ROW PREVIEWS THE NEWEST MESSAGE: the list already read the body rather
+    than the subject, but it could not say when the newest message was YOURS. The
+    conversation endpoints now report `outgoing`, read off the newest row, and both
+    list rows prefix 'You: ' when it is set. ASSERTED AS A ROUND TRIP, not as a
+    shape: A sends to B, the list is re-read as A and the row's preview must have
+    CHANGED to that message and be marked mine; B answers and the same row must
+    change again and stop being marked mine. The group scan had to start selecting
+    the sender's id for this, which the build caught.
+  - THE SETTINGS DENSITY PASS, on the owner's note that every option was swimming in
+    space. The values, before -> after, so they can be dialled in one line:
+      between sections      28px -> 20px     (gap-7 -> gap-5)
+      section top padding   28px -> 20px     (pt-7  -> pt-5)
+      heading to its card   10px -> 6px      (mb-2.5 -> mb-1.5)
+      helper under a card   10px -> 6px      (mt-2.5 -> mt-1.5)
+      row height            72/76px -> 64px  (still clear of the 56px touch floor)
+      row padding           16px -> 12px     (py-4 -> py-3)
+      row side padding      20px -> 16px     (px-5 -> px-4)
+      inset rule start      82px -> 78px     (it tracks the text column)
+      alias card padding    20px -> 16px     (p-5 -> p-4)
+      hero bottom           32px -> 24px     (pb-8 -> pb-6)
+      header row            56px -> 48px     (h-14 -> h-12)
+      name under the avatar 16px -> 12px     (mt-4 -> mt-3)
+    Contacts shares the identical rhythm (rows 72 -> 64px, empty state py-10 -> py-7)
+    so the list screens are ONE spacing system rather than two.
+  - THE ALIAS FIELD AND ITS ADD BUTTON STAY AT 48px. That is the owner's own
+    reference geometry, and the reference was required to be exact; 48px is still
+    above the 44px platform minimum. Named here so the exception is a decision.
+  - A VERIFICATION FAILURE WORTH RECORDING: the settings screenshot could not be
+    re-taken. Three captures, including one with the browser cache disabled and one
+    with a cache-busting query, came back BYTE-IDENTICAL to the pre-density shot -
+    because the app ships a service worker (public/sw.template.js) that serves its
+    precached shell. The deployed CSS was checked instead. The lesson is the same
+    one this project keeps relearning: an unchanged artefact is not evidence of an
+    unchanged system.
+  - A LATENT BUG IN MY OWN TEST HARNESS: the first version of the fixes suite sent
+    send-otp TWICE per login, so its own probe put the number into cooldown and the
+    real send was refused. One send per attempt now.
+  - DOCKER SURVEY (read-only; the cleanup itself was DENIED by the Safety Guard on
+    an approval timeout, so NOTHING was removed and it needs one more pass): this
+    machine is carrying 46 containers from 12 leftover evaluator/clone compose
+    projects - phonemail-audit, phonemail-eval-audit, -features, -final, -final3,
+    -logo, -origin2, -reader, -redesign, -welcome, -welcome2 - 25 stray
+    phonemail-*_postgres-data volumes, and those 12 directories under %TEMP%. The
+    main phonemail stack is the four healthy containers and is the only project
+    that should survive.
+  - VERIFICATION: 460 assertions across fourteen suites green (the new
+    ct6/fixes_regression.mjs is the fourteenth, 20 assertions including the live
+    preview round trip), build green, both screens' suites green.
+  - NOT DONE, and not claimed: the A/B/C research spec and the chat interface
+    redesign (shell, canvas, composer subject field, card hierarchy and run
+    grouping) from the same brief. The brief's card section also describes a
+    left/right bubble with a squared corner, which the owner's OWN message-card
+    reference superseded two sessions ago; that conflict needs the owner's call
+    before it is built either way.
+  - Mode found and left: REAL.
+
 - Day 7 (Sat Sep 26), seventh session: THE SETTINGS SCREEN, rebuilt to the owner's
   second reference drawing.
   - The owner supplied a picture of a settings screen and asked for it EXACTLY. It is

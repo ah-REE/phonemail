@@ -49,6 +49,13 @@ interface ThreadAccumulator {
   unread: number;
   /** Day 6: true when ANY message in the thread carries the favorite tag. */
   favorite: boolean;
+  /**
+   * True when the thread's NEWEST message is one this user sent. The list row
+   * needs it to prefix its preview with "You: ", which is the difference between
+   * a list that reads as mail you received and one that reads as the conversation
+   * it actually is.
+   */
+  outgoing: boolean;
 }
 
 interface GroupAccumulator {
@@ -61,6 +68,8 @@ interface GroupAccumulator {
   unread: number;
   /** Day 6: true when ANY message in the group carries the favorite tag. */
   favorite: boolean;
+  /** See ThreadAccumulator.outgoing - the same rule for a group's newest row. */
+  outgoing: boolean;
 }
 
 export async function GET(request: Request) {
@@ -113,6 +122,9 @@ export async function GET(request: Request) {
           select: {
             threadKey: true,
             toUserId: true,
+            // The group row reports whether the NEWEST message is mine, so the
+            // scan has to know who sent it.
+            fromUserId: true,
             fromAddress: true,
             toAddress: true,
             subject: true,
@@ -150,6 +162,7 @@ export async function GET(request: Request) {
         lastAt: email.createdAt,
         unread: isUnread ? 1 : 0,
         favorite: email.tag === FAVORITE_TAG,
+        outgoing: !incoming,
       });
       continue;
     }
@@ -180,6 +193,7 @@ export async function GET(request: Request) {
         lastAt: row.createdAt,
         unread: row.toUserId === user.sub && !row.isRead ? 1 : 0,
         favorite: row.tag === FAVORITE_TAG,
+        outgoing: row.fromUserId === user.sub,
       });
       continue;
     }
@@ -213,6 +227,7 @@ export async function GET(request: Request) {
       memberAddresses: [...group.memberAddresses].sort(),
       subject: group.subject,
       preview: group.preview,
+      outgoing: group.outgoing,
       lastAt: group.lastAt.toISOString(),
       unread: group.unread,
       favorite: group.favorite,

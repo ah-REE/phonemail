@@ -252,7 +252,7 @@ export default function ContactsPage() {
       {loading && <p className="px-4 text-sm text-chat-meta">Loading…</p>}
 
       {!loading && visible.length === 0 && !error && (
-        <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+        <div className="flex flex-col items-center gap-2 px-6 py-7 text-center">
           <p className="text-lg font-semibold">
             {contacts.length === 0 ? "No contacts yet" : "Nothing matches that search"}
           </p>
@@ -272,7 +272,7 @@ export default function ContactsPage() {
           return (
             <div
               key={contact.id}
-              className="flex min-h-[72px] w-full items-center gap-3 border-b border-outline-variant px-4"
+              className="flex min-h-[64px] w-full items-center gap-3 border-b border-outline-variant px-4"
             >
               <button
                 type="button"

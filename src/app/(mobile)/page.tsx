@@ -24,8 +24,7 @@ import { useRealtime } from "@/lib/useRealtime";
  * button pinned bottom-right.
  *
  * Two things the mockup predates and that therefore had to be placed WITHOUT
- * breaking its proportions: the live/polling indicator (moved down to the
- * encryption footer) and the search-to-chat offer, which renders as one more row
+ * breaking its proportions: the search-to-chat offer, which renders as one more row
  * directly under the search field while a complete number is typed.
  */
 
@@ -35,6 +34,8 @@ interface ConversationThread {
   counterpartAddress: string;
   subject: string;
   preview: string;
+  /** The newest message is one this user sent, so the row reads "You: ...". */
+  outgoing?: boolean;
   lastAt: string;
   unread: number;
   favorite?: boolean;
@@ -49,6 +50,7 @@ interface ConversationGroup {
   memberAddresses: string[];
   subject: string;
   preview: string;
+  outgoing?: boolean;
   lastAt: string;
   unread: number;
   favorite?: boolean;
@@ -401,7 +403,10 @@ export default function HomePage() {
                     .map((member, index) => group.memberNames?.[index]?.trim() || member)
                     .join(", ")}
                 </span>
-                <span className="mt-1 truncate text-sm text-on-surface-variant">{group.preview}</span>
+                <span className="mt-1 truncate text-sm text-on-surface-variant">
+                  {group.outgoing ? "You: " : ""}
+                  {group.preview}
+                </span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
                 <span className="text-xs text-outline">{formatTime(group.lastAt)}</span>
@@ -421,7 +426,10 @@ export default function HomePage() {
                 <span className="truncate text-base font-bold">
                   {thread.counterpartName?.trim() || thread.counterpart}
                 </span>
-                <span className="mt-1 truncate text-sm text-on-surface-variant">{thread.preview}</span>
+                <span className="mt-1 truncate text-sm text-on-surface-variant">
+                  {thread.outgoing ? "You: " : ""}
+                  {thread.preview}
+                </span>
               </span>
               <span className="ml-2 flex shrink-0 flex-col items-end justify-center">
                 <span className="text-xs text-outline">{formatTime(thread.lastAt)}</span>

@@ -297,12 +297,13 @@ export default function GroupThreadPage() {
             </span>
             <span className="truncate text-[13px] leading-tight text-chat-meta" title={members.join(", ")}>
               {members.length > 0
-                ? members.map((member, index) => memberNames[index]?.trim() || member).join(", ")
-                : subject || "Loading members"}
+                ? `${members.length} members · ${members
+                    .map((member, index) => memberNames[index]?.trim() || member)
+                    .join(", ")}`
+                : "Loading members"}
             </span>
           </span>
         </button>
-        <span className="shrink-0 text-[11px] text-chat-meta">group</span>
       </header>
 
       {loading && <ThreadSkeleton />}

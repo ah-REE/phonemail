@@ -20,7 +20,7 @@ import { useRealtime } from "@/lib/useRealtime";
  * Conversation thread — the hybrid chat/traditional screen from PROJECT.md §5.
  *
  *  - WhatsApp-style bubbles: theirs left (white), ours right (green)
- *  - the subject is the thread header line; timestamps under each bubble
+ *  - the header is the PERSON only; the subject's home is the thread body
  *  - messages that were UNREAD when the thread opened are visually marked
  *  - a long message shows a preview with "Read full message", which expands to
  *    the traditional full view (complete body + From/To/Subject header block)
@@ -345,14 +345,22 @@ export default function ThreadPage() {
             <span className="truncate font-headline text-[17px] font-bold leading-tight text-on-surface">
               {counterpartName?.trim() || phone}
             </span>
-            <span className="truncate text-[13px] leading-tight text-chat-meta" title={headerSubject}>
-              {headerSubject}
+            <span className="truncate text-[13px] leading-tight text-chat-meta">
+              {counterpartAddress || `${phone}@phonemail.com`}
             </span>
           </span>
         </button>
-        <span className="shrink-0 text-[11px] text-chat-meta" title="connection">
-          {realtimeStatus === "socket" ? "live" : realtimeStatus === "polling" ? "polling" : "connecting"}
-        </span>
+        {/* No connection WORD. When the socket is live there is nothing worth saying,
+            and a label that says "live" only teaches the reader to ignore it. A
+            single quiet dot appears only when the connection is NOT live, which is
+            the one case where it is news. */}
+        {realtimeStatus !== "socket" && (
+          <span
+            className="h-2 w-2 shrink-0 rounded-full bg-chat-meta"
+            title={realtimeStatus === "polling" ? "Polling for new mail" : "Connecting"}
+            aria-label={realtimeStatus === "polling" ? "Polling for new mail" : "Connecting"}
+          />
+        )}
       </header>
 
       {loading && <ThreadSkeleton />}

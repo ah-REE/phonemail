@@ -219,7 +219,13 @@ export default function DesktopInboxPage() {
           Compose
         </button>
         <span className="mt-2 rounded-card bg-wa-bg px-3 py-2 text-sm font-semibold text-wa-ink">Inbox</span>
-        <span className="px-3 py-2 text-sm text-wa-muted">Live: {realtimeStatus}</span>
+        {realtimeStatus !== "socket" && (
+          <span
+            className="mx-3 mt-2 h-2 w-2 rounded-full bg-wa-muted"
+            title={realtimeStatus}
+            aria-label={`Connection: ${realtimeStatus}`}
+          />
+        )}
       </nav>
 
       {/* Thread list */}

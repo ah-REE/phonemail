@@ -223,7 +223,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **439 assertions** across thirteen suites, in dev mode through the real SMTP round
+- **460 assertions** across fourteen suites, in dev mode through the real SMTP round
   trip: 15 for the onboarding forms, 26 for the auth screens, 27 for the palette, 21
   for the chat reference, 21 for the traditional reader, 27 for display names, 43 for
   the group chat, 42 for the final functional items (search-to-chat, the
