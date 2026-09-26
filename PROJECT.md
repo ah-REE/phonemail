@@ -1667,6 +1667,50 @@ context instantly)*
     suites; and the deployed bundles serving the new home, the six cells and the
     tagline, with real mode confirmed in the container.
 
+- Day 7 (Sat Sep 26): THE PROGRAM IS RE-BASELINED, and the send bug is fixed.
+  - PHASES 1-3 AS ORIGINALLY SCOPED ARE CUT, not deferred: settings completion,
+    contacts-as-a-phase and verified senders cannot land verified before the
+    deadline, and a half-built phase is worse than an unbuilt one. What replaces
+    them: the click-through fixes below, the owner's small features, and then
+    ATTACHMENTS as the next session's single task. The floor rule stands - not
+    fully green by Mon 28 EOD, and the tag ships instead.
+  - 'CANNOT SEND MESSAGES' WAS NOT A BROKEN SEND. The API accepted the message
+    (202), the SMTP service delivered and logged it, the row was stored, the
+    socket event fired and the home list updated its preview. The message was
+    simply INVISIBLE: both thread endpoints read
+    `orderBy: { createdAt: 'asc' }, take: 200`, so any conversation past 200
+    rows returned its OLDEST 200, and the newest message could never appear. That
+    one line also explains 'the sender does not see their own group messages' and
+    the long-standing 'before=200 after=200' artifact in the final suite. Both
+    endpoints now take the NEWEST 200 and reverse into reading order, with the
+    reason written at the call site.
+  - Proof rather than argument: the same probe before the fix returned the oldest
+    rows ('pairwise only'); after it, the last four messages are the two it had
+    just sent, all mine=true.
+  - The locked composer printed the recipient list twice - as chips AND as a
+    read-only field holding the same joined list. The field is no longer rendered
+    when the recipients are locked; the chips are the list.
+  - The home list could hold a stale unread badge: a thread marks itself read
+    while the list is still mounted behind it, and the App Router keeps that tree
+    alive. The list now refreshes on focus, on popstate and on visibility, which
+    covers coming back to it.
+  - THE ALIAS AUDIT FOUND NOTHING TO FIX, recorded rather than dressed up:
+    localPart is globally unique in the schema, the list query is scoped to the
+    requester's own userId, and creation refuses a local part that collides with
+    another account's number. Bug 6 is therefore NOT REPRODUCED, with the evidence,
+    and the exact screen is requested.
+  - The suite is 250 of 253, NOT green, and all three reds are the harness rather
+    than the product: two group assertions and one final assertion compare unread
+    COUNTS, and (a) my own read probes marked threads read while measuring, moving
+    the baselines, and (b) at the 200-row cap a moved row does not change the
+    count at all, so a count cannot see it. The correct assertion is membership by
+    id. That is the next harness fix and the reason 'the moved row leaves B's
+    group view' has been flaky all week.
+  - NOT STARTED, by the brief's own priority order: the user-detail sheet, group
+    info, the shared default avatar, the home bottom bar and contacts. The budget
+    went to making the app usable again, which the brief put first.
+  - Mode found and left: REAL.
+
 - Day 7:
 
 ---

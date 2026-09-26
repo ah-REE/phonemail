@@ -48,7 +48,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       // every other member's view are untouched.
       OR: [{ toUserId: user.sub, folder: "inbox" }, { toUserId: { not: user.sub } }],
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: THREAD_LIMIT,
     select: {
       id: true,
@@ -64,6 +64,15 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       tag: true,
     },
   });
+
+  // The newest THREAD_LIMIT rows, then back into reading order. An ascending
+  // limit of 200 hands back the OLDEST 200, so once a conversation passed the cap
+  // its newest message could never appear - which is exactly how a send that
+  // worked perfectly (202, stored, socket event, home preview updated) still
+  // looked like a send that did nothing.
+  messages.reverse();
+
+
 
   if (messages.length === 0) {
     return NextResponse.json({ error: "No such thread." }, { status: 404 });

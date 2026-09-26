@@ -215,9 +215,15 @@ function ComposeForm() {
 
             <form className="flex flex-1 flex-col" onSubmit={handleSend} noValidate>
         <div className="flex min-h-[56px] w-full items-center px-4">
-          <label className="w-16 shrink-0 text-sm font-semibold text-outline" htmlFor="to">
-            To
-          </label>
+          {/* Locked: the chips below ARE the recipient list, so the field that
+              repeated them is not rendered - it printed every number twice. */}
+          {lockRecipients ? (
+            <span className="w-16 shrink-0 text-sm font-semibold text-outline">To</span>
+          ) : (
+            <label className="w-16 shrink-0 text-sm font-semibold text-outline" htmlFor="to">
+              To
+            </label>
+          )}
           <div className="flex flex-1 flex-wrap items-center gap-2 py-3">
             {recipients.map((recipient) => (
               <span
@@ -237,14 +243,13 @@ function ComposeForm() {
                 )}
               </span>
             ))}
+            {!lockRecipients && (
             <input
               id="to"
               className="min-w-32 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-on-surface-variant"
               inputMode="tel"
-              placeholder={lockRecipients ? "" : "9876543210, 9876543211"}
-              value={lockRecipients ? recipients.join(", ") : draftRecipient}
-              readOnly={lockRecipients}
-              aria-readonly={lockRecipients}
+              placeholder="9876543210, 9876543211"
+              value={draftRecipient}
               onChange={(event) => setDraftRecipient(event.target.value)}
               onBlur={() => addRecipientsFrom(draftRecipient)}
               onKeyDown={(event) => {
@@ -254,6 +259,7 @@ function ComposeForm() {
                 }
               }}
             />
+            )}
             {!lockRecipients && (
               <button
                 type="button"

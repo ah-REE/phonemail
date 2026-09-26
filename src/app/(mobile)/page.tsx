@@ -132,6 +132,23 @@ export default function HomePage() {
     }
   }, [token, load]);
 
+  // A thread marks itself read while this list is still mounted behind it, and the
+  // App Router keeps that tree alive - so the unread badges could sit there stale
+  // until a hard reload. Refresh whenever the list is shown again.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("popstate", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("popstate", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
+
   const realtimeStatus = useRealtime({
     token,
     onNewEmail: (payload) => {

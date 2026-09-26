@@ -50,7 +50,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
         { fromUserId: counterpart.id, toUserId: user.sub, folder: "inbox" },
       ],
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: THREAD_LIMIT,
     select: {
       id: true,
@@ -66,6 +66,15 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
       tag: true,
     },
   });
+
+  // The newest THREAD_LIMIT rows, then back into reading order. An ascending
+  // limit of 200 hands back the OLDEST 200, so once a conversation passed the cap
+  // its newest message could never appear - which is exactly how a send that
+  // worked perfectly (202, stored, socket event, home preview updated) still
+  // looked like a send that did nothing.
+  messages.reverse();
+
+
 
   const unread = messages.filter((message) => message.toUserId === user.sub && !message.isRead).length;
   const latest = messages[messages.length - 1];
