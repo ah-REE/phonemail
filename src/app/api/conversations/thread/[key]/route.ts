@@ -52,9 +52,9 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       //   - another member's REPLY is visible to nobody but its sender and its
       //     recipient, so it is excluded from everyone else's payload entirely.
       OR: [
-        { fromUserId: user.sub },
-        { toUserId: user.sub, folder: "inbox" },
-        { replyToId: null, toUserId: { not: user.sub } },
+        { fromUserId: user.sub, deletedForSender: false },
+        { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
+        { replyToId: null, toUserId: { not: user.sub }, deletedForSender: false },
       ],
     },
     orderBy: { createdAt: "desc" },

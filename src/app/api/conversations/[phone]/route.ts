@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { contactNamesByPhone } from "@/lib/contacts";
 import { addressForPhone } from "@/lib/mailer";
-import { normalizePhoneNumber } from "@/lib/phone";
+import { normalizePhoneNumber, phoneNumberSchema } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -46,9 +46,10 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
     where: {
       OR: [
         // What I sent stays visible to me; what arrived shows unless I moved it
-        // out of my inbox.
-        { fromUserId: user.sub, toUserId: counterpart.id },
-        { fromUserId: counterpart.id, toUserId: user.sub, folder: "inbox" },
+        // out of my inbox. Day 9: a chat I deleted on my side is gone from BOTH
+        // directions for me - and still there, untouched, for them.
+        { fromUserId: user.sub, toUserId: counterpart.id, deletedForSender: false },
+        { fromUserId: counterpart.id, toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
       ],
     },
     orderBy: { createdAt: "desc" },
@@ -116,6 +117,62 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
         tag: message.tag,
         attachments: message.attachments,
       })),
+    },
+    { status: 200 },
+  );
+}
+
+/**
+ * DELETE /api/conversations/[phone] - "delete chat", from the user detail sheet.
+ *
+ * WHAT IT DELETES, EXACTLY: the signed-in user's OWN side of this PAIRWISE
+ * conversation, as two per-viewer flags - the rows they sent, and the rows they
+ * received. It does NOT touch the counterpart's copy, because that copy is the same
+ * row: this is the only honest meaning "delete" can carry for mail somebody else
+ * also holds. It does not touch GROUP rows either, even with the same person in
+ * them (the `threadKey: null` filter): a group message belongs to its thread, not to
+ * this chat.
+ *
+ * The effect for the caller: the conversation leaves the list, the thread reads
+ * empty and the unread count drops. A new mail from the same person starts the
+ * conversation again, because the flags only hide what existed at this moment.
+ */
+export async function DELETE(request: Request, context: { params: Promise<{ phone: string }> }) {
+  const user = requireUser(request);
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
+  }
+
+  const { phone } = await context.params;
+  const parsed = phoneNumberSchema.safeParse(phone);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid counterpart number." }, { status: 400 });
+  }
+
+  const counterpart = await prisma.user.findUnique({
+    where: { phoneNumber: parsed.data },
+    select: { id: true },
+  });
+  if (!counterpart) {
+    return NextResponse.json({ error: "No such PhoneMail user." }, { status: 404 });
+  }
+
+  const [sent, received] = await prisma.$transaction([
+    prisma.email.updateMany({
+      where: { fromUserId: user.sub, toUserId: counterpart.id, threadKey: null },
+      data: { deletedForSender: true },
+    }),
+    prisma.email.updateMany({
+      where: { fromUserId: counterpart.id, toUserId: user.sub, threadKey: null },
+      data: { deletedForRecipient: true },
+    }),
+  ]);
+
+  return NextResponse.json(
+    {
+      phoneNumber: parsed.data,
+      hidden: sent.count + received.count,
+      scope: "your side of this conversation only",
     },
     { status: 200 },
   );

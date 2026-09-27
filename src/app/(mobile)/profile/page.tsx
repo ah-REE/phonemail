@@ -509,8 +509,11 @@ export default function ProfilePage() {
           <h2 className="mt-3 text-[27px] font-bold leading-tight tracking-[-0.018em] text-settings-ink">
             {savedName?.trim() || user?.phoneNumber || "Unknown"}
           </h2>
+          {/* ROUND 9: with a name set, the header shows the NAME and the ADDRESS - the
+              raw mobile number is gone from here rather than repeated twice. The
+              address is the pill below, which is also the thing you can copy. */}
           {savedName?.trim() ? (
-            <p className="mt-1 select-all text-[17px] text-settings-quiet">{user?.phoneNumber}</p>
+            <p className="mt-1 select-all text-[17px] text-settings-quiet">{address}</p>
           ) : null}
 
           <button

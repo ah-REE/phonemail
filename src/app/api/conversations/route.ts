@@ -86,10 +86,11 @@ export async function GET(request: Request) {
     where: {
       // folder is RECIPIENT state: my own incoming spam/trash leaves the chat
       // list, while everything I sent stays visible to me regardless of what
-      // the recipient did with it.
+      // the recipient did with it. Day 9 adds the same shape for a DELETED chat:
+      // the flags are per viewer, so my side disappears and theirs does not.
       OR: [
-        { toUserId: user.sub, folder: "inbox" },
-        { fromUserId: user.sub },
+        { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
+        { fromUserId: user.sub, deletedForSender: false },
       ],
     },
     orderBy: { createdAt: "desc" },
@@ -122,8 +123,12 @@ export async function GET(request: Request) {
           where: {
             threadKey: { in: groupKeys },
             // Same recipient-scoped rule as the group thread endpoint: my own
-            // spam/trash rows leave my group view, other members' are unaffected.
-            OR: [{ toUserId: user.sub, folder: "inbox" }, { toUserId: { not: user.sub } }],
+            // spam/trash rows leave my group view, other members' are unaffected -
+            // and so does a chat I deleted on my side (Day 9).
+            OR: [
+              { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
+              { toUserId: { not: user.sub }, deletedForSender: false },
+            ],
           },
           orderBy: { createdAt: "desc" },
           select: {

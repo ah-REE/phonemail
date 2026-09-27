@@ -48,6 +48,7 @@ function phoneOf(address: string): string {
 }
 
 export function UserSheet({
+  onDeleteChat,
   subject,
   onClose,
   onSaved,
@@ -62,6 +63,11 @@ export function UserSheet({
    * open just makes the reader dismiss it.
    */
   onSaved?: (name: string | null) => void;
+  /**
+   * Day 9: delete this chat, from the sheet that already owns the person. Present
+   * only where the caller can act on it, so the action never appears as a dead end.
+   */
+  onDeleteChat?: () => Promise<void> | void;
 }) {
   const { authorizedFetch } = useAuth();
 
@@ -70,6 +76,7 @@ export function UserSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const loadContacts = useCallback(async () => {
     try {
@@ -261,6 +268,51 @@ export function UserSheet({
             </p>
           )}
         </div>
+
+        {/* DELETE CHAT: two steps, because it is destructive and one tap is not a
+            decision. The wording says exactly what happens - their copy is not touched
+            - because "delete" in a chat app usually implies the opposite. */}
+        {onDeleteChat && (
+          <div className="mt-6">
+            {confirmingDelete ? (
+              <div className="flex flex-col gap-2 rounded-2xl border border-wa-alert/40 bg-wa-alert/[0.04] p-3">
+                <p className="text-sm text-on-surface">
+                  Delete this chat for you? Only your side of the conversation disappears - their
+                  copy stays exactly as it is, and a new mail starts it again.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      void onDeleteChat();
+                    }}
+                  >
+                    {busy ? <Spinner label="Deleting" /> : "Delete chat"}
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+                    disabled={busy}
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete chat
+              </button>
+            )}
+          </div>
+        )}
 
         <button
           type="button"

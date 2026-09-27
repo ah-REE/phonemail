@@ -2036,6 +2036,89 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-first session (the last one): THE FIVE FIXES, CC, DELETE
+  CHAT AND THE SECURITY REPORT. Landed and verified.
+  - FIX 1, THE RECEIVED CARD'S GAP. The band under the body was never padding: the
+    "Read full message" / "Collapse" control carried the GLOBAL 56px button floor -
+    the same rule that made the round-7 ovals - plus an extra mt-2 on top of the
+    footer wrapper's own mt-1. Values, before -> after: the control's box 56px -> its
+    own ~20px (min-h-0), its extra margin 8px -> 0, so the void under the body goes
+    from roughly 34px to about 2px.
+  - FIX 2, THE FIRST SUBJECT NO LONGER CHANGES. The thread's leading pill rendered
+    the server PAYLOAD's subject, which is the newest - so a second subject silently
+    renamed the chapter the reader had already read. It now derives from messages[0]
+    (the [phone] route reverses to ascending, so index 0 is the original), and the
+    state is only the fallback for the moment before the first row loads. Asserted
+    LIVE: two mails with two subjects, and the first message still carries the first
+    subject after the second has arrived.
+  - FIX 3, THE SEND ARROW POINTED LEFT. Its apex sat at x=4, which reads as
+    "receive". Mirrored to `M20 12L4 4l6 8-6 8z`. Asserted in the source rather than
+    in the served HTML - the compose form is a client component whose server output
+    is a loading shell, so the mirror cannot be read out of the markup; the rendered
+    result is the user's click.
+  - FIX 4, THE PROFILE HEADER. With a name set it printed the raw mobile number under
+    the name AND the address in the pill below - the number twice over. It now shows
+    the NAME and the @phonemail.com ADDRESS, and the raw-number line is gone. With no
+    name set, the old fallback (the number as the heading) stands.
+  - FIX 5, THE FAVICON. The app shipped an icon and NO favicon of any kind:
+    /favicon.ico answered 404. All four icons were regenerated from the current logo
+    through the same PNG-encoder path (PIL, the mark on the illustration's off-white)
+    and a real .ico was added, so /favicon.ico now answers 200 with image/x-icon and
+    the manifest's two icons serve as PNGs.
+  - CC, THE FIELD THE SPEC ASKED FOR AND THE APP NEVER HAD. A real Cc row directly
+    under To: the same chips, the same resolution (a number or an alias, through the
+    same lookup the inbound path uses), the same contacts autocomplete, per-chip
+    removal - and LOCKED together with To in a reply or a thread-launched compose.
+    Cc recipients ARE recipients: they receive fan-out rows exactly as the To list
+    does, they count towards the group, and the MIME message carries the Cc header.
+    TWO BUGS HAD TO BE FIXED for that to be true rather than nominal: the group test
+    counted only To, so `to=[B] cc=[C]` produced NO thread key and the Cc recipient's
+    row was filed as a 1:1 with the sender; and the Cc header was not reaching
+    nodemailer at all.
+  - THE INVARIANT, ASSERTED WHERE IT CAN BE BELIEVED. A sends to=[B], cc=[C]; the
+    group forms; B replies to that mail; then C's OWN payload is fetched with C's own
+    token and searched for the reply - absent - while C still sees the broadcast
+    itself. The socket side is asserted the same way: a real socket.io-client is
+    imported from the repository's own node_modules, connected as C, and shown to
+    receive NOTHING while the reply is sent. The To-only two-recipient case is
+    re-proven identically.
+  - DELETE CHAT, RECIPIENT-SCOPED. The person sheet gains Delete chat, with a
+    confirmation that says what actually happens. It sets two new PER-VIEWER flags
+    (deletedForSender / deletedForRecipient - the 14th migration) on the caller's own
+    pairwise rows, with `threadKey: null` so a group message is never touched by it.
+    The reason it is a flag and not a row delete: a message is ONE row that both
+    sides read, so deleting it would take the counterpart's copy with it. Asserted
+    live: the requester's thread empties, the conversation leaves their list, the
+    COUNTERPART's message count is unchanged, and the group thread is still intact.
+  - THE SECURITY REPORT, docs/SECURITY.md, linked from the README. Fourteen areas,
+    each naming the file and the symbol to grep - OTP-only auth (crypto-random codes,
+    300s TTL, one-time use), the 60s resend cooldown, the 5-strike brute-force burn,
+    JWT (HS256, 7 days, secret-gated start), the notification gate with the user's
+    switch and the self-send skip, the two webhook secrets, the one-door write path,
+    the reply-once claim and its rollback, party-only attachment downloads with the
+    token never in a URL, the group reply invariant, the alias rules, OTP-verified
+    account deletion, delete-chat's scoping and the service worker's scope - then
+    five gaps stated plainly: no TLS at the application layer, the npm advisories
+    (1 moderate, 4 high), the 7-day token with no revocation, the committed
+    placeholder secrets and their rotation policy, and dev-OTP mode being
+    deliberately open.
+  - THE REPORT IS CHECKED, NOT TRUSTED: the new suite asserts, for eighteen of its
+    references, that the needle appears in BOTH the document AND the code it points
+    at, and independently confirms the one-door claim (exactly one
+    `prisma.email.create` in the tree, in lib/inbound.ts).
+  - A MIGRATION LESSON, RECORDED BECAUSE IT COST REAL TIME: the new migration shipped
+    with a BYTE-ORDER MARK - PowerShell's `-Encoding UTF8` writes one on 5.1 and
+    Prisma reads it as part of the SQL - so the migration failed, the entrypoint's
+    retry loop kept re-recording the failure (P3009), and the app would not start.
+    Fixed by writing the file with Node (first bytes verified as 45 45 32), resolving
+    the failed migration as rolled back, and re-deploying: both columns are present
+    and the 14th migration is applied.
+  - VERIFICATION: 664 assertions across TWENTY-ONE suites green on the loaded
+    database in dev mode; build green; the fresh-clone evaluator simulation from
+    ORIGIN is recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the runs and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), twentieth session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit, and what it taught the harness.
   - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under

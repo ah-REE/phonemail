@@ -54,6 +54,12 @@ export interface OutboundEmail {
    * so a group's member set travels intact to the inbound fan-out.
    */
   to: string | string[];
+  /**
+   * Day 9: CC. These are RECIPIENTS - the fan-out does not distinguish them - and
+   * they also ride the MIME Cc header, so the copy the mail service sees says who
+   * was copied rather than hiding them in To.
+   */
+  cc?: string[];
   subject: string;
   body: string;
   /**
@@ -70,6 +76,7 @@ export async function submitOutboundEmail(message: OutboundEmail): Promise<void>
   await getTransport().sendMail({
     from: message.from,
     to: message.to,
+    cc: message.cc && message.cc.length > 0 ? message.cc : undefined,
     subject: message.subject,
     text: message.body,
     // Nodemailer builds the multipart/mixed message: a message with no files is

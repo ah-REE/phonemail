@@ -104,6 +104,15 @@ model Email {
   /// Day 6's folders (Drafts/Spam/Trash) build on this field.
   tag String?
 
+  /// Day 9 (delete chat). PER-VIEWER deletion, and the reason it is two flags
+  /// rather than a row delete: a message is ONE row that BOTH sides read, so
+  /// removing the row would take the counterpart's copy with it. A flag takes the
+  /// conversation out of ONE side's view - its list, its thread, its unread count -
+  /// and leaves the other side's copy exactly where it was. That is what "delete
+  /// this chat" can honestly mean for mail somebody else also holds.
+  deletedForSender    Boolean @default(false)
+  deletedForRecipient Boolean @default(false)
+
   /// Day 6 group chat. The DERIVED thread key of a multi-recipient message:
   /// "grp:" + sha256(sorted unique member numbers, comma-joined). NULL for
   /// pairwise mail, so 1:1 conversations group exactly as they did before, and

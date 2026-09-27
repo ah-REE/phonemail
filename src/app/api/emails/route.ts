@@ -25,6 +25,11 @@ export const dynamic = "force-dynamic";
  * string - and the whole list travels in ONE SMTP submission (nodemailer takes
  * `to: [array]` natively). The per-recipient fan-out happens once, in the inbound
  * path, so there is no loop here and no chance of half a group receiving it.
+ * Day 9 (CC): `cc` is accepted and resolved exactly like `to`, and its addresses
+ * are folded into the SAME recipient set - so a two-recipient message formed through
+ * To+Cc is the same group a two-recipient To list forms, and the SMTP message
+ * carries the Cc header as well.
+ *
  * The response carries the DERIVED threadKey of the member set so the client can
  * open the group thread it just created without computing anything itself.
  *
@@ -45,6 +50,15 @@ const sendSchema = z.object({
     z.string().trim().min(1, "to is required"),
     z.array(z.string().trim().min(1)).min(1, "to is required"),
   ]),
+  /**
+   * Day 9: CC, in the same shapes `to` accepts (a string or a list) and through the
+   * SAME resolution - a 10-digit number or an alias. CC recipients are recipients:
+   * they receive fan-out rows exactly as the To list does, and the MIME message
+   * carries them in Cc for the hop.
+   */
+  cc: z
+    .union([z.string().trim().min(1), z.array(z.string().trim().min(1))])
+    .optional(),
   subject: z.string().trim().min(1, "subject is required").max(200).optional(),
   body: z.string().min(1, "body is required"),
   replyToId: z.string().trim().min(1).optional(),
@@ -152,6 +166,46 @@ export async function POST(request: Request) {
 
   const recipients = tokens.map((token) => resolved.get(token) as { id: string; phoneNumber: string; registeredVia: string });
 
+  // CC resolves through the SAME lookups as To, so an alias in Cc behaves exactly
+  // like an alias in To - including the "unknown alias is an unknown recipient" 404.
+  // An address already in To is dropped from Cc rather than written twice.
+  const rawCc = (parsed.data.cc === undefined
+    ? []
+    : Array.isArray(parsed.data.cc)
+      ? parsed.data.cc
+      : [parsed.data.cc]
+  ).flatMap((entry) => entry.split(","));
+  const ccTokens = [...new Set(rawCc.map(recipientToken).filter((token) => token.length > 0))].filter(
+    (token) => !tokens.includes(token),
+  );
+
+  const rejectedCc = ccTokens.filter((token) => classifyToken(token) === "invalid");
+  if (rejectedCc.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "`cc` must be 10-digit Indian mobile numbers, or aliases of 3-20 lowercase letters, digits and dots.",
+        invalid: rejectedCc,
+      },
+      { status: 400 },
+    );
+  }
+
+  const resolvedCc = await lookupRecipientUsers(ccTokens);
+  const unknownCc = ccTokens.filter((token) => !resolvedCc.has(token));
+  if (unknownCc.length > 0) {
+    return NextResponse.json(
+      { error: `Recipient not found: ${unknownCc.join(", ")}.` },
+      { status: 404 },
+    );
+  }
+
+  const ccRecipients = ccTokens.map((token) => resolvedCc.get(token) as { id: string; phoneNumber: string; registeredVia: string });
+  // EVERYONE the message reaches, in one list: the fan-out and the group key work
+  // from this, which is what makes "two or more recipients is the group" true whether
+  // the second address arrived in To or in Cc.
+  const allRecipients = [...recipients, ...ccRecipients];
+
   // A GROUP REPLY names its thread, and this is the first thing checked: the
   // caller must be a member of that thread, the
   // row being answered must be IN it, and the reply must be addressed to the
@@ -258,7 +312,8 @@ export async function POST(request: Request) {
   const fromAddress = addressForPhone(user.phoneNumber);
   // The stored address is always the canonical number address: an alias is a
   // way in, not a second identity in the message data.
-  const addresses = recipients.map((recipient) => addressForPhone(recipient.phoneNumber));
+  const addresses = allRecipients.map((recipient) => addressForPhone(recipient.phoneNumber));
+  const ccAddresses = ccRecipients.map((recipient) => addressForPhone(recipient.phoneNumber));
 
   // Leave the note the inbound path will pick up. Without it a group reply would
   // be filed pairwise and a reply would carry no link to what it answers.
@@ -282,6 +337,7 @@ export async function POST(request: Request) {
       from: fromAddress,
       // ONE submission, the full recipient list in To.
       to: addresses,
+      cc: ccAddresses,
       subject,
       body: parsed.data.body,
       attachments: attachmentPayload,
@@ -302,9 +358,13 @@ export async function POST(request: Request) {
 
   // The same derivation the inbound path will use, so the client can open the
   // thread immediately. A hint, not stored state: nothing is written here.
+  // THE GROUP TEST COUNTS EVERYONE, To and Cc together - that is what makes "two
+  // or more recipients is a group" true whatever field the second address arrived
+  // in. (It counted only To at first, so A to=[B] cc=[C] produced no thread key and
+  // the Cc recipient's row was filed as a 1:1 with the sender.)
   const threadKey =
-    recipients.length > 1
-      ? deriveThreadKey([user.phoneNumber, ...recipients.map((recipient) => recipient.phoneNumber)])
+    allRecipients.length > 1
+      ? deriveThreadKey([user.phoneNumber, ...allRecipients.map((recipient) => recipient.phoneNumber)])
       : null;
 
   // No Email row here on purpose - see the file header.
@@ -313,6 +373,7 @@ export async function POST(request: Request) {
       queued: true,
       from: fromAddress,
       to: addresses,
+      cc: ccAddresses,
       threadKey,
       subject,
       replyToId: claimedReplyTo,

@@ -343,6 +343,17 @@ export default function ContactsPage() {
           }}
           onClose={() => setOpenPhone(null)}
           onSaved={() => void load()}
+          onDeleteChat={async () => {
+            // Same action, reached from the address book.
+            const response = await authorizedFetch(
+              `/api/conversations/${encodeURIComponent(openPhone ?? "")}`,
+              { method: "DELETE" },
+            );
+            if (response.ok) {
+              setOpenPhone(null);
+              void load();
+            }
+          }}
         />
       )}
     </main>

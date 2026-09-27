@@ -218,7 +218,16 @@ export default function ThreadPage() {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, lastMessageId]);
 
-  const headerSubject = useMemo(() => subject || "Conversation", [subject]);
+  // The thread's LEADING subject is the one it OPENED with - the first message's -
+  // and it must never be rewritten by a later arrival. (It used to be the server
+  // payload's `subject`, which is the NEWEST subject, so a second subject silently
+  // renamed the chapter the reader had already read. New subjects only ever ADD a
+  // divider now.) The state stays as the fallback for the moment before the first
+  // message has loaded.
+  const headerSubject = useMemo(
+    () => messages[0]?.subject || subject || "Conversation",
+    [messages, subject],
+  );
 
   async function setTag(messageId: string, tag: string | null) {
     setTagOpenId(null);
@@ -511,7 +520,7 @@ export default function ThreadPage() {
                   long && !expanded ? (
                     <button
                       type="button"
-                      className="mt-2 text-sm font-semibold text-msg-accent"
+                      className="min-h-0 text-sm font-semibold text-msg-accent"
                       onClick={() => setExpandedId(message.id)}
                     >
                       Read full message
@@ -519,7 +528,7 @@ export default function ThreadPage() {
                   ) : long && expanded ? (
                     <button
                       type="button"
-                      className="mt-2 text-sm font-semibold text-msg-accent"
+                      className="min-h-0 text-sm font-semibold text-msg-accent"
                       onClick={() => setExpandedId(null)}
                     >
                       Collapse
@@ -603,6 +612,18 @@ export default function ThreadPage() {
           }}
           onClose={() => setSheetOpen(false)}
           onSaved={(name) => setCounterpartName(name)}
+          onDeleteChat={async () => {
+            // The DELETE hides MY side only; the counterpart keeps their copy. Back to
+            // the list, which no longer has this conversation in it.
+            const response = await authorizedFetch(
+              `/api/conversations/${encodeURIComponent(phone)}`,
+              { method: "DELETE" },
+            );
+            if (response.ok) {
+              setSheetOpen(false);
+              router.push("/");
+            }
+          }}
         />
       )}
     </main>

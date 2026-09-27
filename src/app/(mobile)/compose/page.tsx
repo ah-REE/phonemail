@@ -111,6 +111,12 @@ function ComposeForm() {
 
   const [recipients, setRecipients] = useState<string[]>(() => parseRecipients(presetTo));
   const [draftRecipient, setDraftRecipient] = useState("");
+  // ROUND 9: CC, the field the spec asked for and the app never had. Same chips,
+  // same resolution (number or alias), same autocomplete - and the SAME lock: a
+  // reply and a thread-launched compose lock To AND Cc, because inside a chat the
+  // recipient set is the conversation's, not the writer's to change.
+  const [cc, setCc] = useState<string[]>([]);
+  const [draftCc, setDraftCc] = useState("");
   const [subject, setSubject] = useState(isReply ? replySubject : "");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -243,6 +249,46 @@ function ComposeForm() {
     setDraftRecipient("");
   }
 
+  // The Cc field's own suggestions: the same source and the same exclusions, minus
+  // anyone already on either list.
+  const ccNeedle = draftCc.trim().toLowerCase();
+  const ccSuggestions =
+    lockRecipients || ccNeedle.length === 0
+      ? []
+      : contacts
+          .filter((contact) => {
+            const name = (contact.displayName?.trim() || contact.accountName?.trim() || "").toLowerCase();
+            return name.includes(ccNeedle) || contact.address.toLowerCase().includes(ccNeedle);
+          })
+          .filter((contact) => {
+            const number = contact.accountPhone ?? phonePartOf(contact.address);
+            return !recipients.includes(number) && !cc.includes(number);
+          })
+          .slice(0, 5);
+
+  function addCcSuggestion(contact: SavedContact) {
+    const number = contact.accountPhone ?? phonePartOf(contact.address);
+    setCc((current) => [...new Set([...current, number])]);
+    setDraftCc("");
+  }
+
+  function addCcFrom(raw: string) {
+    const byName = numberForName(contacts, raw);
+    const parsed = byName ? [byName] : parseRecipients(raw);
+    if (parsed.length === 0) {
+      return;
+    }
+    setCc((current) => [...new Set([...current, ...parsed])].filter((entry) => !recipients.includes(entry)));
+    setDraftCc("");
+  }
+
+  function removeCc(entry: string) {
+    if (lockRecipients) {
+      return;
+    }
+    setCc((current) => current.filter((recipient) => recipient !== entry));
+  }
+
   function addRecipientsFrom(raw: string) {
     // A name that matches a saved contact picks that contact - "selecting a saved
     // contact" by typing it, which is what the field implies it can do.
@@ -314,6 +360,7 @@ function ComposeForm() {
         setProgress(0);
         const form = new FormData();
         recipients.forEach((recipient) => form.append("to", recipient));
+        cc.forEach((recipient) => form.append("cc", recipient));
         form.append("subject", subject);
         form.append("body", body);
         if (replyToId) form.append("replyToId", replyToId);
@@ -329,6 +376,7 @@ function ComposeForm() {
           body: JSON.stringify({
             // Always an array: one recipient or the whole group, one submission.
             to: recipients,
+            cc,
             subject,
             body,
             ...(replyToId ? { replyToId } : {}),
@@ -483,12 +531,12 @@ function ComposeForm() {
         )}
         {lockRecipients && (
           <p className="px-4 pb-2 text-xs text-on-surface-variant">
-            Recipients are locked for this conversation.
+            Recipients are locked for this conversation - To and Cc both.
           </p>
         )}
-        {!lockRecipients && recipients.length > 1 && (
+        {!lockRecipients && recipients.length + cc.length > 1 && (
           <p className="px-4 pb-2 text-xs text-primary-container">
-            Group: {recipients.length} recipients
+            Group: {recipients.length + cc.length} recipients
           </p>
         )}
         <div className="h-[1px] w-full bg-surface-variant" />
@@ -496,6 +544,97 @@ function ComposeForm() {
           <p className="text-sm text-wa-alert" role="alert">
             {fieldErrors.to}
           </p>
+        )}
+
+        {/* THE CC FIELD - directly under To, the same pattern, rendered even when it
+            is locked so the reader can see that it is part of the locked set. */}
+        {(cc.length > 0 || !lockRecipients) && (
+          <>
+            <div className="flex min-h-[56px] w-full items-center px-4">
+              {lockRecipients ? (
+                <span className="w-16 shrink-0 text-sm font-semibold text-outline">Cc</span>
+              ) : (
+                <label className="w-16 shrink-0 text-sm font-semibold text-outline" htmlFor="cc">
+                  Cc
+                </label>
+              )}
+              <div className="flex flex-1 flex-wrap items-center gap-2 py-3">
+                {cc.length === 0 && lockRecipients ? (
+                  <span className="text-sm text-on-surface-variant">None</span>
+                ) : null}
+                {cc.map((recipient) => (
+                  <span
+                    key={recipient}
+                    className="flex items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-sm"
+                  >
+                    <span title={recipient}>{nameByRecipient.get(recipient) || recipient}</span>
+                    {!lockRecipients && (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${recipient} from Cc`}
+                        className="min-h-0 leading-none text-on-surface-variant"
+                        onClick={() => removeCc(recipient)}
+                      >
+                        x
+                      </button>
+                    )}
+                  </span>
+                ))}
+                {!lockRecipients && (
+                  <input
+                    id="cc"
+                    className="min-w-32 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-on-surface-variant"
+                    inputMode="tel"
+                    placeholder="Number or alias"
+                    value={draftCc}
+                    onChange={(event) => setDraftCc(event.target.value)}
+                    onBlur={() => addCcFrom(draftCc)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === ",") {
+                        event.preventDefault();
+                        addCcFrom(draftCc);
+                      }
+                    }}
+                  />
+                )}
+                {!lockRecipients && (
+                  <button
+                    type="button"
+                    aria-label="Add this Cc recipient"
+                    title="Add this Cc recipient"
+                    className="box-border flex min-h-0 aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft p-0 leading-none text-accent disabled:opacity-40"
+                    disabled={draftCc.trim().length === 0}
+                    onClick={() => addCcFrom(draftCc)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+            {!lockRecipients && ccSuggestions.length > 0 && (
+              <div className="flex flex-col border-b border-surface-variant" aria-label="Cc suggestions">
+                {ccSuggestions.map((contact) => {
+                  const name = contact.displayName?.trim() || contact.accountName?.trim() || contact.address;
+                  return (
+                    <button
+                      key={contact.id}
+                      type="button"
+                      className="flex min-h-[52px] items-center gap-3 px-4 text-left active:bg-surface-container-high/40"
+                      onClick={() => addCcSuggestion(contact)}
+                    >
+                      <Avatar size={32} />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm font-semibold">{name}</span>
+                        <span className="truncate text-xs text-on-surface-variant">{contact.address}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex min-h-[56px] w-full items-center px-4">
@@ -668,8 +807,12 @@ function ComposeForm() {
             {busy ? (
               <Spinner label="Sending" />
             ) : (
+              /* ROUND 9: the arrow pointed LEFT - the apex was at x=4 - which read as
+                 "receive" rather than "send". Mirrored: the apex is now at x=20, so it
+                 points the way a send arrow should. (A plain comment, not a JSX one:
+                 this sits inside a ternary's expression position.) */
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 12l16-8-6 8 6 8-16-8z" />
+                <path d="M20 12L4 4l6 8-6 8z" />
               </svg>
             )}
           </button>

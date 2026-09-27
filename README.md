@@ -170,8 +170,10 @@ a documented deviation, or cut with a reason.
 | When replying the Subject field is hidden; for new emails it stays visible | `/compose` | **Deviation, stated** — the reply's subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are answering |
 | Each message can be replied to only once | `POST /api/emails` claim, `Email.repliedAt` | **Done** — a conditional update, so a race cannot double-reply; the affordance disappears once a mail is answered, and a forced second attempt answers `409` |
 | A long email: tap it to open the traditional view | thread → *Read full message* | **Done** |
+| Delete a conversation | the person sheet (a thread's header, or the address book) | **Done** - *Delete chat*, with a confirmation that says what actually happens. It is RECIPIENT-SCOPED: your side of the pairwise thread leaves your list, your thread and your unread count, and the counterpart's copy is untouched, because the row is shared. Group messages are never touched by it, and a new mail from the same person restarts the conversation |
 | Compose a new email in the traditional view from the space WhatsApp's camera tab occupies; `To` pre-filled and locked | the thread's **New mail** button | **Done** — the camera slot became the New mail button; `To` arrives pre-filled and locked |
 | Reply in the traditional view: swipe right and pick it, or tap the mail → full view → Reply | thread | **Done** - swipe right now OPENS the reply compose for that mail directly (quoted context, derived subject, `replyToId`, reply-once), and the spec's alternative (tap → full view → Reply) also ships |
+| CC in the traditional compose | `/compose`, `POST /api/emails` | **Done** - a real Cc field directly under To, with the same chips, the same resolution (a number or an alias), the same contacts autocomplete and per-chip removal. Cc recipients ARE recipients: they receive fan-out rows exactly as the To list does, they count towards the group, and the MIME message carries the Cc header |
 | Inside a conversation, new recipients cannot be added to To or CC; they stay locked in the traditional view; multiple recipients only from Home's compose | locked `lockTo` on the New mail compose | **Done** — a thread has no recipient field at all |
 | Two or more recipients from Home create a group chat; later mail to one recipient stays in its own 1:1 chat | derived thread keys (`src/lib/threadKey.ts`) | **Done** |
 | Group replies are visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | **Done** — the creator broadcasts; every other member replies from a mail, the reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
@@ -308,7 +310,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **617 assertions across 20 suites, green on the loaded database**, in dev mode
+- **664 assertions across 21 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
@@ -317,14 +319,13 @@ claim made anywhere else.
   (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
   (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
   sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
-  deployed stylesheet plus the whole attachment round trip, hashes included), and 33
-  for round 8: the raised limits enforced at the boundary (a 21MB file and a 42MB
-  message, each refused naming the NEW number), a **20MB file** uploaded, delivered
-  and downloaded **hash-identical** with its content type intact, the three
-  affordances and their input filters, the draft cards' position inside the message
-  body, the uploading (real percentage) and failed (retry) states, the send button's
-  geometry, and the `min-h-0` opt-out on **every** new fixed-size control.
-  `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
+  deployed stylesheet plus the attachment round trip, hashes included), 33 for round
+  8 (the raised limits, the three affordances, the in-message cards and the upload
+  states), and **47 for round 9**: the five fixes, CC end to end, delete chat's
+  scoping, and the security report's references. The last of those is the one worth
+  naming: it sends to=[B] with cc=[C], forms the group, replies as B, and then
+  fetches C's OWN payload - and connects a real socket as C - to prove the reply is
+  in neither. `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
   `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
   design, a copy rule and the shape of the markup, which live in the source and the
   tokens, so they need no server, no OTP and no mode - and are never a reason to
@@ -379,6 +380,16 @@ SMS.
 **d. REALTIME.** Socket.io on a custom Node server; JWT-authenticated
 connections; per-user rooms, with a 30-second polling fallback when the socket is
 unavailable.
+
+**Security.** Every security feature that is actually in this build - OTP-only auth,
+
+the JWT and its gating, the notification rules, the webhook secrets, the reply-once
+claim, party-only downloads, the group reply invariant, the alias rules, deletion
+and the service worker's scope - is written up in
+[`docs/SECURITY.md`](docs/SECURITY.md), each entry with the file and symbol to grep
+for. The honest gaps (no TLS at the app layer, the npm advisories, the 7-day token
+with no revocation, the committed placeholder secrets and their rotation policy)
+are at the end of the same document.
 
 ## Repository layout
 
