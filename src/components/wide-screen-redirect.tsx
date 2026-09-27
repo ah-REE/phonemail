@@ -69,9 +69,18 @@ export function WideScreenRedirect() {
     });
 
     if (decision === "desktop") {
-      // A client-side replace, not a full page load: the tab's session - which
-      // lives in sessionStorage - survives the hop.
-      router.replace("/desktop");
+      // ROUND 17: the handover lands on the desktop client's INBOX, not on its
+      // front door. The front door is the sign-in card (correctly so - a signed-out
+      // visitor must meet the login and nothing else), which meant a reader who was
+      // ALREADY signed in arrived at a login card with no sidebar, and had to wait
+      // for that page's own redirect before the mail client appeared. The inbox is
+      // the client: signed in, it renders immediately with the rail; signed out, its
+      // own guard sends the visitor to the login card. One destination, both cases
+      // correct, and the rail is simply there when it should be.
+      //
+      // A client-side replace, not a full page load: the tab's session - which lives
+      // in sessionStorage - survives the hop.
+      router.replace("/desktop/inbox");
     }
   }, [router]);
 
