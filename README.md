@@ -354,16 +354,17 @@ claim made anywhere else.
   no mode - and are never a reason to touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all FOURTEEN migrations applying on a clean volume,
-  all four services healthy, `/`, `/onboarding`, `/profile`, `/contacts`, `/compose`
-  and `/favicon.ico` all answering 200, and **all twenty-two suites run against that
-  clone: 703 of 704 assertions green**, with one documented skip - a socket assertion
-  that needs a socket client from `node_modules`, which a fresh clone only has inside
-  its container (the same assertion runs and passes on the loaded database). That
-  includes both attachment suites, the round-9 invariant suite and the round-10 IVR
-  suite, so file sending, CC, delete chat, the reply-privacy check and the voice tree
-  all work on a clone as well as here. The suites that inspect the database directly
-  were run with `COMPOSE_DIR=<clone>` so they read the stack actually under test.
+  then `docker compose up -d`, all FIFTEEN migrations applying on a clean volume (the
+  Session table included), all four services healthy, `/`, `/mobile`, `/desktop`,
+  `/desktop/inbox`, `/desktop/settings`, `/compose` and `/favicon.ico` all answering
+  200, and **all twenty-three suites run against that clone**, with one documented skip
+  (a socket assertion that needs a socket client from `node_modules`, which a fresh
+  clone only has inside its container - the same assertion runs and passes on the
+  loaded database). That includes the attachment suites, the reply-privacy invariant
+  suite, the IVR tree and the round-11 suite, so file sending, CC, delete chat, the
+  voice tree, the tiered OTP policy and per-device revocation all work on a clone as
+  well as here. The suites that inspect the database directly were run with
+  `COMPOSE_DIR=<clone>` so they read the stack actually under test.
 - **The service-worker counterfactual.** The stale-shell fix is not asserted by
   reading code: the served `/sw.js` is fetched over HTTP, executed in a Node
   sandbox with stubbed `self`/`caches`/`fetch`, and driven with real requests.

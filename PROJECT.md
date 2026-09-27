@@ -2036,6 +2036,39 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-fourth session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION from ORIGIN at this commit.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-215347). The clone came down at HEAD 5d35d3b -
+    the commit this session's work was just pushed as - with 163 tracked files, 15
+    migrations (the Session table included) and correctly NO
+    docker-compose.override.yml.
+  - Only the main APP container was stopped for the duration (docker-compose.yml
+    hardcodes 3000:3000); the clone's own compose file was NOT edited. The main stack
+    was restored afterwards, four healthy containers.
+  - The clone built and came up healthy on the FIRST attempt and SERVED every route,
+    including the two this round added: / and /mobile, /desktop with its inbox and
+    settings, /compose and /favicon.ico - all 200. Its /api/auth/send-otp answered
+    with a devHint AND `resendAfterSeconds: 0`, which is the new tiered policy speaking
+    on a clean stack (the first request is immediate). The "Session" table was queried
+    directly from the clone's own Postgres.
+  - THE SUITES RAN AGAINST THE CLONE with COMPOSE_DIR set for the whole run: ALL
+    TWENTY-THREE SUITES GREEN - 734 of 735 assertions, with the ONE documented skip
+    (ct3's socket assertion, which needs socket.io-client from node_modules and a fresh
+    clone only has it inside its container; round 9's socket assertion does not skip,
+    because it imports the client from this repository's own node_modules by absolute
+    path).
+  - THE HARNESS LESSON THIS RUN PRODUCED, recorded because it will recur: the shared
+    token cache is PER STACK. The first attempt warmed it against the loaded database
+    and then pointed the suites at the clone, where those sessions do not exist - so
+    every suite did the full OTP dance against the clone and the agent numbers' five-
+    per-two-hours windows were spent by the third suite. The fix was to warm the cache
+    AGAINST THE CLONE before running, which is the correct order, and the clone then
+    ran clean. (A fresh clone's Redis is empty, which is why the freshly-warmed run had
+    no window friction at all.)
+  - Mode found and left: REAL (dev mode only for the runs, the override restored, four
+    healthy containers confirmed). The clone directory is left in place.
+
 - Day 8 (Sun Sep 27), twenty-fourth session: ROUND 8 - the contact sheet, the font-size
   preference, desktop by default, the tiered OTP policy, sessions with per-device
   revocation, and the desktop coherence pass.
