@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { Wordmark } from "@/components/wordmark";
 import { EMAIL_FOLDERS } from "@/lib/folders";
+import { useAuth } from "@/lib/useAuth";
 
 /**
  * ROUND 9: THE DESKTOP RAIL.
@@ -28,11 +29,29 @@ import { EMAIL_FOLDERS } from "@/lib/folders";
 export function DesktopRail() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { status } = useAuth();
   const onInbox = pathname?.startsWith("/desktop/inbox") ?? false;
   const activeFolder = searchParams?.get("folder") ?? "inbox";
 
+  /**
+   * ROUND 13: NO SHELL BEFORE SIGN-IN.
+   *
+   * The rail lives in the desktop LAYOUT, so it used to wrap every desktop route -
+   * including /desktop itself, which is the LOGIN screen. A signed-out visitor
+   * therefore met a full mail shell (rail, folders, profile and settings links)
+   * around a login form, which is both a confusing first impression and a promise
+   * of navigation that does not exist yet.
+   *
+   * Rendering nothing until the session is confirmed fixes it at the one place the
+   * shell is defined: the shell is for signed-in readers, the login screen is for
+   * everyone else, and there is no state in between that shows both.
+   */
+  if (status !== "authenticated") {
+    return null;
+  }
+
   return (
-    <nav className="flex w-56 shrink-0 flex-col gap-1 bg-primary-container p-4 text-on-primary">
+    <nav className="flex w-60 shrink-0 flex-col gap-1 bg-primary-container p-4 text-on-primary">
       {/* 1. the logo */}
       <Link
         href="/desktop/inbox"

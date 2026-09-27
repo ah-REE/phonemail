@@ -123,7 +123,11 @@ export default function DesktopLoginPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 px-6 py-16">
+    <main className="flex min-h-screen items-center justify-center bg-surface-container-low px-6 py-12">
+      {/* ROUND 13: a centred card, and nothing else - the shell is not rendered
+          for a signed-out session at all (see components/desktop-rail.tsx), so
+          this screen is the whole page. */}
+      <div className="surface flex w-full max-w-md flex-col gap-6 p-8">
       <div>
         {/* ROUND 4: the same wordmark treatment wherever the name appears. */}
         <h1 className="flex flex-wrap items-center gap-x-2 text-2xl font-semibold">
@@ -206,6 +210,7 @@ export default function DesktopLoginPage() {
           {error}
         </p>
       )}
+      </div>
     </main>
   );
 }

@@ -2036,6 +2036,52 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 9 (Sun Sep 27), twenty-sixth session: THE DESKTOP DESIGN FIX, from the owner's
+  screenshot review.
+  - TASK 1 - NO SHELL BEFORE LOGIN. The rail lives in the desktop LAYOUT, so it
+    wrapped every desktop route - including /desktop itself, which is the LOGIN
+    screen. A signed-out visitor met a full mail shell (rail, folders, profile and
+    settings links) around a login form: a confusing first impression and a promise
+    of navigation that did not exist yet. The rail now renders nothing until the
+    session is confirmed, which fixes it in the one place the shell is defined, and
+    the login screen became a centred card on the phone's own surface. Verified two
+    ways: the signed-out page's own HTML carries no rail, folder or settings markup
+    at all, and the login route's source is the form.
+  - TASK 2 - THE PANE'S DEFAULT STATE. The reading pane can no longer show a compose
+    form, because there is no longer a compose form to show in it: compose is an
+    OVERLAY (fixed, z-50), summoned only by the toolbar's action or a mail's Reply.
+    The pane's default is the design system's empty state - a mark, "Select a
+    conversation", and a line that tells the reader what to do - with the unread
+    count in that line when there is one.
+  - TASK 3 - A REAL DESKTOP COMPOSER (src/components/desktop-compose.tsx). A
+    Gmail-style card: header ("New message" or "Reply") with a Cancel action, To, Cc,
+    Subject, the body, the three attachment affordances (documents, images, camera -
+    the phone's three intentions), the same file cards with upload states and a
+    retry, and Send. The semantics are the phone's exactly - the same /api/emails
+    endpoint, the same multipart path with real progress through XMLHttpRequest when
+    files are attached, the same limits from lib/attachments, the same 409 meaning
+    "you have already replied", the same reply linkage (replyToId, the group's thread
+    key, locked recipients, the quoted opening). The phone's compose screen is no
+    longer reachable from the desktop at all: the /compose link is gone from the
+    desktop tree, asserted by checking five desktop files for the phone screen's own
+    markers. Only the presentation is desktop, which was the point.
+  - TASK 4 - THE COHERENCE PASS. Proportions at the Gmail measures: rail 240px, list
+    380px, the pane flexible with its content capped at a 720px readable column
+    instead of stretching across a 1600px window, one 1px token divider between the
+    zones. Colour strictly on the design system's tokens: a `git grep` for literal
+    hex across the desktop tree returns nothing. Type on the system's scale with
+    font-headline on every heading. The list rows are 72px with a bold sender, the
+    subject, a one-line preview, a right-aligned time, unread emphasis, hover and a
+    visibly-selected state (accent-soft plus aria-current). Empty and loading states
+    exist for both zones, and the composer carries the upload states.
+  - EVIDENCE. 815 assertions across 25 suites green on the loaded database in dev
+    mode; the new suite (ct22, 24 assertions) proves the signed-out page carries no
+    shell, the pane's default, the composer's fields/affordances/endpoints and both
+    of its send paths live, the measures, the token audit and every desktop route.
+    No assertion in an older suite needed re-pointing this round: the desktop's
+    structure changed beneath them without moving what they assert, which is the
+    cleanest possible sign that the fix was at the right level.
+
 - Day 9 (Sun Sep 27), twenty-fifth session: THE SMS FIX, THE POLISH, AND THE DESKTOP
   CLIENT, TRADITIONAL.
   - TASK 1 (the broken feature) - WHAT WAS ACTUALLY WRONG, because the answer was not

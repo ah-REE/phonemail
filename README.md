@@ -164,7 +164,7 @@ a documented deviation, or cut with a reason.
 | Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Done in code, operator-side wiring pending** - a full voice tree: language (1 English / 2 Tamil) -> main menu -> what PhoneMail is on 3 / **register on 4**. Twilio makes a new request per step, so the stage, the language and the replay count ride in each Gather's action URL and the token is checked on every request; an unknown stage restarts at the greeting, and two invalid digits end the call politely. The Exotel one-shot path (press 1, account ready) still works. Every branch is unit-tested against the pure flow plus live guard checks; **the real call is unverified until the console is wired** |
 | Web portal, two fields (phone + OTP), registration only, resets after each signup | `/portal` | **Done** — after creation the fields clear and it returns to the empty phone step for the next account |
 | If no free OTP providers are available, use password auth | — | **Not needed** — an OTP transport is available (self-hosted gateway), so the conditional fallback clause never applies |
-| Web client | `/desktop` | **Done** — Gmail-style: a rail (logo, the real folders, profile/settings at its foot), a thread-grouped list with Compose in its toolbar, and a reading pane of stacked EMAILS - each with its own From/To/date header, full body, attachment cards and Reply action (round 12). Settings reach full parity with the phone. No chat bubbles anywhere |
+| Web client | `/desktop` | **Done** — Gmail-style and Gmail-measured (rail 240px, list 380px, a 720px readable reading column): the rail holds the logo, the real folders and profile/settings at its foot; the list is thread-grouped with Compose in its toolbar; the pane renders stacked EMAILS (From/To/date header, full body, attachment cards, Reply) and opens on an empty state, never a form; a desktop-native composer card handles new mail and replies (the phone's compose screen is unreachable from here); settings reach full parity with the phone; and **a signed-out visitor sees the login card alone - the shell renders only for a signed-in session**. Colours are the design system's tokens only (a grep for literal hex finds none), and no chat bubbles exist anywhere on this client |
 | Mobile client | `/` (mobile route group), installable PWA | **Done** |
 | Access the inbox from both clients | `/` and `/desktop` | **Done** — same endpoints, same JWT. On a wide viewport `/` hands over to `/desktop` even before signing in (the desktop's own login screen takes it from there); `/mobile` is the explicit phone URL and is never redirected away from (round 12) |
 | SMS notification, exact template, only for users without the mobile app (registered via call, portal or web client) | `src/lib/notify.ts`, gate on `User.registeredVia` | **Done** — the spec's own wording is the canonical format, in a rotated set of short one-line bodies (a single long fixed template is the one shape this project proved the carrier drops - see `src/lib/otp.ts`), with the subject flattened and truncated. Gated `portal`/`desktop`/`ivr`, 60s per-recipient throttle that reports `throttled` (round 12 moved it ahead of the dev-mode return, where it had been unreachable), and it can never fail a delivery. The README's own section says what has to be true for a real text to arrive |
@@ -327,7 +327,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **791 assertions across 24 suites, green on the loaded database**, in dev mode
+- **815 assertions across 25 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional
@@ -349,7 +349,7 @@ claim made anywhere else.
   decision at five widths and four URLs, the contact save's animated confirmation,
   the role tags proven through a real SMTP round trip on a member set that had never
   existed, the rail's real folder links, the endpoints the desktop settings reuse,
-  and the absence of bubble markup in the new traditional reading pane.
+  and the absence of bubble markup in the new traditional reading pane; and **24 for round 13**: the signed-out page carrying no shell, the reading pane's empty default, the desktop composer's fields, affordances and BOTH send paths driven live, the Gmail measures, the token audit and every desktop route.
   `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
   `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
   design, a copy rule and the shape of the markup, which live in the source and the
