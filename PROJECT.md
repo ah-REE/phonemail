@@ -3,7 +3,7 @@
 **Deadline:** Tuesday, Sep 29, 2026, 11:59 PM
 
 **`docs/SPEC.md` is the official organizer task document and the source of truth; PROJECT.md is the working plan.**
-**Today:** Wednesday, Sep 23, 2026 (Day 1)
+**Today:** Sunday, Sep 27, 2026 - the final documentation session. The build itself finished on Sep 26; the submission deadline is Tuesday, Sep 29, 11:59 PM.
 **Team:** Solo build
 
 ---
@@ -23,8 +23,9 @@ know how to use WhatsApp.
 
 - No APK required or preferred — just a responsive website with two
   interfaces (mobile-styled + desktop-styled).
-- OTP auth is **preferred** over password auth. Since OTP works
-  reliably via Twilio, **password auth is not being built** — this
+- OTP auth is **preferred** over password auth. OTP works through the
+  self-hosted SMS gateway (the Twilio trial was superseded - see
+  Section 9), so **password auth is not being built** — this
   is noted in the README as satisfying the spec's conditional
   fallback (only needed "if no free OTP providers are available").
 - ~~Fast2SMS's "OTP Message" route sends a fixed, pre-built template
@@ -59,8 +60,8 @@ know how to use WhatsApp.
 | Fast-auth layer | Redis | In-memory OTP + rate-limiting → sub-500ms login (kept exactly as-is, this is the "wow" feature) |
 | Auth tokens | JWT | Stateless, no DB hit per request |
 | Realtime (chat updates) | **Socket.io** | Live chat-style inbox updates; more mainstream/documented than raw WebSockets → more reliable AI-generated code |
-| Styling | **Tailwind CSS + shadcn/ui** | Prebuilt accessible components, speeds up all 9–10 unique screens |
-| Chat encryption | RSA (public-key) | End-to-end encryption of email/chat content — *stretch* |
+| Styling | **Tailwind CSS** (no component library) | Design tokens in `tailwind.config.ts`; every screen is built from them, so a repaint is one file |
+| Chat encryption | - | **Cut, and the claim removed.** RSA end-to-end encryption was a stretch goal and was never built. Round 4 removed the app's false "end-to-end encrypted" wording: the UI now says what is true - the mailbox is private, the mail stays between you and the people you write to, the sender is known |
 | Email transport | Self-hosted SMTP, implemented with Node's `smtp-server` package | Required by spec as "SMTP (local)" — do not replace with a 3rd-party email API. `smtp-server` is maintained by the author of `nodemailer`, so the stack stays one runtime; the Postfix/Haraka swap path is documented in smtp/README.md |
 | OTP + SMS | **sms-gate.app** (self-hosted Android SMS gateway) ✅ done | Sends through the developer's own phone + SIM via a self-hosted gateway: free, no KYC, no DLT. Real sends require the gateway phone to be online with the app logged in; with the committed placeholder credentials the API runs documented dev-OTP mode (fixed 123456 + devHint) |
 | IVR ("press 1" signup) | Exotel (free trial) 🔜 **current focus** | Open inbound calls without per-caller verification |
@@ -93,12 +94,12 @@ know how to use WhatsApp.
 ## 5. Screen Inventory
 
 ### Mobile Client (~9–10 unique layouts, 14 total incl. reused components)
-1. Language selection
+1. Language selection - SUPERSEDED by the welcome screen; language lives in the Settings Language row
 2. Terms & Conditions
 3. Phone number entry (auto-filled, editable)
 4. OTP verification (auto-filled/verified)
 5. Home (chat list) — search bar, filter chips, compose button, menu, profile icon
-6. Side menu drawer (Home, Drafts, Spam, Trash)
+6. Side menu drawer - WITHDRAWN; Drafts/Spam/Trash are rows in Profile & Settings (Section 9)
 7. Chat/conversation thread — subject field, reply-once, swipe-to-tag
 8. Compose (traditional view) — locked To/CC when replying
 9. Traditional full view (long email expanded)
@@ -181,10 +182,14 @@ here is enhancement, not core function.
       provider, Oracle Cloud + DuckDNS live hosting
 
 ### Day 7 - Tue Sep 29: SUBMISSION ONLY (final green run, no new work)
+
+**Closed out on Sunday, Sep 27.** The two unchecked boxes below are the
+operator-side ones (a real IVR call, a real SMS leg) and the optional
+pooling/compression work; each carries its reason inline.
 - [x] Write README.md: what it does, exact 2 commands, full feature
       list mapped to spec, architecture explanation, known limitations *(done - a line-by-line spec mapping with the honest rows for attachments, phone auto-detection, WebOTP, IVR, the swipe-right alternative and desktop, plus load numbers and the npm advisory count)*
 - [x] Fresh-machine test: clone repo, `docker compose up -d` only,
-      confirm zero manual steps needed *(done repeatedly, most recently by cloning from GitHub at b07db59 onto a clean volume: all 7 migrations applied and 116 assertions passed with no manual step)*
+      confirm zero manual steps needed *(done repeatedly; most recently by cloning from ORIGIN into a timestamped directory, where all 12 migrations applied on a clean volume, the four services came up healthy, the clone served all four smoke routes, and all 17 suites ran against it green at 525 of 526 with the one documented socket skip)*
 - [ ] Full demo rehearsal: mobile flow, desktop flow, IVR call, SMS *(NOT done - the flows are verified programmatically, but the IVR call needs the Exotel console wired and a real call, and the SMS leg needs the gateway phone online. Both are operator-side and were never performed here.)*
 - [x] Fix whatever breaks *(nothing broke: the closing runs on the working stack and on a fresh clone from origin were both fully green)*
 
@@ -208,7 +213,7 @@ Priority order to drop, if needed, from lowest to highest impact:
 1. Custom SMS via alternate provider (stretch only — likely to be dropped)
 2. Live hosting (Oracle Cloud + DuckDNS) — nice bonus, not required
 3. Multi-language support — fall back to English only, document intent
-4. RSA end-to-end encryption — document as future work if it slips
+4. RSA end-to-end encryption - **CUT, and never claimed again**: it was not built, and the UI's encryption wording was removed rather than left as decoration
 5. Group chat logic — fall back to 1:1 chats only
 
 **Never cut:** Docker two-command boot, OTP-only login, PWA setup,
@@ -2030,6 +2035,39 @@ context instantly)*
     decisions, one line tracking them.
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
+
+- Day 8 (Sun Sep 27), seventeenth session: THE README, FINAL PASS. Documentation
+  only - no code changed, no behaviour changed - and the session still ends on
+  verified ground (build green, four healthy services, the routes answering).
+  - THE README WAS REWRITTEN WHOLE, for the person who actually reads it: what the
+    product is in one paragraph; the exact two commands and the four services with
+    their roles; the port note stated as a constraint (3000 is a LITERAL in
+    docker-compose.yml, so nothing else on the host may hold it, and that is why the
+    clone simulation stops the main app for its duration); the dev-OTP path stated
+    plainly (a fresh clone runs in dev mode out of the box, every send-otp answers
+    123456 with a devHint, and real SMS exists only behind a gitignored override); a
+    nine-step demo script that follows the product as it now behaves; the
+    line-by-line spec mapping; the architecture; the honest limitation list; the
+    verification evidence; and the compliance notes.
+  - TWO STALE DEVIATIONS WERE CLOSED IN THE DOCUMENT, because they had already been
+    closed in the product: the README still claimed the Language row had been removed
+    (it was RESTORED in round 3) and never named the restored Folders rows. Both are
+    now stated as present, and the mapping carries no deviation for either - which is
+    what "language + folders restored, both deviations closed" means.
+  - THE DEMO SCRIPT WAS CORRECTED WHERE THE PRODUCT HAD MOVED PAST IT: the alias
+    example was `john.doe`, which the current rule REJECTS (an alias must mix letters
+    and digits, and an account holds one), so it is `john.doe7` now. The thread steps
+    describe the New mail button rather than a composer, reply-once is described as
+    the 409 it actually is, and the contact step says the sheet closes by itself.
+  - THE FINAL PROJECT.MD PASS: the header no longer says "Today: Day 1"; Section 3's
+    stack table no longer advertises shadcn/ui (never used) or RSA end-to-end
+    encryption (never built - and the UI's false claim about it was removed in round
+    4, so the plan says CUT rather than "stretch"); Section 5 marks the language
+    screen superseded and the drawer withdrawn; and Day 7's fresh-machine line was
+    carrying a stale count (7 migrations, 116 assertions, commit b07db59) and now
+    carries this build's real numbers (12 migrations, 17 suites, 525 of 526 against a
+    clone). Nothing was deleted; every amended line states why it changed.
+  - Mode found and left: REAL. No OTP request was made and the mode was not touched.
 
 - Day 8 (Sun Sep 27), sixteenth session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit, and THE STRAY VOLUMES REMOVED.
