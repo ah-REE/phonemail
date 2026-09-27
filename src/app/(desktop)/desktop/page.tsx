@@ -172,7 +172,13 @@ export default function DesktopLoginPage() {
       {otpSent && (
         <>
           <p className="text-sm text-on-surface-variant">Enter the 6-digit code sent to +91 {normalized}.</p>
-          <div className="flex gap-2">
+          {/* ROUND 16: the code boxes and the Resend control WRAP instead of sharing one
+              fixed line. Six 48px boxes plus their gaps come to roughly 328px, which left
+              about 56px of the card for a button that needs about 110 - so the button was
+              pushed past the card instead of sitting in it. Wrapping is the honest fix: the
+              boxes keep their row and the button takes the next one whenever the card is
+              narrower than the two together. */}
+          <div className="flex flex-wrap items-center gap-2">
             {digits.map((digit, index) => (
               <input
                 key={index}
@@ -190,7 +196,7 @@ export default function DesktopLoginPage() {
             ))}
             <button
               type="button"
-              className="btn-quiet ml-2"
+              className="btn-quiet ml-2 shrink-0"
               disabled={countdown > 0 || busy}
               onClick={() => void sendOtp()}
             >
