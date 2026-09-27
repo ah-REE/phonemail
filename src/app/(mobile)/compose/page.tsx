@@ -378,15 +378,18 @@ function ComposeForm() {
             />
             )}
             {!lockRecipients && (
+              /* ROUND 6: a true circle, its diameter matched to the chip row's own
+                 height (h-8 = the 32px chip), glyph centred, square by
+                 construction rather than by arithmetic. */
               <button
                 type="button"
                 aria-label="Add this recipient"
                 title="Add this recipient"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent disabled:opacity-40"
+                className="box-border flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft p-0 leading-none text-accent disabled:opacity-40"
                 disabled={draftRecipient.trim().length === 0}
                 onClick={() => addRecipientsFrom(draftRecipient)}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </button>

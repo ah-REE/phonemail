@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AppBar } from "@/components/app-bar";
 import { clearDraft, readDraft, type LocalDraft } from "@/lib/folders";
 
 /**
@@ -28,23 +29,21 @@ export default function DraftsPage() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-wa-line bg-wa-teal px-4 py-3 text-white">
-        <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none" aria-label="Back to the chat list">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </Link>
-        <h1 className="text-xl font-semibold">Drafts</h1>
-        <span className="ml-auto text-sm opacity-90">{draft ? 1 : 0}</span>
-      </header>
+      {/* ROUND 6: the shared AppBar, so this screen's header obeys the same rule as
+          every other one (it used to carry its own wa-teal bar). */}
+      <AppBar
+        title="Drafts"
+        backHref="/"
+        right={<span className="pr-3 text-sm text-on-primary/90">{draft ? 1 : 0}</span>}
+      />
 
       {!draft && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <p className="text-lg font-semibold">No drafts</p>
-          <p className="text-sm text-wa-muted">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-7 text-center">
+          <p className="text-lg font-semibold text-on-surface">No drafts</p>
+          <p className="text-sm text-on-surface-variant">
             Start a message and leave it unfinished - it will be kept on this device.
           </p>
-          <Link href="/compose" className="btn-primary mt-3">
+          <Link href="/compose" className="btn-brand mt-3">
             Write a message
           </Link>
         </div>
@@ -66,13 +65,13 @@ export default function DraftsPage() {
             <div className="mt-2 flex gap-2">
               <Link
                 href={"/compose?draft=1" + (draft.to ? "&to=" + encodeURIComponent(draft.to) : "")}
-                className="min-h-tap rounded-full bg-accent px-4 text-sm font-semibold text-on-surface"
+                className="btn-brand"
               >
                 Resume
               </Link>
               <button
                 type="button"
-                className="min-h-tap rounded-full border border-wa-outline px-4 text-sm text-wa-muted"
+                className="btn-quiet"
                 onClick={discard}
               >
                 Discard

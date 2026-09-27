@@ -43,8 +43,6 @@ export interface MessageCardProps {
   secondary?: string;
   when: string;
   body: string;
-  /** True for a message that was unread when the thread opened. */
-  isNew?: boolean;
   /** The single sent tick, on a message of mine. */
   tick?: boolean;
   /** What this message answers: a compact, tappable preview. */
@@ -82,7 +80,6 @@ export function MessageCard({
   secondary,
   when,
   body,
-  isNew = false,
   tick = false,
   quoted,
   replyHref,
@@ -135,13 +132,8 @@ export function MessageCard({
         <div
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          className={`${radius} ${shell} relative px-3.5 pb-1.5 pt-2.5 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-ui active:scale-[0.995]`}
+          className={`${radius} ${shell} relative px-3 pb-1 pt-2 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-ui active:scale-[0.995]`}
         >
-          {isNew && (
-            <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-msg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-              New
-            </span>
-          )}
 
           {/* 1. what it answers, first and tappable */}
           {quoted ? (
@@ -188,8 +180,11 @@ export function MessageCard({
             </p>
           )}
 
-          {/* 3. one quiet metadata line: the time, the state, the tags. */}
-          <div className="mt-1 flex items-center justify-end gap-1.5">
+          {/* 3. one quiet metadata line: the time, the state, the tags. ROUND 6:
+              mt-0.5 and leading-none, and the reveal control is a 24px box rather
+              than a 28px one - the control, not the text, used to set this row's
+              height, which is what read as a dead band under the body. */}
+          <div className="mt-0.5 flex items-center justify-end gap-1.5 leading-none">
             {tags}
             {statusNote ? (
               <span className="text-[11px] font-medium text-chat-meta">{statusNote}</span>
@@ -212,7 +207,7 @@ export function MessageCard({
                 onClick={onMore}
                 aria-label={moreOpen ? "Hide message actions" : "Show message actions"}
                 aria-expanded={moreOpen}
-                className="ml-0.5 -mr-1 flex h-7 w-7 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
+                className="ml-0.5 -mb-0.5 -mr-1 flex h-6 w-6 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
               >
                 <svg
                   width="16"
@@ -237,7 +232,10 @@ export function MessageCard({
         </div>
 
         {/* The reply action, under the bubble rather than inside it: a reply is a
-            thing you do TO a message, not a part of it. */}
+            thing you do TO a message, not a part of it. (ROUND 6: the "NEW" marker
+            is gone - unread state is the home list's badge and nowhere else - and
+            the bubble's interior was tightened so the body meets its metadata line
+            with no dead band.) */}
         {replyHref && replyLabel ? (
           <a
             href={replyHref}

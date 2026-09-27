@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
 import { Wordmark } from "@/components/wordmark";
 
@@ -129,17 +130,13 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
   return (
     <header className="flex w-full flex-col py-2">
       <div className="mb-3 flex w-full items-center justify-between">
+        {/* ROUND 6: the step bar keeps its own layout (brand + "N of 3"), but its
+            back control is the shared BackButton, so the title meets the same
+            optical rule here as on every other screen. */}
         {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Go back"
-            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-ui active:bg-surface-container"
-          >
-            <Icon name="back" size={22} />
-          </button>
+          <BackButton onBack={onBack} label="Go back" tone="plain" />
         ) : (
-          <span className="h-10 w-10" aria-hidden="true" />
+          <span className="h-12 w-12" aria-hidden="true" />
         )}
 
         {/* ROUND 4: the brand mark here is the WORDMARK - the home screen's own

@@ -91,7 +91,8 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
 2. **Send → live arrival.** In tab A use the compose button (bottom right) and
    send to `6381195975`. Tab B's chat list updates **live** over the socket, with
    an unread badge, and the new mail opens a `Subject: …` divider in the thread.
-3. **Reply once.** In tab B open the thread and press **Reply** on the mail.
+3. **Reply once.** In tab B open the thread and either press **Reply** on the mail
+   or **swipe it to the right** - the swipe opens the same reply compose directly.
    Back in tab A the reply arrives, labelled `re: …`. Answering the *same* mail
    again is impossible: the affordance is gone, and the server refuses a forced
    second attempt with **`409`** — reply-once is enforced server-side, not in the
@@ -121,7 +122,8 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
 9. **The chat's own grammar.** Consecutive messages from one sender group into a
    run; a calendar change draws a **date pill** ("Today", "Yesterday",
    "27 Sep"); a long mail collapses behind *Read full message*; the chevron under
-   a mail opens Move to Spam / Move to Trash / Favorite / Reply.
+   a mail opens Move to Spam / Move to Trash / Favorite / Reply. Unread state is
+   the chat list's own badge - the cards carry no marker.
 
 ## 5. Feature-to-spec mapping
 
@@ -153,12 +155,12 @@ a documented deviation, or cut with a reason.
 | Profile icon, top-right → account settings: alias IDs, language, personal details, profile picture and more | Home → `/profile` | **Done** for aliases, language, the display name, the folders, the notification switch and account deletion; **the profile picture is not built** (see limitations) |
 | Compact Subject field above the message box | traditional `/compose` | **Done as superseded** — the subject field's home is the **traditional compose**, and the thread's message box is a **New mail** button that opens it. A mail that opened a subject renders `Subject: <subject>`; only a reply renders `re: <subject>` |
 | All emails from the same sender stay in one chat | `GET /api/conversations` | **Done** |
-| New emails display the subject at the top; replies are linked to the original (swipe right to tag the original message) | thread | **Done with one moved gesture** — a new subject draws a divider at its chronological position, and a reply carries a link to the exact mail it answers plus a quoted preview. The tag/move panel is on **swipe left**; **swipe right** reveals the traditional-view reply the spec asks for elsewhere |
+| New emails display the subject at the top; replies are linked to the original (swipe right to tag the original message) | thread | **Done with one moved gesture** — a new subject draws a divider at its chronological position, and a reply carries a link to the exact mail it answers plus a quoted preview. The tag/move panel is on **swipe left**; **swipe right** opens the reply compose for that mail directly (quoted context, derived subject, reply-once) |
 | When replying the Subject field is hidden; for new emails it stays visible | `/compose` | **Deviation, stated** — the reply's subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are answering |
 | Each message can be replied to only once | `POST /api/emails` claim, `Email.repliedAt` | **Done** — a conditional update, so a race cannot double-reply; the affordance disappears once a mail is answered, and a forced second attempt answers `409` |
 | A long email: tap it to open the traditional view | thread → *Read full message* | **Done** |
 | Compose a new email in the traditional view from the space WhatsApp's camera tab occupies; `To` pre-filled and locked | the thread's **New mail** button | **Done** — the camera slot became the New mail button; `To` arrives pre-filled and locked |
-| Reply in the traditional view: swipe right and pick it, or tap the mail → full view → Reply | thread | **Done** — the spec's alternative (tap → full view → Reply) ships, and swipe right reveals the traditional-view reply directly |
+| Reply in the traditional view: swipe right and pick it, or tap the mail → full view → Reply | thread | **Done** - swipe right now OPENS the reply compose for that mail directly (quoted context, derived subject, `replyToId`, reply-once), and the spec's alternative (tap → full view → Reply) also ships |
 | Inside a conversation, new recipients cannot be added to To or CC; they stay locked in the traditional view; multiple recipients only from Home's compose | locked `lockTo` on the New mail compose | **Done** — a thread has no recipient field at all |
 | Two or more recipients from Home create a group chat; later mail to one recipient stays in its own 1:1 chat | derived thread keys (`src/lib/threadKey.ts`) | **Done** |
 | Group replies are visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | **Done** — the creator broadcasts; every other member replies from a mail, the reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
@@ -284,30 +286,29 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **526 assertions across 17 suites, green on the loaded database**, in dev mode
+- **552 assertions across 18 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
-  items (search-to-chat, the Favorites/Attachments chips, the group-folder
-  add-on), 31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the
-  round-2 fixes (single-send, self-sends, the notification switch, account
-  deletion, reply linkage, the input pass), 54 for the round-3 items (the contact
-  and alias send, the group's per-viewer reply model, the restored settings rows,
-  the swipe reply, the live subject divider, the message-card design), 32 for the
-  settings reference (source-only), 20 for the round-3 chat fixes, 10 for the
-  round-4 polish rules (source-only), 26 for round 4 itself (the registration
-  lookup both ways, reply-once enforced live, `Subject:` against `re:`, the contact
-  save reaching the chat, the shared back control and the shared wordmark), and 25
-  for round 5: the service worker **executed in a sandbox** rather than read —
-  network-first navigations with a stale shell cached at the exact URL, a
-  cache-busted navigation fetching fresh, the offline fallback, exact-URL matching,
-  `/api` offline honesty and `/socket.io` left alone — plus the
-  stamp-equals-`BUILD_ID` rotation checked against the live container, the date
-  pills and the live-arrival subject dividers in both threads, and the reviewed
-  footer wordmark size. `ct5/settings_ref.mjs` and `ct8/polish_regression.mjs` are
-  the two **source-only** suites: they grade a design and a copy rule, which live
-  in the source and the tokens, so they need no server, no OTP and no mode — and
-  are never a reason to touch one.
+  items (search-to-chat, the Favorites/Attachments chips, the group-folder add-on),
+  31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the round-2
+  fixes (single-send, self-sends, the notification switch, account deletion, reply
+  linkage, the input pass), 54 for the round-3 items (the contact and alias send, the
+  group's per-viewer reply model, the restored settings rows, the swipe reply, the
+  live subject divider, the message-card design), 32 for the settings reference
+  (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
+  (source-only), 26 for round 4 itself (the registration lookup both ways,
+  reply-once enforced live, `Subject:` against `re:`, the contact save reaching the
+  chat, the shared back control and the shared wordmark), 25 for round 5 (the
+  service worker **executed in a sandbox** rather than read, plus the canvas rules),
+  and 26 for round 6, also source-only by design: the bubble's padding, the absence
+  of the NEW mark **tree-wide**, the reply swipe's wiring and its guard, the
+  switch's construction, both buttons' geometry, and the one header and empty-state
+  rule. `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
+  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
+  design, a copy rule and the shape of the markup, which live in the source and the
+  tokens, so they need no server, no OTP and no mode - and are never a reason to
+  touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build.** Most
   recently: `git clone https://github.com/ah-REE/phonemail.git` then
   `docker compose up -d`, all twelve migrations applying on a clean volume, all

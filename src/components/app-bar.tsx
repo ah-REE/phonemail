@@ -22,16 +22,19 @@ export function AppBar({
   title,
   subtitle,
   backHref,
+  backLabel = "Back",
   right,
 }: {
   title: string;
   subtitle?: string;
   backHref?: string;
+  /** The control's accessible name - a screen may say where it goes back to. */
+  backLabel?: string;
   right?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center bg-primary-container px-4 text-on-primary">
-      {backHref && <BackButton href={backHref} />}
+      {backHref && <BackButton href={backHref} label={backLabel} />}
       <div className="pointer-events-none absolute inset-x-0 text-center">
         <h1 className="truncate px-16 font-headline text-base font-semibold tracking-normal">{title}</h1>
         {subtitle && <p className="truncate px-16 text-xs opacity-80">{subtitle}</p>}

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AppBar } from "@/components/app-bar";
 
 /**
  * Placeholder screens reached from the home menu / profile icon.
@@ -10,16 +10,15 @@ import Link from "next/link";
 export function ComingSoon({ title, note }: { title: string; note: string }) {
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex min-h-tap items-center gap-3 bg-wa-teal px-4 py-3 text-white">
-        <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none">
-          ←
-        </Link>
-        <h1 className="text-xl font-semibold">{title}</h1>
-      </header>
+      <AppBar title={title} backHref="/" />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-lg font-semibold text-wa-ink">{title} is coming soon</p>
-        <p className="text-sm text-wa-muted">{note}</p>
+      {/* ROUND 6: this screen was the last one carrying the old wa-teal header.
+          (It is currently unreferenced - no screen imports ComingSoon - but it is
+          fixed rather than left as a trap for the next reader.) */}
+
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-7 text-center">
+        <p className="text-lg font-semibold text-on-surface">{title} is coming soon</p>
+        <p className="text-sm text-on-surface-variant">{note}</p>
       </div>
     </main>
   );

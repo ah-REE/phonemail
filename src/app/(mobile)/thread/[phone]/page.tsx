@@ -91,10 +91,10 @@ export default function ThreadPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  // Swipe RIGHT reveals the spec's traditional-view reply; swipe LEFT keeps the
-  // tag panel. A right swipe used to open the tag panel as well, which left the
-  // gesture the spec asks for with nowhere to live.
-  const [replyPromptId, setReplyPromptId] = useState<string | null>(null);
+  // ROUND 6: swipe RIGHT *is* the reply gesture - it opens the reply compose for
+  // that mail directly (quoted context, derived subject, replyToId, reply-once);
+  // swipe LEFT keeps the tag/move panel. The old two-step (reveal a footer link,
+  // then tap it) is gone, and so is the state that drove it.
   // The mockup's paperclip: present per the design, honest about the backend.
   const [attachNotice, setAttachNotice] = useState(false);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
@@ -413,7 +413,6 @@ export default function ThreadPage() {
                 secondary={message.mine ? counterpartAddress : message.from}
                 when={formatWhen(message.createdAt)}
                 body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
-                isNew={message.wasUnread ?? false}
                 tick={message.mine}
                 quoted={
                   original
@@ -503,14 +502,7 @@ export default function ThreadPage() {
                   </div>
                 }
                 footer={
-                  replyPromptId === message.id ? (
-                    <Link
-                      href={replyHrefFor(message)}
-                      className="mt-3 flex min-h-tap items-center justify-center gap-2 rounded-[16px] bg-msg-action text-sm font-semibold text-msg-accent"
-                    >
-                      Reply in traditional view
-                    </Link>
-                  ) : long && !expanded ? (
+                  long && !expanded ? (
                     <button
                       type="button"
                       className="mt-2 text-sm font-semibold text-msg-accent"
@@ -539,13 +531,18 @@ export default function ThreadPage() {
                   }
                   const travelled = event.clientX - start.x;
                   if (travelled >= SWIPE_REVEAL_PX) {
-                    setReplyPromptId(replyPromptId === message.id ? null : message.id);
+                    // The reply swipe, all the way through: a mail I can answer
+                    // opens its reply compose; one I cannot (mine, still arriving,
+                    // or already answered) has nothing to open, so the gesture is
+                    // inert rather than offering a dead end.
                     setTagOpenId(null);
+                    if (!message.mine && !message.provisional && !message.repliedAt) {
+                      router.push(replyHrefFor(message));
+                    }
                     return;
                   }
                   if (-travelled >= SWIPE_REVEAL_PX) {
                     setTagOpenId(tagOpenId === message.id ? null : message.id);
-                    setReplyPromptId(null);
                   }
                 }}
               />

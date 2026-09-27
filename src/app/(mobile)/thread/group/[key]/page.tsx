@@ -334,7 +334,6 @@ export default function GroupThreadPage() {
               secondary={message.mine ? message.to : message.from}
               when={formatWhen(message.createdAt)}
               body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
-              isNew={message.wasUnread ?? false}
               tick={message.mine}
               quoted={
                 original

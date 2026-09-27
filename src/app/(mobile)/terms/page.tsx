@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { BackButton } from "@/components/back-button";
+import { AppBar } from "@/components/app-bar";
 import { Wordmark } from "@/components/wordmark";
 
 /**
@@ -11,10 +11,10 @@ import { Wordmark } from "@/components/wordmark";
 export default function TermsPage() {
   return (
     <main className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-20 flex h-14 items-center gap-3 bg-primary-container px-4 text-on-primary">
-        <BackButton href="/onboarding" label="Back to sign-up" />
-        <h1 className="font-headline text-base font-bold tracking-tight">Terms &amp; Conditions</h1>
-      </header>
+      {/* ROUND 6: the shared AppBar. This header already used the shared back
+          control, but it left-aligned its title while every other screen centres
+          it - the same drift, on one more screen. */}
+      <AppBar title="Terms &amp; Conditions" backHref="/onboarding" backLabel="Back to sign-up" />
 
       <section className="flex flex-col gap-3 p-4 text-sm leading-relaxed text-wa-ink">
         {/* ROUND 4: the name carries the wordmark treatment wherever it appears. */}
@@ -36,7 +36,7 @@ export default function TermsPage() {
           By continuing you agree that your phone number identifies your account and that you will
           use the service lawfully.
         </p>
-        <Link href="/onboarding" className="btn-primary mt-4">
+        <Link href="/onboarding" className="btn-brand mt-4">
           Back to signup
         </Link>
       </section>

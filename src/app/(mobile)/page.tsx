@@ -350,8 +350,11 @@ export default function HomePage() {
         )}
 
         {!loading && !error && visible.length + visibleGroups.length === 0 && (
-          <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
-            <p className="text-lg font-semibold">
+          /* ROUND 6: the one empty-state rule - gap-2 / px-6 / py-7, a semibold
+             title in on-surface, a description in on-surface-variant, the system's
+             primary button. Every screen's empty state now reads the same way. */
+          <div className="flex flex-col items-center gap-2 px-6 py-7 text-center">
+            <p className="text-lg font-semibold text-on-surface">
               {filter === "attachments"
                 ? "No messages with attachments yet"
                 : threads.length + groupThreads.length === 0
@@ -368,7 +371,7 @@ export default function HomePage() {
                     : "Try a different name, subject or number."}
             </p>
             {threads.length + groupThreads.length === 0 && (
-              <Link href="/compose" className="btn-primary">
+              <Link href="/compose" className="btn-brand">
                 Write a message
               </Link>
             )}

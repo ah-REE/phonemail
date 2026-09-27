@@ -253,7 +253,9 @@ export default function ContactsPage() {
 
       {!loading && visible.length === 0 && !error && (
         <div className="flex flex-col items-center gap-2 px-6 py-7 text-center">
-          <p className="text-lg font-semibold">
+          {/* ROUND 6: the one empty-state rule - the title carries the same ink as
+              every other screen's. */}
+          <p className="text-lg font-semibold text-on-surface">
             {contacts.length === 0 ? "No contacts yet" : "Nothing matches that search"}
           </p>
           <p className="text-sm text-on-surface-variant">

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
+import { Switch } from "@/components/switch";
 import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 
@@ -484,10 +485,13 @@ export default function ProfilePage() {
               className="ring-4 ring-settings-ring"
             />
             {/* The reference's badge is a pencil, not a tick: it opens the name
-                field rather than reporting something that already happened. */}
+                field rather than reporting something that already happened.
+                ROUND 6: the geometry is spelled out so nothing can distort the
+                circle - an explicit square box, border-box sizing, no padding and
+                no line-height, the glyph centred by flex. */}
             <button
               type="button"
-              className="absolute -bottom-0.5 -right-0.5 flex aspect-square h-10 w-10 items-center justify-center rounded-full bg-settings-brand text-white ring-[3px] ring-white shadow-card transition-transform duration-ui active:scale-95"
+              className="absolute -bottom-0.5 -right-0.5 box-border flex aspect-square h-10 w-10 shrink-0 items-center justify-center rounded-full bg-settings-brand p-0 leading-none text-white ring-[3px] ring-white shadow-card transition-transform duration-ui active:scale-95"
               aria-label="Change your display name"
               onClick={() => {
                 nameFieldRef.current?.focus();
@@ -737,25 +741,17 @@ export default function ProfilePage() {
                   </span>
                 </span>
               </span>
-              {/* The reference draws this switch OFF: a grey track with the knob
-                  at the left. On is the app's own blue. */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={smsNotifications}
-                aria-label="SMS notifications for new mail"
+              {/* ROUND 6: one conventional Switch (components/switch.tsx). The knob
+                  used to be `absolute` inside a flex track, so its static position
+                  - not the track's own centring - decided where it sat. The
+                  reference draws the switch OFF: a grey track, knob at the left.
+                  On is the app's own blue. */}
+              <Switch
+                checked={smsNotifications}
+                onChange={() => void toggleSms()}
                 disabled={smsSaving}
-                onClick={() => void toggleSms()}
-                className={`relative flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors duration-ui disabled:opacity-60 ${
-                  smsNotifications ? "bg-settings-brand" : "bg-settings-track"
-                }`}
-              >
-                <span
-                  className={`absolute h-[20px] w-[20px] rounded-full bg-white shadow-card transition-all duration-ui ${
-                    smsNotifications ? "left-[20px]" : "left-[2px]"
-                  }`}
-                />
-              </button>
+                label="SMS notifications for new mail"
+              />
             </div>
 
             {smsNotice && (

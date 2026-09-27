@@ -2036,6 +2036,74 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), eighteenth session: CLICK-THROUGH ROUND 6 - the visual
+  corrections the owner photographed, and the reply swipe. Landed and verified.
+  - THE BUBBLE'S DEAD BAND, MEASURED. The complaint was "body, then the time +
+    chevron floating in roomy padding". Padding was not the whole story: the
+    metadata row's height was being set by the 28px reveal CONTROL, not by its 11px
+    text, so the row read as an empty band under the body. Values, before -> after
+    (so they can be dialled "tighter"/"looser" in one line each):
+      horizontal padding       14px -> 12px   (px-3.5 -> px-3)
+      top padding              10px -> 8px    (pt-2.5 -> pt-2)
+      bottom padding            6px -> 4px    (pb-1.5 -> pb-1)
+      body to metadata gap      4px -> 2px    (mt-1 -> mt-0.5)
+      reveal control box       28px -> 24px   (h-7 w-7 -> h-6 w-6, with -mb-0.5)
+      metadata line-height     auto -> none   (leading-none)
+  - THE "NEW" MARK CAME OFF THE CARDS ENTIRELY. Unread state is the home list's
+    badge and nowhere else. The prop is gone from the component and from both
+    threads, and the new suite grades the ABSENCE TREE-WIDE - every .ts/.tsx under
+    src - rather than trusting a list of files somebody remembered to update.
+  - THE REPLY SWIPE, ALL THE WAY THROUGH: swiping a message RIGHT now opens the
+    reply compose for that mail DIRECTLY - quoted context, derived subject, the
+    replyToId link, reply-once enforced - instead of the old two-step (reveal a
+    footer link, then tap it). Its state is deleted, not left dead. Offered only for
+    a received, not-yet-replied, non-provisional mail; a left swipe keeps the
+    tag/move panel; the chevron's Reply action and the under-bubble Reply both stay.
+    The gesture itself is the user's click-through; the suite grades the wiring, the
+    guard, and the absence of the old prompt.
+  - THE TOGGLE IS NOW ONE COMPONENT (components/switch.tsx). The knob had been
+    `absolute` inside a flex track, so its vertical position came from its STATIC
+    position rather than from the track's own centring - which is exactly how it
+    rendered "weird". It is now a 20px block IN FLOW inside a 44x24 track with a 2px
+    inset, moved by a transform (travel 20px = the whole track), and it is a real
+    `role="switch"` with `aria-checked`, so a screen reader announces it.
+  - THE PROFILE EDIT BADGE: its geometry is spelled out so nothing can distort the
+    circle - an explicit square box (aspect-square h-10 w-10), border-box sizing, no
+    padding, no line-height, the glyph centred by flex, the white ring intact.
+  - THE COMPOSE "+" BUTTON: a true circle, its diameter matched to the chip row's
+    own height (h-8 = the 32px chip), icon centred, square by construction.
+  - ONE ALIGNMENT SYSTEM, AND THE DRIFT NAMED. The folder screens (Spam/Trash via
+    components/folder-screen.tsx, and Drafts) were the last screens carrying a
+    PRE-design-system header - a wa-teal bar, a custom back glyph, a left-aligned
+    title, a trailing count - plus legacy btn-primary CTAs and their own empty-state
+    rhythm. All three now use the shared AppBar (and therefore the one BackButton
+    rule) and the one empty-state pattern. The sweep found three more: Terms already
+    used the shared back control but LEFT-ALIGNED its title (now AppBar), the
+    onboarding step bar had its own 40px back button (now the shared one, keeping
+    its brand + "N of 3" layout), and ComingSoon - currently unreferenced - still
+    carried the old bar. The desktop client keeps its own chrome and was left alone:
+    it is a different client and has no back arrow. The AppBar also gained a
+    `backLabel`, so a screen can keep saying where Back goes.
+  - AN EIGHTEENTH SUITE, ct15/clickthrough6_regression.mjs, 26 assertions and
+    SOURCE-ONLY by design: every item this round is the SHAPE of the markup, which
+    lives in the source and not in a server response. It walks the tree for the
+    absence assertions.
+  - FOUR ASSERTIONS RE-POINTED, NOT DELETED, each because this round moved the thing
+    it graded: chatref's NEW-mark check now grades its absence; ct5's and ct8's
+    switch checks read components/switch.tsx (same intent - a grey OFF track with
+    the knob at the left, a real switch wired to the server's setting - new
+    construction); ct3's swipe check now asserts where the gesture LANDS; ct2's and
+    ct13's checks followed the switch component and the AppBar's new label. Two of
+    the re-points had to be corrected once themselves: the word "absolute"
+    legitimately appears in the new component's explanatory comment, so the
+    absence assertions grade the old CONSTRUCTION, not the word.
+  - VERIFICATION: 552 assertions across EIGHTEEN suites green on the loaded database
+    in dev mode; build green (the image build failed once on a transient error and
+    succeeded on retry - the same flake as round 4); the fresh-clone evaluator
+    simulation from ORIGIN is recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the runs and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), seventeenth session: THE README, FINAL PASS. Documentation
   only - no code changed, no behaviour changed - and the session still ends on
   verified ground (build green, four healthy services, the routes answering).

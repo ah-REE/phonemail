@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AppBar } from "@/components/app-bar";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -12,6 +12,12 @@ import { useAuth } from "@/lib/useAuth";
  * Lists the signed-in user's messages in one folder and lets them move a message
  * back to the inbox. The move is one PATCH on the message's `folder`, the same
  * route that already carries the tags.
+ *
+ * ROUND 6: this screen used to carry its own pre-design-system header (a wa-teal
+ * bar, a custom back glyph, a left-aligned title) and its own empty-state rhythm,
+ * which is the drift the click-through photographed. It now uses the shared AppBar
+ * - and therefore the one BackButton rule - and the same empty-state pattern as
+ * every other screen.
  */
 
 interface FolderMessage {
@@ -94,15 +100,11 @@ export function FolderScreen({
 
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex items-center gap-3 border-b border-wa-line bg-wa-teal px-4 py-3 text-white">
-        <Link href="/" className="min-h-tap min-w-tap text-2xl leading-none" aria-label="Back to the chat list">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
-        </Link>
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <span className="ml-auto text-sm opacity-90">{messages.length}</span>
-      </header>
+      <AppBar
+        title={title}
+        backHref="/"
+        right={<span className="pr-3 text-sm text-on-primary/90">{messages.length}</span>}
+      />
 
       {loading && <p className="p-4 text-wa-muted">Loading.</p>}
 
@@ -113,9 +115,9 @@ export function FolderScreen({
       )}
 
       {!loading && !error && messages.length === 0 && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <p className="text-lg font-semibold">Nothing in {title.toLowerCase()}</p>
-          <p className="text-sm text-wa-muted">{emptyNote}</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-7 text-center">
+          <p className="text-lg font-semibold text-on-surface">Nothing in {title.toLowerCase()}</p>
+          <p className="text-sm text-on-surface-variant">{emptyNote}</p>
         </div>
       )}
 
@@ -131,7 +133,7 @@ export function FolderScreen({
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
-                className="min-h-tap rounded-full border border-wa-outline px-4 text-sm font-semibold text-primary-container"
+                className="btn-quiet"
                 onClick={() => void move(message.id, "inbox")}
               >
                 Move to inbox
@@ -139,7 +141,7 @@ export function FolderScreen({
               {folder === "spam" ? (
                 <button
                   type="button"
-                  className="min-h-tap rounded-full border border-wa-outline px-4 text-sm text-wa-muted"
+                  className="btn-quiet"
                   onClick={() => void move(message.id, "trash")}
                 >
                   Move to trash
@@ -147,7 +149,7 @@ export function FolderScreen({
               ) : (
                 <button
                   type="button"
-                  className="min-h-tap rounded-full border border-wa-outline px-4 text-sm text-wa-muted"
+                  className="btn-quiet"
                   onClick={() => void move(message.id, "spam")}
                 >
                   Move to spam
