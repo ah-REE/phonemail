@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { OTP_WINDOW_LIMIT, OtpCooldownError, requestOtp } from "@/lib/otp";
+import { OtpCooldownError, requestOtp } from "@/lib/otp";
 import { phoneNumberSchema } from "@/lib/phone";
 
 export const runtime = "nodejs";
@@ -47,9 +47,9 @@ export async function POST(request: Request) {
         // The REAL policy, not a fixed 60: zero while the rapid pair lasts, a minute
         // after that. The screen's countdown reads this, so it cannot drift from the
         // rule the server enforces.
+        // ROUND 15: the flat policy reports one number - the wait before the next
+        // request is allowed. The window counters are gone with the window.
         resendAfterSeconds: result.resendAfterSeconds,
-        windowUsed: result.windowUsed,
-        windowLimit: result.windowLimit,
         message: "OTP sent successfully.",
         // Present only when the SMS gateway is not configured. The evaluator boots the
         // stack with placeholder credentials, so this is the documented dev
@@ -70,8 +70,9 @@ export async function POST(request: Request) {
           error: error.message,
           reason: error.reason,
           retryAfterSeconds: error.retryAfterSeconds,
-          windowLimit: OTP_WINDOW_LIMIT,
-          windowUsed: error.used,
+          // ROUND 15: no window counters - the refusal names its reason and the wait,
+          // and the strike count that caused it when that is what it was.
+          attemptCount: error.used,
         },
         { status: 429 },
       );

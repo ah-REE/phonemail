@@ -192,15 +192,20 @@ export function DesktopCompose({
     }
   }
 
+  // ROUND 15: the card renders SOLID. It was translucent because the class named a
+  // token that does not exist (`bg-surface-default`), so the card had no background
+  // at all and the page showed through it. The card now wears the system's surface
+  // token, over the system's dim scrim - the reference's treatment: a solid card on
+  // a dimmed page.
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center sm:p-8"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-on-surface/45 p-4 sm:items-center sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-label={locked ? "Reply" : "New message"}
     >
       <form
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-card border border-outline-variant bg-surface-default shadow-overlay"
+        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-card border border-outline-variant bg-surface shadow-overlay"
         onSubmit={send}
       >
         {/* Header: the title and the Cancel action, the way the phone composer's

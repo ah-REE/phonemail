@@ -43,11 +43,20 @@ export const OTP_TTL_SECONDS = 300;
  */
 export const OTP_COOLDOWN_SECONDS = 60;
 /** How many requests are immediate before the spacing applies. */
-export const OTP_RAPID_REQUESTS = 2;
+/**
+ * The tiering constants are GONE (round 15): there is one flat cooldown now. The
+ * names are kept out of the module rather than left as dead exports, so nothing can
+ * import a rule that no longer applies.
+ */
 /** Codes allowed per number per window. */
-export const OTP_WINDOW_LIMIT = 5;
+/**
+ * ROUND 15: there is no window and no rapid pair. The constants are kept only as
+ * historical markers in the comment above; nothing reads them. The one rule is
+ * OTP_COOLDOWN_SECONDS between requests for a number.
+ */
+export const OTP_FLAT_POLICY = true;
 /** The window's length, in seconds (2 hours). */
-export const OTP_WINDOW_SECONDS = 2 * 60 * 60;
+
 /** Failed verifications allowed before the pending OTP is burned. */
 export const OTP_MAX_ATTEMPTS = 5;
 /** Code used in fallback mode; also the value the evaluator test uses. */
@@ -190,7 +199,7 @@ export class OtpCooldownError extends Error {
   ) {
     super(
       reason === "window"
-        ? `This number has requested the maximum of ${OTP_WINDOW_LIMIT} codes for now. Please try again in ${Math.ceil(retryAfterSeconds / 60)} minutes.`
+        ? `This number has requested too many codes for now. Please try again in ${Math.ceil(retryAfterSeconds / 60)} minutes.`
         : `Please wait ${retryAfterSeconds}s before requesting another OTP.`,
     );
     this.name = "OtpCooldownError";
@@ -256,9 +265,9 @@ export interface RequestOtpResult {
   /** Seconds until another request is allowed (0 while the rapid pair lasts). */
   resendAfterSeconds: number;
   /** How many codes this number has asked for inside the current window. */
-  windowUsed: number;
+  /** The window counters are gone with the window (round 15). */
   /** How many the window allows. */
-  windowLimit: number;
+
 }
 
 /**
@@ -276,23 +285,22 @@ export interface RequestOtpResult {
 export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult> {
   const redis = await getRedis();
 
-  // 1. THE WINDOW. Five codes per number per two hours; the sixth is refused with the
-  // time left on the window, which is the only useful thing to tell somebody.
-  const used = Number.parseInt((await redis.get(otpWindowKey(phoneNumber))) ?? "0", 10) || 0;
-  if (used >= OTP_WINDOW_LIMIT) {
-    const remaining = await remainingTtl(redis, otpWindowKey(phoneNumber), OTP_WINDOW_SECONDS);
-    throw new OtpCooldownError(remaining, "window", used);
-  }
-
-  // 2. THE SPACING. The rapid pair is free; from the third request on, a minute
-  // between requests.
-  if (used >= OTP_RAPID_REQUESTS) {
-    const last = Number.parseInt((await redis.get(otpLastRequestKey(phoneNumber))) ?? "0", 10) || 0;
-    if (last > 0) {
-      const elapsed = Math.floor(Date.now() / 1000) - last;
-      if (elapsed < OTP_COOLDOWN_SECONDS) {
-        throw new OtpCooldownError(OTP_COOLDOWN_SECONDS - elapsed, "cooldown", used);
-      }
+  // ROUND 15: THE FLAT POLICY, RESTORED AT THE OWNER'S CALL.
+  //
+  // The tiered policy (a free rapid pair, then 60s spacing, then five codes per two
+  // hours) shipped, ran, and bit its own owner: the window lockout meant a person
+  // testing their own app could not request a sixth code for two hours. The rule is
+  // now the simple one it started as: ONE COOLDOWN BETWEEN REQUESTS PER NUMBER.
+  //
+  // What did NOT change, because these are not request throttling:
+  //   - the cooldown key itself and its 60-second TTL;
+  //   - the 5-strike burn in verifyOtp (the brute-force bound on GUESSING a code);
+  //   - the per-code TTL and the one-time-use rule.
+  const lastRequest = Number.parseInt((await redis.get(otpLastRequestKey(phoneNumber))) ?? "0", 10) || 0;
+  if (lastRequest > 0) {
+    const elapsed = Math.floor(Date.now() / 1000) - lastRequest;
+    if (elapsed < OTP_COOLDOWN_SECONDS) {
+      throw new OtpCooldownError(OTP_COOLDOWN_SECONDS - elapsed, "cooldown");
     }
   }
 
@@ -309,27 +317,19 @@ export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult>
   // Fresh code, fresh attempts.
   await redis.del(otpAttemptsKey(phoneNumber));
 
-  // 4. THE COUNT. The window's TTL is set with the first request and never extended:
-  // a sliding window would let a determined caller hold the budget open for ever.
-  const windowTtl = await remainingTtl(redis, otpWindowKey(phoneNumber), 0);
-  await redis.set(otpWindowKey(phoneNumber), String(used + 1), {
-    EX: windowTtl > 0 ? windowTtl : OTP_WINDOW_SECONDS,
-  });
+  // 3. THE COOLDOWN MARKS THE REQUEST. One key, one TTL, no counter to keep and no
+  // window to hold open: the next request is allowed exactly 60 seconds after this one.
   await redis.set(otpLastRequestKey(phoneNumber), String(Math.floor(Date.now() / 1000)), {
-    EX: OTP_WINDOW_SECONDS,
+    EX: OTP_COOLDOWN_SECONDS,
   });
 
-  // What the NEXT request will need - which is what the screen's countdown shows.
-  // The rapid pair is spent once THIS request is the second one, so the next is the
-  // third and must wait: `used + 1 < 2` was the off-by-one that reported "immediate"
-  // for a request the policy would in fact refuse for a minute.
-  const nextIsImmediate = used + 1 < OTP_RAPID_REQUESTS;
+  // What the NEXT request will need, which is what the screen's countdown shows.
+  // Flat policy, flat answer: the next request waits the cooldown, and there is no
+  // window to report because there is no window any more.
   return {
     devMode,
     ttlSeconds: OTP_TTL_SECONDS,
-    resendAfterSeconds: nextIsImmediate ? 0 : OTP_COOLDOWN_SECONDS,
-    windowUsed: used + 1,
-    windowLimit: OTP_WINDOW_LIMIT,
+    resendAfterSeconds: OTP_COOLDOWN_SECONDS,
   };
 }
 

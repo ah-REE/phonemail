@@ -20,7 +20,7 @@ treated as a bug in this document.
 | 6-digit codes from a cryptographic RNG, not `Math.random` | `src/lib/otp.ts` | `randomInt(100000, 1000000)` (imported from `node:crypto`) |
 | Codes expire in **300 seconds** | `src/lib/otp.ts` | `OTP_TTL_SECONDS = 300` |
 | A code is **one-time**: it is deleted the moment it verifies | `src/lib/otp.ts` | `redis.del(otpKey(phoneNumber))` inside the success path of `verifyOtp` |
-| **Tiered request policy**: the first two requests are immediate, then 60s apart, and at most 5 codes per number per 2-hour window | `src/lib/otp.ts` | `OTP_RAPID_REQUESTS = 2`, `OTP_COOLDOWN_SECONDS = 60`, `OTP_WINDOW_LIMIT = 5`, `OTP_WINDOW_SECONDS = 2 * 60 * 60`, `class OtpCooldownError` with its `reason` |
+| **Tiered request policy**: the first two requests are immediate, then 60s apart, and at most 5 codes per number per 2-hour window | `src/lib/otp.ts` | `OTP_COOLDOWN = 2`, `OTP_COOLDOWN_SECONDS = 60`, `OTP_WINDOW_LIMIT = 5`, `OTP_WINDOW_SECONDS = 2 * 60 * 60`, `class OtpCooldownError` with its `reason` |
 | The window is set with the FIRST request and never extended (a sliding window would let a caller hold the budget open) | `src/lib/otp.ts` | `windowTtl > 0 ? windowTtl : OTP_WINDOW_SECONDS` |
 | Every refusal names its reason ("cooldown" or "window") and the actual wait | `src/app/api/auth/send-otp/route.ts` | `reason: error.reason`, `retryAfterSeconds: error.retryAfterSeconds` |
 | **5 wrong attempts burns the code** (brute-force bound) | `src/lib/otp.ts` | `OTP_MAX_ATTEMPTS = 5`, `redis.incr(otpAttemptsKey(...))`, `attempts >= OTP_MAX_ATTEMPTS` |
