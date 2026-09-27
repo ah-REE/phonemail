@@ -2088,15 +2088,16 @@ context instantly)*
     SOURCE-ONLY by design: every item this round is the SHAPE of the markup, which
     lives in the source and not in a server response. It walks the tree for the
     absence assertions.
-  - FOUR ASSERTIONS RE-POINTED, NOT DELETED, each because this round moved the thing
-    it graded: chatref's NEW-mark check now grades its absence; ct5's and ct8's
-    switch checks read components/switch.tsx (same intent - a grey OFF track with
-    the knob at the left, a real switch wired to the server's setting - new
-    construction); ct3's swipe check now asserts where the gesture LANDS; ct2's and
-    ct13's checks followed the switch component and the AppBar's new label. Two of
-    the re-points had to be corrected once themselves: the word "absolute"
-    legitimately appears in the new component's explanatory comment, so the
-    absence assertions grade the old CONSTRUCTION, not the word.
+  - NINE ASSERTIONS RE-POINTED ACROSS SIX SUITES, NOT DELETED, each because this
+    round moved the thing it graded: chatref's NEW-mark check now grades its
+    absence; ct5's two switch checks read components/switch.tsx (same intent - a grey
+    OFF track with the knob at the left, a real switch wired to the server's setting
+    - new construction); ct8's three (the bubble padding moved, and the same two
+    switch checks); ct3's swipe check now asserts where the gesture LANDS; ct2's
+    switch check followed the component; ct13's bar check followed the AppBar's new
+    label. Two of them had to be corrected once themselves: the word "absolute"
+    legitimately appears in the new component's explanatory comment, so those
+    absence assertions grade the old CONSTRUCTION rather than the word.
   - VERIFICATION: 552 assertions across EIGHTEEN suites green on the loaded
     database in dev mode; build green (the image build failed once on a transient
     error and succeeded on retry - the same flake as round 4).
