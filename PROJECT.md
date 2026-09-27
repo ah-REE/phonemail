@@ -2036,6 +2036,41 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-third session: THE IVR ROUTE WAS READING THE WRONG PLACE.
+  One bug - reproduced before it was fixed - and a suite that could not have caught it,
+  because it drove a request shape the provider never sends.
+  - THE BUG: Twilio sends `Digits`, `From` and `CallSid` in the POST BODY as
+    application/x-www-form-urlencoded, and the query string carries only what OUR
+    Gather action URL put there (token, stage, lang, attempts). The route read every
+    parameter from the QUERY alone, so on a real call the stage was right and the
+    DIGIT WAS INVISIBLE: the tree never advanced and the menu replayed for ever.
+  - REPRODUCED FIRST, AS ASKED: `POST ?token=...&stage=main&lang=en` with a FORM BODY
+    of `From=+91...&Digits=4` answered the main-menu Gather with `attempts=1` - the
+    replay branch - instead of registering. The digits really were invisible.
+  - WHY THE TESTS MISSED IT, STATED PLAINLY: the pure flow was correct, so all 28
+    MOCKED branches stayed green; and the live checks put BOTH the stage and the
+    digits in the QUERY, which is precisely the shape a real Twilio request does NOT
+    use. A test that drives a shape the provider never sends is a test of the wrong
+    thing - and this is the second time this session family has been bitten by
+    testing a path rather than the real one.
+  - THE FIX: ONE parameter lookup over BOTH sources - the parsed form body (or JSON)
+    and the query string - with THE QUERY WINNING where they disagree, because the
+    query is our own action URL and therefore the more specific instruction. `From`,
+    `CallFrom`, `Digits`, `DtmfDigits`, `digits`, `stage`, `lang` and `attempts` all
+    go through it, so the Exotel path benefits from the same reading. NOT ONE LINE OF
+    THE PURE FLOW CHANGED: it was never wrong.
+  - VERIFIED: the exact body-form request that used to replay now returns the
+    registration Say with the address spoken digit by digit and `<Hangup/>`; and the
+    suite gained TEN LIVE assertions that drive the BODY path at every stage - the
+    greeting with `From` in the body, `Digits` 1 / 2 / 3 / 4 in the body, an invalid
+    digit in the body, the query-wins rule, and the Exotel one-shot from the body.
+  - DOCS: docs/ivr-setup.md now says where each parameter arrives (body vs query) and
+    why the query wins, so the next reader does not have to rediscover it.
+  - VERIFICATION: 714 assertions across TWENTY-TWO suites green on the loaded
+    database in dev mode; build green.
+  - Mode found: REAL. Dev mode for the run and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), twenty-second session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit.
   - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under

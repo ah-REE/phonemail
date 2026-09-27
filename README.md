@@ -310,7 +310,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **704 assertions across 22 suites, green on the loaded database**, in dev mode
+- **714 assertions across 22 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
@@ -323,11 +323,14 @@ claim made anywhere else.
   8 (the raised limits, the three affordances, the in-message cards, the upload
   states), 47 for round 9 (the five fixes, CC, delete chat's scoping and the
   security report's references - including the reply-privacy invariant proven for
-  the payload AND the socket), and 40 for round 10, the IVR tree: **28 mocked
+  the payload AND the socket), and 50 for round 10, the IVR tree: **28 mocked
   branches** of the voice flow driven as a pure function (the greeting, both
   languages, both menu digits, both replay limits, the missing digit, the unknown
-  stage, the Exotel one-shot, the spaced-digit address, XML hygiene) and 12 live
-  guard checks against the running app. `ct5/settings_ref.mjs`,
+  stage, the Exotel one-shot, the spaced-digit address, XML hygiene) and **22 live
+  checks** against the running app - ten of which drive the request shape Twilio
+  actually sends, with the digits in the POST BODY. That last ten exist because the
+  body path was silently broken and the mocked half could never have caught it: the
+  flow was right, and the route was reading the digits from the query alone. `ct5/settings_ref.mjs`,
   `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
   **source-only** suites: they grade a design, a copy rule and the shape of the
   markup, which live in the source and the tokens, so they need no server, no OTP

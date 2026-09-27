@@ -65,6 +65,7 @@ and the single write.
 |---|---|
 | Method | `POST` |
 | Auth | `?token=<IVR_WEBHOOK_SECRET>` in the URL, or an `x-ivr-secret` header — **every request** |
+| Where parameters arrive | **Twilio sends `Digits`, `From` and `CallSid` in the POST BODY** as `application/x-www-form-urlencoded`; the query string carries only what *our* Gather action URL put there (`token`, `stage`, `lang`, `attempts`). The route reads **both**, and the **query wins** where they disagree. Reading the digits from the query alone was a real bug once: the stage was right, the digit was empty, and the menu replayed for ever |
 | Stage | `stage=lang` or `stage=main`; anything else restarts at STEP 1 |
 | Digits | `Digits` (Twilio), `DtmfDigits` or `digits` |
 | Caller number | `From` (Twilio) or `CallFrom` (Exotel) — query string, form body or JSON body |
