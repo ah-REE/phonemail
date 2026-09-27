@@ -144,7 +144,7 @@ a documented deviation, or cut with a reason.
 | Spec line | Where | Status |
 |---|---|---|
 | Phone number as the email ID | `prisma/schema.prisma`, `src/lib/phone.ts` | **Done** — `9876543210@phonemail.com` |
-| Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Partial, operator-side** — the endpoint, shared-secret auth and docs are complete and tested; wiring the console and placing a real call were not performed here |
+| Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Done in code, operator-side wiring pending** - a full voice tree: language (1 English / 2 Tamil) -> main menu -> what PhoneMail is on 3 / **register on 4**. Twilio makes a new request per step, so the stage, the language and the replay count ride in each Gather's action URL and the token is checked on every request; an unknown stage restarts at the greeting, and two invalid digits end the call politely. The Exotel one-shot path (press 1, account ready) still works. Every branch is unit-tested against the pure flow plus live guard checks; **the real call is unverified until the console is wired** |
 | Web portal, two fields (phone + OTP), registration only, resets after each signup | `/portal` | **Done** — after creation the fields clear and it returns to the empty phone step for the next account |
 | If no free OTP providers are available, use password auth | — | **Not needed** — an OTP transport is available (self-hosted gateway), so the conditional fallback clause never applies |
 | Web client | `/desktop` | **Done** — Gmail-style three-zone inbox, profile and settings |
@@ -310,7 +310,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **664 assertions across 21 suites, green on the loaded database**, in dev mode
+- **704 assertions across 22 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
@@ -320,16 +320,18 @@ claim made anywhere else.
   (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
   sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
   deployed stylesheet plus the attachment round trip, hashes included), 33 for round
-  8 (the raised limits, the three affordances, the in-message cards and the upload
-  states), and **47 for round 9**: the five fixes, CC end to end, delete chat's
-  scoping, and the security report's references. The last of those is the one worth
-  naming: it sends to=[B] with cc=[C], forms the group, replies as B, and then
-  fetches C's OWN payload - and connects a real socket as C - to prove the reply is
-  in neither. `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
-  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
-  design, a copy rule and the shape of the markup, which live in the source and the
-  tokens, so they need no server, no OTP and no mode - and are never a reason to
-  touch one.
+  8 (the raised limits, the three affordances, the in-message cards, the upload
+  states), 47 for round 9 (the five fixes, CC, delete chat's scoping and the
+  security report's references - including the reply-privacy invariant proven for
+  the payload AND the socket), and 40 for round 10, the IVR tree: **28 mocked
+  branches** of the voice flow driven as a pure function (the greeting, both
+  languages, both menu digits, both replay limits, the missing digit, the unknown
+  stage, the Exotel one-shot, the spaced-digit address, XML hygiene) and 12 live
+  guard checks against the running app. `ct5/settings_ref.mjs`,
+  `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
+  **source-only** suites: they grade a design, a copy rule and the shape of the
+  markup, which live in the source and the tokens, so they need no server, no OTP
+  and no mode - and are never a reason to touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all FOURTEEN migrations applying on a clean volume,

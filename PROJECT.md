@@ -2036,6 +2036,51 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-second session: THE FULL IVR PHONE TREE. The endpoint
+  became a real voice flow - language, main menu, description, registration - with
+  the call's state in the action URLs and the token checked on every request.
+  - THE MECHANIC, STATED ONCE: Twilio makes a NEW HTTP REQUEST for every menu step,
+    so nothing about the call can live on the server. The stage, the language and
+    how many times the stage has been replayed ride in each Gather's action URL
+    query params, and THE TOKEN RIDES WITH THEM - so every request is authorised on
+    its own and the server stays stateless.
+  - THE FLOW: STEP 1 is the language menu (1 English / 2 Tamil); STEP 2 is the main
+    menu ("to know about PhoneMail, press 3; to register for PhoneMail, press 4");
+    STEP 3 explains PhoneMail on 3 and returns to the menu so they can press 4, and
+    on 4 it registers, congratulates and hangs up. Tamil says "Tamil is coming soon.
+    Continuing in English." and then the main menu - the honest handling, because
+    Twilio's TTS has no Tamil voice and the app ships English only.
+  - THE REPLAY RULE: an invalid digit replays the current stage's menu, twice; the
+    third failure says goodbye and hangs up. A missing digit is treated as an
+    invalid one. An unknown stage restarts at STEP 1, so a stale or hand-crafted URL
+    gets a fresh greeting rather than an error.
+  - THE ONE WRITE: only Digits=4 at stage=main creates an account, through the same
+    idempotent upsert as before, so pressing 4 twice returns the same account and
+    never a duplicate. The Exotel one-shot path (a CallFrom and no stage) is
+    untouched and still answers "account is ready".
+  - THE FLOW IS A PURE FUNCTION. src/lib/ivr.ts holds the whole tree as
+    (stage, digits, attempts) -> TwiML, with no Request, no database and no
+    environment in it; the route keeps only the token check, the caller lookup, the
+    single write and the XML response. That is what makes the unit tests real unit
+    tests: they import the flow and drive every branch, instead of re-implementing
+    it or needing a server.
+  - A TWENTY-SECOND SUITE, ct19/ivr_tree_unit.mjs, 40 assertions: 28 MOCKED branches
+    (the greeting, both language choices, both menu digits, both replay limits, the
+    missing digit, the unknown stage, the Exotel one-shot, the spaced-digit address,
+    and XML hygiene across every branch - a Response document, the woman voice, no
+    raw ampersand, and every action rooted at the endpoint) plus 12 LIVE checks
+    against the running app (a wrong token is 401, a missing token is 401, the
+    header works as well as the query param, and each stage answers its TwiML).
+  - DOCS: docs/ivr-setup.md now documents the tree - the step table, the
+    state-in-the-URL explanation, the Twilio console steps and the per-stage curl
+    checks - and keeps the Exotel one-shot section; the README's IVR row says
+    registration is option 4 of the voice menu.
+  - VERIFICATION: 704 assertions across TWENTY-TWO suites green on the loaded
+    database in dev mode; build green; the fresh-clone evaluator simulation from
+    ORIGIN is recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the run and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), twenty-first session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit - the last one before submission.
   - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
