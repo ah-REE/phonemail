@@ -261,11 +261,11 @@ claim made anywhere else.
 - **Fresh-clone evaluator simulations** several times through the build, most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all twelve migrations applying on a clean volume,
-  all four services healthy, and the SIXTEEN SUITES RUN AGAINST THAT CLONE - 500 of
-  501 assertions green, with one documented skip: a socket assertion that needs a
+  all four services healthy, and the SEVENTEEN SUITES RUN AGAINST THAT CLONE - 525 of
+  526 assertions green, with one documented skip: a socket assertion that needs a
   socket client from `node_modules`, which a fresh clone only has inside its
-  container (the same assertion runs and passes on the loaded database). ct2 and
-  ct3, the two suites that inspect the database directly, were run with
+  container (the same assertion runs and passes on the loaded database). The suites
+  that inspect the database directly, and round 5's container check, were run with
   `COMPOSE_DIR=<clone>` so they read the stack actually under test.
 - **Load numbers** (one run, dev mode, this machine, Node HTTP client):
   `GET /api/health` p50 **5.7 ms**, p95 **7.6 ms** over 30 sequential requests;

@@ -2031,6 +2031,41 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), sixteenth session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION from ORIGIN at this commit, and THE STRAY VOLUMES REMOVED.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-074606). The clone came down at HEAD b392769 -
+    the commit this session's work was just pushed as - with 147 tracked files, 12
+    migrations, and correctly NO docker-compose.override.yml (it is gitignored).
+  - Only the main APP container was stopped for the duration, because
+    docker-compose.yml hardcodes 3000:3000 and a clone can never bind while the main
+    stack holds it. The clone's own compose file was NOT edited: what is being tested
+    is what origin serves. The main stack was restored afterwards, four healthy
+    containers.
+  - The clone came up healthy, applied all twelve migrations on a clean volume, and
+    SERVED: / , /onboarding , /profile and /contacts all answered 200, and its own
+    /sw.js carried a build-stamped cache name (phonemail-shell-satMDnhPWnze8r3agk_m4)
+    - the round-5 worker, stamped from the clone's own build. Its send-otp answered
+    WITH a devHint even though the clone is not in dev mode: the app falling back to
+    the fixed dev code rather than pretending to send SMS it has no credentials for.
+  - THE SUITES RAN AGAINST THE CLONE: all SEVENTEEN, 525 of 526 assertions green,
+    with the ONE documented skip - ct3's socket assertion, which imports
+    socket.io-client from node_modules and a fresh clone only has it inside its
+    container (it runs and passes on the loaded database). COMPOSE_DIR was set for
+    the WHOLE run this time, so the DB-inspecting suites and ct14's container check
+    read the stack that was actually under test; the scope mistake the last session
+    recorded is not repeated.
+  - HOUSEKEEPING, DONE: the seventeen stray phonemail-*_postgres-data volumes were
+    removed BY EXACT NAME with docker volume rm - never a prune - and the list was
+    built from `docker volume ls` filtered to the dashed prefix, so the main stack's
+    own phonemail_postgres-data (an underscore, not a dash) was never in it. The
+    machine now carries ZERO phonemail-* volumes and the same four healthy
+    containers. This is the cleanup that was refused on an approval timeout two
+    sessions ago. The %TEMP% clone directories are left in place - removing those is
+    the user's.
+  - Mode found and left: REAL (dev mode only for the runs, the override restored, four
+    healthy containers confirmed).
+
 - Day 8 (Sun Sep 27), sixteenth session: THE SERVICE-WORKER UPDATE PATH, ROOT-CAUSED
   AND FIXED, plus the canvas polish. Landed and verified.
   - THE DEFECT, OBSERVED IN THE CODE: the worker's fetch handler consulted the
