@@ -50,8 +50,15 @@ export function DesktopRail() {
     return null;
   }
 
+  // ROUND 14: the reference image is the source of truth for this surface, and it draws the
+  // rail in the mark's OWN blue - the brighter one the Compose action also wears - not the
+  // deep navy the removed top bar carried. The extracted estimate is a mid blue with high
+  // saturation and mid lightness, which is the system's `accent` rather than the darker,
+  // desaturated `primary-container`; so the rail wears the token the image actually shows.
+  // (No literal colour values here: this tree is audited for raw hex, tokens only.)
+  // Width: the reference measures about 260px.
   return (
-    <nav className="flex w-60 shrink-0 flex-col gap-1 bg-primary-container p-4 text-on-primary">
+    <nav className="flex w-[260px] shrink-0 flex-col gap-1 bg-accent p-4 text-accent-ink">
       {/* 1. the logo */}
       <Link
         href="/desktop/inbox"
@@ -73,8 +80,8 @@ export function DesktopRail() {
             aria-current={active ? "page" : undefined}
             className={`flex min-h-0 items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors duration-ui ${
               active
-                ? "bg-white/15 font-bold text-on-primary"
-                : "font-medium text-on-primary/75 hover:bg-white/10 hover:text-on-primary"
+                ? "bg-white/20 font-bold text-accent-ink"
+                : "font-medium text-accent-ink/80 hover:bg-white/10 hover:text-accent-ink"
             }`}
           >
             <FolderIcon folder={folder} />
@@ -84,11 +91,12 @@ export function DesktopRail() {
       })}
 
       {/* 3. profile and settings, at the bottom */}
-      <div className="mt-auto flex flex-col gap-1 border-t border-white/15 pt-3">
+      {/* The bottom group, above the reference's translucent 1px rule. */}
+      <div className="mt-auto flex flex-col gap-1 border-t border-white/25 pt-3">
         <Link
           href="/desktop/profile"
           aria-current={pathname?.startsWith("/desktop/profile") ? "page" : undefined}
-          className="flex min-h-0 items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-on-primary/75 transition-colors duration-ui hover:bg-white/10 hover:text-on-primary"
+          className="flex min-h-0 items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-accent-ink/80 transition-colors duration-ui hover:bg-white/10 hover:text-accent-ink"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="8.5" r="3.8" />
@@ -99,7 +107,7 @@ export function DesktopRail() {
         <Link
           href="/desktop/settings"
           aria-current={pathname?.startsWith("/desktop/settings") ? "page" : undefined}
-          className="flex min-h-0 items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-on-primary/75 transition-colors duration-ui hover:bg-white/10 hover:text-on-primary"
+          className="flex min-h-0 items-center gap-3 rounded-full px-3 py-2 text-sm font-medium text-accent-ink/80 transition-colors duration-ui hover:bg-white/10 hover:text-accent-ink"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3" />
@@ -109,7 +117,7 @@ export function DesktopRail() {
         </Link>
         {/* The phone layout has an explicit URL, so this goes there rather than to
             `/`, which would hand a laptop straight back to the desktop client. */}
-        <Link href="/mobile" className="mt-1 px-3 py-2 text-xs font-medium text-on-primary/75 underline">
+        <Link href="/mobile" className="mt-1 px-3 py-2 text-xs font-medium text-accent-ink/80 underline">
           Mobile version
         </Link>
       </div>

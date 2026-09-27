@@ -285,8 +285,10 @@ function InboxInner() {
   return (
     <main className="flex h-screen min-w-0 flex-1 overflow-hidden bg-surface-container-lowest">
       {/* THE LIST: ~380px, one 1px divider, rows at the system's own height. */}
-      <section className="flex w-[380px] shrink-0 flex-col overflow-hidden border-r border-outline-variant">
-        <div className="flex items-center gap-3 border-b border-outline-variant px-5 py-4">
+      {/* ROUND 14: the reference measures the list at ~360px, and shows NO rule under
+          its header - the header is separated by the rows' own dividers instead. */}
+      <section className="flex w-[360px] shrink-0 flex-col overflow-hidden border-r border-outline-variant">
+        <div className="flex items-center gap-3 px-5 py-4">
           <h1 className="font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
             {FOLDER_TITLES[folder]}
           </h1>
