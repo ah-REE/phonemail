@@ -2036,6 +2036,27 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-second session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION from ORIGIN at this commit.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-153555). The clone came down at HEAD 00d091c -
+    the commit this session's work was just pushed as - with 157 tracked files, 14
+    migrations and correctly NO docker-compose.override.yml.
+  - ONLY the main app container was stopped for the duration (docker-compose.yml
+    hardcodes 3000:3000); the clone's own compose file was NOT edited. The main stack
+    was restored afterwards, four healthy containers.
+  - The clone built and came up healthy on the first attempt, and SERVED every smoke
+    route including /compose and /favicon.ico (all 200); its send-otp answered WITH a
+    devHint, as a clone must.
+  - THE SUITES RAN AGAINST THE CLONE with COMPOSE_DIR set for the whole run: ALL
+    TWENTY-TWO SUITES GREEN - 703 of 704 assertions, with the one documented skip
+    (ct3's socket assertion, which needs socket.io-client from node_modules and a
+    fresh clone only has it inside its container). Round 10's IVR suite ran green
+    there too, which matters because it is the one suite that exercises the new tree
+    end to end against a running app as well as in the mocked half.
+  - Mode found and left: REAL (dev mode only for the runs, the override restored, four
+    healthy containers confirmed). The clone directory is left in place.
+
 - Day 8 (Sun Sep 27), twenty-second session: THE FULL IVR PHONE TREE. The endpoint
   became a real voice flow - language, main menu, description, registration - with
   the call's state in the action URLs and the token checked on every request.
