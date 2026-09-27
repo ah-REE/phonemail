@@ -323,18 +323,16 @@ claim made anywhere else.
   markup, which live in the source and the tokens, so they need no server, no OTP
   and no mode - and are never a reason to touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
-  recently at the round-5 commit (`b392769`). The round-6 changes do not alter that
-  result: everything they touched is either source-only (the round-6 suite grades the
-  shape of the markup) or re-pointed and re-run green on the loaded database. The
-  run: `git clone https://github.com/ah-REE/phonemail.git` then
-  `docker compose up -d`, all twelve migrations applying on a clean volume, all
-  four services healthy, `/`, `/onboarding`, `/profile` and `/contacts` all
-  answering 200 — and **all 17 suites run against that clone: 525 of 526
-  assertions green**, with one documented skip (a socket assertion that needs a
-  socket client from `node_modules`, which a fresh clone only has inside its
-  container; the same assertion runs and passes on the loaded database). The
-  suites that inspect the database directly were run with `COMPOSE_DIR=<clone>` so
-  they read the stack actually under test.
+  recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
+  then `docker compose up -d`, all THIRTEEN migrations (the attachment table
+  included) applying on a clean volume, all four services healthy, `/`,
+  `/onboarding`, `/profile` and `/contacts` all answering 200, and **all NINETEEN
+  suites run against that clone: 583 of 584 assertions green**, with one documented
+  skip - a socket assertion that needs a socket client from `node_modules`, which a
+  fresh clone only has inside its container (the same assertion runs and passes on
+  the loaded database). That includes the attachment round trip, so sending a file
+  works on a clone as well as here. The suites that inspect the database directly
+  were run with `COMPOSE_DIR=<clone>` so they read the stack actually under test.
 - **The service-worker counterfactual.** The stale-shell fix is not asserted by
   reading code: the served `/sw.js` is fetched over HTTP, executed in a Node
   sandbox with stubbed `self`/`caches`/`fetch`, and driven with real requests.

@@ -2036,6 +2036,38 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), nineteenth session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION from ORIGIN at this commit - and this time it RAN, after the last
+  session's Safety Guard refusal.
+  - The harness script was rewritten with NO file-deletion command of any kind, not
+    even an environment-variable cleanup, because a `Remove-Item` line was what the
+    Guard refused to write last time. It is a one-line difference in tidiness and
+    the difference between a simulation that runs and one that does not.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-100952). The clone came down at HEAD 1b7aeb0 -
+    the commit this session's work was just pushed as - with 152 tracked files, 13
+    migrations (the attachment migration included) and correctly NO
+    docker-compose.override.yml.
+  - Only the main APP container was stopped for the duration (docker-compose.yml
+    hardcodes 3000:3000); the clone's own compose file was not edited, because what
+    is being tested is what origin serves. The main stack was restored afterwards,
+    four healthy containers.
+  - The clone came up healthy, applied all THIRTEEN migrations on a clean volume -
+    the new "Attachment" table included, and it was queried directly from the clone's
+    own Postgres to prove it - and SERVED: / , /onboarding , /profile and /contacts
+    all answered 200. Its send-otp answered WITH a devHint, as a clone must: no SMS
+    credentials, so the app falls back to the fixed dev code rather than pretending.
+  - THE SUITES RAN AGAINST THE CLONE: all NINETEEN, 583 of 584 assertions green,
+    with the ONE documented skip - ct3's socket assertion, which imports
+    socket.io-client from node_modules and a fresh clone only has it inside its
+    container. That includes ct16, so the ATTACHMENT round trip - upload, MIME over
+    SMTP, storage, hash-identical download, the limits and the 403 - was verified on
+    a clean clone as well as on the loaded database. COMPOSE_DIR was set for the
+    whole run.
+  - Mode found and left: REAL (dev mode only for the runs, the override restored,
+    four healthy containers confirmed). The clone directory is left in place, by the
+    same rule as every session before it.
+
 - Day 8 (Sun Sep 27), nineteenth session: THE THREE CONTROLS, ROOT-CAUSED (they were
   never the markup's fault) and ATTACHMENTS, end to end. Landed and verified.
   - THE THREE CONTROLS. The user had already rejected them once, and round 6's
