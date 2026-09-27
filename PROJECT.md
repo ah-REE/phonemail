@@ -2087,12 +2087,15 @@ context instantly)*
   - THE FIX, AT BOTH ENDS. A fixed-size control OPTS OUT with `min-h-0` (a class
     beats that element selector, so the floor keeps applying to every ordinary
     button), and globals.css now says so in a comment that names the rule. A tree
-    scan found 17 buttons below the floor: the 12 that declared NO min-height of
-    their own were distorted and now opt out (the switch, the card's chevron, the
-    shared BackButton, the profile badge, compose's four round buttons and its send
-    button, contacts' Add, the onboarding clear button, the thread's paperclip chip,
-    group-info's close button and the sheet's two); the 3 that declared their own
-    smaller min-height were deliberate and were left alone. The rebuilt
+    scan found 17 buttons below the floor. THREE of them declared their own smaller
+    min-height (two tag chips and a suggestion row) - deliberate, and left alone. The
+    other FOURTEEN had no min-height of their own - the card's chevron, the profile
+    badge, compose's "+" and its four round buttons and send button, contacts' Add,
+    the onboarding clear button, the thread's paperclip chip, group-info's close
+    button and the sheet's two - and now opt out. The switch and the shared
+    BackButton needed the same fix but were invisible to the scan, because their
+    class names are template literals; reading them is what caught them, and SIXTEEN
+    controls opt out in all. The rebuilt
     constructions are exactly as specified - the switch is a RELATIVE fixed 44x24
     track with an ABSOLUTE 20px knob (centred by top-1/2 -translate-y-1/2, moved by
     translate-x, no flex anywhere); the badge is a fixed 40px square at the avatar's
