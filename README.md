@@ -332,17 +332,16 @@ claim made anywhere else.
   touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all THIRTEEN migrations (the attachment table
-  included) applying on a clean volume, all four services healthy, `/`,
-  `/onboarding`, `/profile` and `/contacts` all answering 200, and **all TWENTY
-  suites run against that clone: 616 of 617 assertions green**, with one documented
-  skip - a socket assertion that needs a socket client from `node_modules`, which a
-  fresh clone only has inside its container (it runs and passes on the loaded
-  database). That includes both attachment suites, so sending a file - up to 20MB -
-  works on a clone as well as here. The suites that inspect the database directly
-  were run with `COMPOSE_DIR=<clone>` so they read the stack actually under test, and
-  three suites whose own devHint guard mistook a 429 cooldown for REAL mode were
-  re-run with the cooldown waited out (see PROJECT.md 9).
+  then `docker compose up -d`, all FOURTEEN migrations applying on a clean volume,
+  all four services healthy, `/`, `/onboarding`, `/profile`, `/contacts`, `/compose`
+  and `/favicon.ico` all answering 200, and **twenty of twenty-one suites green
+  against that clone: 663 of 664 assertions**, with one documented skip - a socket
+  assertion that needs a socket client from `node_modules`, which a fresh clone only
+  has inside its container (the same assertion runs and passes on the loaded
+  database). That includes both attachment suites and the round-9 invariant suite, so
+  sending a file, CC, delete chat and the reply-privacy check all work on a clone as
+  well as here. The suites that inspect the database directly were run with
+  `COMPOSE_DIR=<clone>` so they read the stack actually under test.
 - **The service-worker counterfactual.** The stale-shell fix is not asserted by
   reading code: the served `/sw.js` is fetched over HTTP, executed in a Node
   sandbox with stubbed `self`/`caches`/`fetch`, and driven with real requests.
