@@ -2036,6 +2036,36 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-first session, continued: THE FRESH-CLONE EVALUATOR
+  SIMULATION from ORIGIN at this commit - the last one before submission.
+  - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under
+    %TEMP% (phonemail-clone-20260927-131436). The clone came down at HEAD 43223df -
+    the commit this session's work was just pushed as - with 155 tracked files, 14
+    migrations and correctly NO docker-compose.override.yml.
+  - ONLY the main app container was stopped for the duration (docker-compose.yml
+    hardcodes 3000:3000) and the clone's own compose file was NOT edited. The main
+    stack was restored afterwards, four healthy containers.
+  - THE CLONE BUILT FIRST TIME this run - the transient builder flake that hit the
+    previous two attempts did not appear, and the script now retries once anyway
+    rather than reporting a flake as a defect. It came up healthy, applied all
+    FOURTEEN migrations on a clean volume (round 9's deletedForSender /
+    deletedForRecipient columns queried directly from the clone's own Postgres), and
+    SERVED: / , /onboarding , /profile , /contacts , /compose and /favicon.ico all
+    answered 200 - so the favicon fix is confirmed on a clean clone, not just here.
+    Its send-otp answered WITH a devHint, as a clone must.
+  - THE SUITES RAN AGAINST THE CLONE with COMPOSE_DIR set for the whole run: TWENTY
+    OF TWENTY-ONE SUITES GREEN, 663 of 664 assertions, with the ONE documented skip
+    (ct3's socket assertion, which needs socket.io-client from node_modules and a
+    fresh clone only has it inside its container). Round 9's socket assertion does
+    NOT skip, because it imports the client from this repository's own node_modules
+    by absolute path - which is how the reply-privacy invariant's socket half is
+    verified on a clone too.
+  - The harness weakness of the last session stayed fixed in practice: round 9's
+    suite waits a 429 cooldown out inside its own `login` instead of misreading it as
+    REAL mode, so no suite tripped over a cooldown this run.
+  - Mode found and left: REAL (dev mode only for the runs, the override restored, four
+    healthy containers confirmed). The clone directory is left in place.
+
 - Day 8 (Sun Sep 27), twenty-first session (the last one): THE FIVE FIXES, CC, DELETE
   CHAT AND THE SECURITY REPORT. Landed and verified.
   - FIX 1, THE RECEIVED CARD'S GAP. The band under the body was never padding: the
