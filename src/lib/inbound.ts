@@ -7,7 +7,7 @@ import {
 import { addressForPhone } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
-import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
+import { notificationGate, notifyNewMail, type NotificationOutcome } from "@/lib/notify";
 import type { InboundAttachment } from "@/lib/attachments";
 import { newSubmissionId, submissionKey, takeSubmission } from "@/lib/submissions";
 import { deriveThreadKey } from "@/lib/threadKey";
@@ -124,6 +124,17 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
   const deliveries: InboundDelivery[] = [];
 
   for (const recipient of recipients) {
+    // ROUND 9: which list this recipient came from. Pairwise rows stay NULL - that
+    // is the column's contract, because a 1:1 message has no To/Cc distinction to
+    // record. For a group, the note the send path left says it; a group row with no
+    // note (an older send, or a client that leaves none) counts as 'to', because
+    // the safe reading of a delivered copy with no Cc evidence is that it was
+    // addressed directly.
+    const recipientRole =
+      recipients.length > 1
+        ? (pending.roles?.[addressForPhone(recipient.phoneNumber)] ?? "to")
+        : null;
+
     const email = await prisma.email.create({
       data: {
         fromUserId: sender.id,
@@ -135,6 +146,7 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
         threadKey,
         submissionId,
         replyToId: pending.replyToId ?? null,
+        recipientRole,
         // Messaging your own number: you wrote it, so you have obviously seen it.
         // Born read means no unread badge can appear for a message you sent
         // yourself, which is the only sensible reading of an email to yourself.
@@ -171,18 +183,25 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     // against your own switch, and only for a registration path the spec allows.
     // Never allowed to fail the delivery. The first gate is the plainest one: you
     // do not need a text telling you that you just mailed your own number.
+    //
+    // Round 9: the three skips are one pure decision (notificationGate), and the
+    // throttle lives INSIDE notifyNewMail ahead of the dev-mode return - so the
+    // outcome this line reports is the same chain the tests can drive, and
+    // 'throttled' is reachable rather than dead code.
+    const gate = notificationGate({
+      isSelf: recipient.id === sender.id,
+      smsNotifications: recipient.smsNotifications,
+      registeredVia: recipient.registeredVia,
+    });
+
     const smsNotification =
-      recipient.id === sender.id
-        ? "skipped-self"
-        : !recipient.smsNotifications
-          ? "skipped-disabled"
-          : shouldNotify(recipient.registeredVia)
-            ? await notifyNewMail({
-                recipientPhone: recipient.phoneNumber,
-                senderAddress: fromAddress,
-                subject: email.subject,
-              })
-            : "skipped-mobile";
+      gate === "notify"
+        ? await notifyNewMail({
+            recipientPhone: recipient.phoneNumber,
+            senderAddress: fromAddress,
+            subject: email.subject,
+          })
+        : gate;
 
     deliveries.push({
       emailId: email.id,

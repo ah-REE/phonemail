@@ -164,10 +164,10 @@ a documented deviation, or cut with a reason.
 | Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Done in code, operator-side wiring pending** - a full voice tree: language (1 English / 2 Tamil) -> main menu -> what PhoneMail is on 3 / **register on 4**. Twilio makes a new request per step, so the stage, the language and the replay count ride in each Gather's action URL and the token is checked on every request; an unknown stage restarts at the greeting, and two invalid digits end the call politely. The Exotel one-shot path (press 1, account ready) still works. Every branch is unit-tested against the pure flow plus live guard checks; **the real call is unverified until the console is wired** |
 | Web portal, two fields (phone + OTP), registration only, resets after each signup | `/portal` | **Done** — after creation the fields clear and it returns to the empty phone step for the next account |
 | If no free OTP providers are available, use password auth | — | **Not needed** — an OTP transport is available (self-hosted gateway), so the conditional fallback clause never applies |
-| Web client | `/desktop` | **Done** — Gmail-style three-zone inbox, profile and settings |
+| Web client | `/desktop` | **Done** — Gmail-style: a rail (logo, the real folders, profile/settings at its foot), a thread-grouped list with Compose in its toolbar, and a reading pane of stacked EMAILS - each with its own From/To/date header, full body, attachment cards and Reply action (round 12). Settings reach full parity with the phone. No chat bubbles anywhere |
 | Mobile client | `/` (mobile route group), installable PWA | **Done** |
-| Access the inbox from both clients | `/` and `/desktop` | **Done** — same endpoints, same JWT |
-| SMS notification, exact template, only for users without the mobile app (registered via call, portal or web client) | `src/lib/notify.ts`, gate on `User.registeredVia` | **Done** — the text is the spec's exactly: `You have received an email from <sender>. Subject: <subject>.` Gated to `portal`/`desktop`/`ivr`, 60s per-recipient throttle, and it can never fail a delivery |
+| Access the inbox from both clients | `/` and `/desktop` | **Done** — same endpoints, same JWT. On a wide viewport `/` hands over to `/desktop` even before signing in (the desktop's own login screen takes it from there); `/mobile` is the explicit phone URL and is never redirected away from (round 12) |
+| SMS notification, exact template, only for users without the mobile app (registered via call, portal or web client) | `src/lib/notify.ts`, gate on `User.registeredVia` | **Done** — the spec's own wording is the canonical format, in a rotated set of short one-line bodies (a single long fixed template is the one shape this project proved the carrier drops - see `src/lib/otp.ts`), with the subject flattened and truncated. Gated `portal`/`desktop`/`ivr`, 60s per-recipient throttle that reports `throttled` (round 12 moved it ahead of the dev-mode return, where it had been unreachable), and it can never fail a delivery. The README's own section says what has to be true for a real text to arrive |
 | Implement SMS via free trial providers (Twilio et al.); a pre-available template if custom text is unavailable; the provider's international number for testing | `src/lib/otp.ts`, PROJECT.md §9 | **Superseded, documented** — Fast2SMS required KYC and the Twilio trial hit verification walls for Indian numbers, so the shipped transport is a self-hosted Android gateway through the developer's own SIM. The message formats in `src/lib/otp.ts` are the ones manually verified to arrive through a real carrier |
 | Mobile: every screen follows WhatsApp's design language | `src/app/(mobile)`, tokens in `tailwind.config.ts` | **Done** |
 | Screen 1: language selection | `/onboarding` step 1 | **Superseded, feature kept** — the owner replaced the step with the welcome screen, and language moved to the **Language row in Settings**, which is present (English live; Hindi and Tamil are offered as coming-soon entries that cannot be chosen, because only English ships) |
@@ -198,7 +198,7 @@ a documented deviation, or cut with a reason.
 | Summary: emails organised as chats | — | **Done** |
 | Summary: manage alias IDs in settings | `/profile`, `/api/aliases` | **Done** — an account holds one alias, and it must mix letters and digits, so an alias cannot be a second phone number and cannot be all digits |
 | Web: a single screen with phone, OTP and one Next button; "By signing up, you agree to the Terms of Service" above it, hyperlinked | `/portal` | **Partial** — the portal is a two-step phone → OTP flow rather than one screen; the consent line with its live hyperlink is present |
-| Web home similar to Gmail; no conversation-style interface; profile and settings provided | `/desktop`, `/desktop/inbox`, `/desktop/profile`, `/desktop/settings` | **Done** — three-zone layout, token-consistent with the mobile design system |
+| Web home similar to Gmail; no conversation-style interface; profile and settings provided | `/desktop`, `/desktop/inbox`, `/desktop/profile`, `/desktop/settings` | **Done** — the desktop shows MAIL, not chat: the reading pane renders one stacked email per message (round 12 removed the last bubble markup), the rail's three folder items are the real `Email.folder` values, and settings carry profile/aliases/language/SMS/font size/devices/delete - the same endpoints and modules the phone uses |
 | Dockerize everything; software must be up at `docker compose up -d` | `docker-compose.yml`, `Dockerfile`, `smtp/Dockerfile` | **Done** — re-verified from a fresh clone of origin |
 
 **The two deviations that were closed**, for the record: the **Language** row and
@@ -327,7 +327,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **737 assertions across 23 suites, green on the loaded database**, in dev mode
+- **791 assertions across 24 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional
@@ -337,21 +337,56 @@ claim made anywhere else.
   (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
   sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
   deployed stylesheet plus the attachment round trip, hashes included), 33 for round
-  8 (the raised limits, the three affordances, the in-message cards, the upload
-  states), 47 for round 9 (the five fixes, CC, delete chat's scoping and the security
+  8, 47 for round 9 (the five fixes, CC, delete chat's scoping and the security
   report's references - including the reply-privacy invariant proven for the payload
   AND the socket), 50 for round 10 (the IVR tree: 28 mocked branches plus 22 live
-  checks), and **53 for round 11**: the contact sheet's in-place confirmation, the
-  font-size module and its pre-paint bootstrap, the wide-screen handover and
-  `/mobile`, the **tiered OTP policy driven live** (the rapid pair, the third refused
-  with its reason and real wait, the sixth refused on the WINDOW with hours remaining,
-  the reset), sessions (**a second sign-in is a second device; logging it out makes
-  that token 401 while this one keeps working**), the device-label parser, and the
-  desktop routes with their token hygiene. `ct5/settings_ref.mjs`,
-  `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
-  **source-only** suites: they grade a design, a copy rule and the shape of the
-  markup, which live in the source and the tokens, so they need no server, no OTP and
-  no mode - and are never a reason to touch one.
+  checks), 53 for round 11 (the contact sheet's in-place confirmation, the font-size
+  module and its pre-paint bootstrap, the wide-screen handover, the **tiered OTP
+  policy driven live**, sessions with per-device revocation, and the desktop moved
+  onto the design system's tokens), and **54 for round 12**: the notify chain's
+  **six outcomes driven live** (including the throttle, which the old gate order made
+  unreachable), the rotated and sanitized notification body, the wide-screen entry
+  decision at five widths and four URLs, the contact save's animated confirmation,
+  the role tags proven through a real SMTP round trip on a member set that had never
+  existed, the rail's real folder links, the endpoints the desktop settings reuse,
+  and the absence of bubble markup in the new traditional reading pane.
+  `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
+  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
+  design, a copy rule and the shape of the markup, which live in the source and the
+  tokens, so they need no server, no OTP and no mode - and are never a reason to
+  touch one.
+### SMS notifications: what has to be true for a real text to arrive
+
+The app sends a "you have new mail" SMS through the sms-gate.app gateway. In the
+default checkout it deliberately sends NOTHING, and that is the feature working,
+not a fault:
+
+- **Dev mode never sends.** `docker-compose.yml` ships placeholder gateway
+  credentials, and the code treats a placeholder as "no gateway": the delivery
+  path records the outcome `dev-mode` and returns. To send real SMS, put the real
+  credentials in `docker-compose.override.yml` (see
+  `docker-compose.override.yml.example`); that file is gitignored and must NOT be
+  committed.
+- **The gateway phone has to be online with the app running.** sms-gate.app queues
+  each message for the paired Android device. If that phone is off, has no signal,
+  or the sms-gate app is not running, the gateway still accepts the message (it
+  answers 2xx, which means "queued", not "delivered") and nothing arrives.
+- **The recipient has to be notifiable.** The spec allows this SMS only for users
+  who do NOT have the mobile app, which the app records as `User.registeredVia`:
+  `portal`, `desktop` or `ivr` notify; `mobile` (and anything unrecognised) does
+  not. An account that first signed in on the phone therefore never gets these
+  texts, even if it later uses the web client - first registration is what counts.
+- **The account's own switch has to be on.** `/profile` (phone) and
+  `/desktop/settings` carry a switch for it, on by default. It can only ever
+  narrow who is notified, never widen it past the spec's rule.
+- **One text per recipient per 60 seconds.** A burst of mail cannot drain the
+  SIM's quota; the second message inside the window reports `throttled`.
+
+The delivery path records WHY for every message - `sent`, `throttled`,
+`dev-mode`, `failed`, `skipped-mobile`, `skipped-disabled` or `skipped-self` -
+and the SMTP service logs that outcome with the delivery it belongs to, so the
+answer to "why did no text arrive?" is always in `docker compose logs smtp`.
+
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all FIFTEEN migrations applying on a clean volume (the

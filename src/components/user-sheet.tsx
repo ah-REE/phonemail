@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/avatar";
 import { Spinner } from "@/components/spinner";
@@ -47,6 +47,52 @@ function phoneOf(address: string): string {
   return address.replace(/@.*$/, "");
 }
 
+/**
+ * How long the save confirmation is held before the sheet closes.
+ *
+ * 600ms is long enough to read one word and see the check, short enough that it
+ * never feels like waiting - and the reader can still dismiss the sheet during
+ * it, because the sheet's own close control stays live.
+ */
+export const SAVE_MORPH_HOLD_MS = 600;
+
+/**
+ * ROUND 9: the save block, morphed into its confirmation.
+ *
+ * A green disc with a white check mark, the word "Saved" beside it, on the design
+ * system's own `success` token and the established easing (cubic-bezier(0.22, 1,
+ * 0.36, 1) - the curve the sheets enter on, via .save-morph in globals.css). No
+ * bounce: `soft-spring` is for things that arrive, not for things that confirm.
+ *
+ * `role="status"` makes it announce itself, so the confirmation is not only a
+ * visual one.
+ */
+function SavedMorph() {
+  return (
+    <div
+      className="save-morph flex min-h-0 h-12 items-center justify-center gap-2 rounded-full bg-success-soft px-5"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+      <span className="text-sm font-bold text-success">Saved</span>
+    </div>
+  );
+}
+
 export function UserSheet({
   onDeleteChat,
   subject,
@@ -77,6 +123,43 @@ export function UserSheet({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /**
+   * ROUND 9: the animated save confirmation. "saving" is the network phase,
+   * "saved" is the morph on screen - the block becomes the green disc, holds,
+   * then the sheet closes. Two pieces of state rather than one because the
+   * spinner and the confirmation are different things to look at.
+   */
+  const [savePhase, setSavePhase] = useState<"idle" | "saving" | "saved">("idle");
+  const closeTimer = useRef<number | null>(null);
+
+  // A sheet dismissed from the outside while the morph is holding must not leave
+  // a timer pointing at an unmounted component.
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) {
+        window.clearTimeout(closeTimer.current);
+      }
+    },
+    [],
+  );
+
+  /**
+   * Holds the confirmation, then closes. The hold is the point: the reader has to
+   * SEE that it saved. Reduced-motion readers get the same outcome without the
+   * wait, because for them the animation is not the feedback.
+   */
+  function scheduleCloseAfterMorph() {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    closeTimer.current = window.setTimeout(
+      () => {
+        onClose();
+      },
+      reduceMotion ? 0 : SAVE_MORPH_HOLD_MS,
+    );
+  }
 
   const loadContacts = useCallback(async () => {
     try {
@@ -104,6 +187,7 @@ export function UserSheet({
     setBusy(true);
     setError(null);
     setNotice(null);
+    setSavePhase("saving");
     try {
       const response = await authorizedFetch("/api/contacts", {
         method: "POST",
@@ -119,21 +203,21 @@ export function UserSheet({
       };
       if (!response.ok) {
         setError(body.error ?? "Could not save that contact.");
+        setSavePhase("idle");
         return;
       }
-      setNotice(
-        nameDraft.trim()
-          ? `Saved successfully as ${nameDraft.trim()}.`
-          : "Saved successfully to your contacts.",
-      );
-      // ROUND 8: the sheet STAYS OPEN after a save. Saving is not the end of the
-      // interaction any more - the confirmation appears here, the chat behind it
-      // shows the new name immediately, and the reader closes the sheet when they are
-      // ready. (Closing itself made the confirmation invisible and took the sheet
-      // away before anyone had read it.) The name is handed up FIRST, while this
-      // component is still mounted.
+      // The name is handed up FIRST, while this component is still mounted, so the
+      // chat behind the sheet shows it immediately - the confirmation must not be
+      // what the reader waits on to see the name change.
       onSaved?.(nameDraft.trim() || null);
-      await loadContacts();
+      // ROUND 9: the confirmation is no longer a line of text. The save block MORPHS
+      // into a green disc with a white check and the word "Saved", holds ~600ms, and
+      // then the sheet closes itself - one smooth transition, nothing to dismiss.
+      setSavePhase("saved");
+      scheduleCloseAfterMorph();
+      // The contact-list refresh is deliberately NOT awaited: it must not hold the
+      // morph, and the sheet has already decided to close.
+      void loadContacts();
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -226,16 +310,17 @@ export function UserSheet({
                   type="button"
                   className="shrink-0 rounded-full bg-accent-soft px-5 text-sm font-semibold text-accent disabled:opacity-50"
                   onClick={() => void addContact()}
-                  disabled={busy}
+                  disabled={busy || savePhase === "saved"}
                 >
                   Save
                 </button>
               </div>
+              {savePhase === "saved" && <SavedMorph />}
               <button
                 type="button"
                 className="self-start text-sm font-semibold text-wa-alert disabled:opacity-50"
                 onClick={() => void removeContact(saved.id)}
-                disabled={busy}
+                disabled={busy || savePhase === "saved"}
               >
                 Remove from contacts
               </button>
@@ -257,11 +342,12 @@ export function UserSheet({
                   type="button"
                   className="flex min-h-0 h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
                   onClick={() => void addContact()}
-                  disabled={busy}
+                  disabled={busy || savePhase === "saved"}
                 >
-                  {busy ? <Spinner label="Saving" /> : "Add"}
+                  {savePhase === "saving" ? <Spinner label="Saving" /> : "Add"}
                 </button>
               </div>
+              {savePhase === "saved" && <SavedMorph />}
               <p className="text-xs text-chat-meta">
                 The name is pre-filled from this conversation. Leave it empty to save the number alone.
               </p>

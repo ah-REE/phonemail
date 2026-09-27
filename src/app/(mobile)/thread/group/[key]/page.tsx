@@ -10,6 +10,7 @@ import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { GroupInfo } from "@/components/group-info";
 import { MessageCard } from "@/components/message-card";
+import type { MemberTag } from "@/lib/roles";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { dayLabel, startsNewDay, startsNewSubject } from "@/lib/timeline";
@@ -53,6 +54,8 @@ interface GroupMessage {
   replyToId?: string | null;
   mine: boolean;
   fromName?: string | null;
+  /** ROUND 9: the sender's role in this conversation ('sender' | 'receiver' | 'cc'). */
+  fromTag?: MemberTag | null;
   from: string;
   to: string;
   subject: string;
@@ -73,6 +76,8 @@ interface GroupThreadBody {
   members?: string[];
   memberNames?: (string | null)[];
   memberAddresses?: string[];
+  /** ROUND 9: member role tags, keyed by canonical phone number. */
+  memberTags?: Record<string, MemberTag>;
   subject?: string;
   unread?: number;
   messages?: GroupMessage[];
@@ -111,6 +116,10 @@ export default function GroupThreadPage() {
   const [members, setMembers] = useState<string[]>([]);
   const [memberNames, setMemberNames] = useState<(string | null)[]>([]);
   const [memberAddresses, setMemberAddresses] = useState<string[]>([]);
+  // ROUND 9: the role tags, keyed by canonical phone number. The thread payload
+  // derives them from the founding mail, so the thread and the group info read the
+  // same map rather than deriving it twice.
+  const [memberTags, setMemberTags] = useState<Record<string, MemberTag>>({});
   const [creatorPhone, setCreatorPhone] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [memberSheet, setMemberSheet] = useState<string | null>(null);
@@ -174,6 +183,7 @@ export default function GroupThreadPage() {
         setMembers(body?.members ?? []);
         setMemberNames(body?.memberNames ?? []);
         setMemberAddresses(body?.memberAddresses ?? []);
+      setMemberTags(body?.memberTags ?? {});
         setCreatorPhone(body?.creatorPhone ?? null);
         setSubject(body?.subject ?? "");
         setError(null);
@@ -334,6 +344,7 @@ export default function GroupThreadPage() {
               isLastInRun={isLastInRun}
               showName
               name={message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
+              senderTag={message.fromTag ?? null}
               secondary={message.mine ? message.to : message.from}
               when={formatWhen(message.createdAt)}
               body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
@@ -419,6 +430,7 @@ export default function GroupThreadPage() {
           members={members}
           memberNames={memberNames}
           memberAddresses={memberAddresses}
+          memberTags={memberTags}
           me={myNumber}
           onOpenMember={(member) => {
             setInfoOpen(false);

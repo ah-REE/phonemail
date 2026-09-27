@@ -2036,6 +2036,98 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 9 (Sun Sep 27), twenty-fifth session: THE SMS FIX, THE POLISH, AND THE DESKTOP
+  CLIENT, TRADITIONAL.
+  - TASK 1 (the broken feature) - WHAT WAS ACTUALLY WRONG, because the answer was not
+    where the report pointed. The gate chain itself was sound, and each link was
+    proved in dev mode by driving deliveries and reading the outcome the delivery
+    path returns: a portal-registered recipient reached the transport ("dev-mode"),
+    an app-registered one was "skipped-mobile", a self-send "skipped-self", and a
+    switched-off account "skipped-disabled". TWO REAL DEFECTS survived that reading,
+    and both produce exactly the reported symptom - a feature that reports success
+    while nothing arrives:
+      1. THE OUTCOME CHAIN COULD NOT REPORT THE THROTTLE. notifyNewMail returned
+         "dev-mode" BEFORE it ever looked at the cooldown, so in dev mode a burst of
+         mail reported "dev-mode" every time and the throttle outcome was unreachable
+         - dead code no test could exercise, and the burst protection never once
+         observed. The order is now gate -> throttle -> transport, and "throttled" is
+         asserted live (it is the assertion that would have failed before this round).
+      2. THE BODY WAS THE ONE SHAPE THIS PROJECT HAS ALREADY PROVEN THE CARRIER DROPS.
+         src/lib/otp.ts records, as a fact from manual testing, that long templated
+         texts are filtered and that exact duplicates are dropped - which is why the
+         OTP bodies are a rotated set of SHORT formats. The notification was a single
+         ~90-character fixed sentence, byte-identical for identical (sender, subject)
+         pairs. It is now a rotated set of four one-line formats, with the subject
+         flattened (newlines and control characters stripped), stripped of zero-width
+         characters and truncated at 60, so the message stays a short single-segment
+         text whatever the sender typed. The spec's own wording is the canonical
+         format in that set.
+    Honest limit, stated rather than glossed: no real SMS was sent from here, because
+    the convention accounts are dev-mode only and a real send needs the operator's
+    gateway phone online. The code-level defects are fixed and asserted; the
+    end-to-end delivery on a real handset stays the operator's check, and the README
+    now carries the checklist that says exactly what has to be true (real mode, the
+    gateway phone online with the app running, a notifiable recipient).
+  - TASK 2 - THE UNAUTHENTICATED WIDE ENTRY. The handover lived on the phone HOME
+    screen, and each phone screen redirects a signed-out reader to /onboarding - so a
+    laptop visitor who had never signed in landed on the MOBILE onboarding, which is
+    the first impression the feature exists to prevent. The check moved into the
+    mobile route group's LAYOUT (every phone route, onboarding included) and its
+    decision became one pure function (src/lib/entry.ts: explicit /mobile wins, then
+    the tab's own choice, then the width). /onboarding is now reachable only through
+    /mobile or a narrow viewport, which is what the brief asks.
+  - TASK 3 - THE SAVE MOMENT. The text line became an animation: the save block
+    MORPHS into a green disc with a white check and the word "Saved" (the
+    confirmation is the save button's own row, not a message next to it), holds 600ms,
+    then the sheet closes. One transition on the curve the sheets already enter on
+    (cubic-bezier(0.22,1,0.36,1)); no bounce - soft-spring is for things that arrive,
+    not for things that confirm. Reduced-motion readers get the same outcome with no
+    wait, and the name still reaches the open chat before the animation starts.
+  - TASK 4 - THE ROLE TAGS. Email gained recipientRole ('to' | 'cc', nullable;
+    migration 20260927230000_add_recipient_role), stamped per fan-out row from the
+    send path's submission note - the same channel that already carries "this is a
+    reply". The MIME Cc header tells the mail service the same thing for the hop, but
+    a header cannot reach a row. The group payload derives each member's tag from the
+    thread's FOUNDING mail (lib/roles.ts, pure): its author is the sender, its To
+    recipients are receivers, its Cc recipients are cc. Proved end to end through the
+    real SMTP round trip on a member set that had never existed (a dedicated fixture
+    account): three distinct tags, sender+receiver for a To-only group, and the row
+    stamps in the database.
+  - TASK 5 - THE RAIL. The rail holds the logo, the folder items and profile/settings
+    at the bottom, and it wears the phone client's navy (the chrome that used to be a
+    top bar is now the rail, so round 8's coherence survives the bar's removal).
+    Compose moved out of the chrome into the toolbar above the message list, where the
+    list it acts on is. The folder items are REAL: they are the three values
+    Email.folder can hold, and /api/conversations now answers ?folder= (the inbox
+    keeps its old shape - what arrived plus what I sent; spam and trash are the
+    viewer's own filing only).
+  - TASK 6 - DESKTOP SETTINGS, FULL PARITY. Profile (name), aliases (add/remove),
+    Language, the SMS switch, Font size, signed-in devices with per-device logout, and
+    account deletion behind a one-time code - all against the SAME endpoints the phone
+    uses and the same modules for the shared logic (lib/fontSize, the Switch
+    component, lib/device). The screen it replaces described its own controls as
+    "visual only for now"; that is no longer true, so the wording is gone with it.
+  - TASK 7 - THE TRADITIONAL DESKTOP MAIL VIEW. The reading pane stopped rendering
+    bubbles. Each message is a stacked EMAIL with its own header block (sender and
+    role tag, From, To, the full date, the subject), its full body, its inline
+    attachment cards and its own Reply action that opens the traditional compose
+    (carrying the group thread key when the conversation is a group, so a reply
+    addressed to one member still lands in the group). Groups render the same way with
+    each sender named. The middle list stays thread-grouped. There is no bubble markup
+    anywhere in the pane, and the suite asserts that by looking for its absence.
+  - EVIDENCE. 791 assertions across 24 suites, green on the loaded database in dev
+    mode through the real SMTP round trip; the round-9 suite (ct21, 54 assertions)
+    drives every item - the six notify outcomes live, the entry decision at five
+    widths and four URLs, the role tags through the SMTP hop, the folder parameter,
+    the endpoints the desktop settings reuse - and marks its source-only claims as
+    source-only rather than dressing them up. Six assertions in older suites were
+    re-pointed, each because this round deliberately moved what they described: ct2's
+    gate assertion (the skips became one pure decision), ct13's two (the confirmation
+    is the animation now; the wordmark moved into the rail) and ct20's four (the
+    handover moved to the layout, the threshold to lib/entry.ts, the mobile link and
+    the navy chrome into the rail). No assertion was deleted or weakened to make the
+    suite pass.
+
 - Day 8 (Sun Sep 27), twenty-fourth session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit.
   - Cloned https://github.com/ah-ree/phonemail.git into a timestamped directory under

@@ -314,13 +314,33 @@ export async function POST(request: Request) {
   // way in, not a second identity in the message data.
   const addresses = allRecipients.map((recipient) => addressForPhone(recipient.phoneNumber));
   const ccAddresses = ccRecipients.map((recipient) => addressForPhone(recipient.phoneNumber));
+  // ROUND 9: WHICH LIST EACH RECIPIENT CAME FROM, as data rather than as a header.
+  // The recipient set is the To and Cc lists merged (cc recipients are
+  // recipients), so the merge has to be undone for the row stamp: To first, then
+  // Cc for anyone the To list did not already carry - a member in both lists is
+  // addressed directly, and direct addressing is the stronger fact.
+  const toAddresses = recipients.map((recipient) => addressForPhone(recipient.phoneNumber));
+  const roles: Record<string, "to" | "cc"> = {};
+  for (const address of toAddresses) {
+    roles[address] = "to";
+  }
+  for (const address of ccAddresses) {
+    if (!(address in roles)) {
+      roles[address] = "cc";
+    }
+  }
 
   // Leave the note the inbound path will pick up. Without it a group reply would
   // be filed pairwise and a reply would carry no link to what it answers.
-  if (claimedReplyTo || groupThreadKey) {
+  //
+  // ROUND 9: the note is also left for a plain group send, not only for a reply.
+  // The role tags are derived from the founding mail's rows, so the founding send
+  // is exactly the message whose roles have to be recorded.
+  if (claimedReplyTo || groupThreadKey || addresses.length > 1 || ccAddresses.length > 0) {
     await rememberSubmission(submissionKey(fromAddress, subject, addresses), {
       threadKey: groupThreadKey,
       replyToId: claimedReplyTo,
+      roles,
     });
   }
 

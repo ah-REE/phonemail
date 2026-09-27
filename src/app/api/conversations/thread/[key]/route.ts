@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { contactNamesByPhone } from "@/lib/contacts";
 import { prisma } from "@/lib/prisma";
+import { deriveMemberTags, type MemberTag } from "@/lib/roles";
 import { isGroupThreadKey, phoneOf } from "@/lib/threadKey";
 
 export const runtime = "nodejs";
@@ -24,6 +25,11 @@ export const dynamic = "force-dynamic";
  * Read is pure: marking read is a separate POST that only ever touches the
  * requester's own rows (see ./read), so one member reading cannot clear another
  * member's unread badge.
+ *
+ * ROUND 9 adds `memberTags`: each member's role in the conversation, derived from
+ * the FOUNDING mail (see lib/roles.ts). The tags ride the thread payload rather
+ * than being recomputed per screen, so the thread and the group info cannot
+ * disagree about who is what.
  */
 
 const THREAD_LIMIT = 200;
@@ -73,6 +79,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       tag: true,
       submissionId: true,
       replyToId: true,
+      recipientRole: true,
       // Day 8: the files on each row, metadata only (see the 1:1 thread route).
       attachments: {
         select: { id: true, filename: true, contentType: true, sizeBytes: true },
@@ -150,6 +157,36 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   const creatorPhone =
     broadcasts.length > 0 ? phoneOf(broadcasts[broadcasts.length - 1].fromAddress) : null;
 
+  /**
+   * ROUND 9: THE ROLE TAGS, derived from the thread's founding mail.
+   *
+   * The founding mail is the FIRST broadcast - the message that opened the
+   * conversation - and its own fan-out rows are the record of who was addressed
+   * and who was copied, because the send path stamped each row with the list its
+   * recipient came from. Its author did not receive a row at all, so the author
+   * is added as the sender rather than looked up among the recipients.
+   *
+   * Only the founding mail's rows are read: a later reply's Cc list says nothing
+   * about the roles the conversation was founded with.
+   */
+  const founding = broadcasts[0] ?? null;
+  const foundingSenderPhone = founding ? phoneOf(founding.fromAddress) : "";
+  const foundingRows = founding?.submissionId
+    ? await prisma.email.findMany({
+        where: { submissionId: founding.submissionId },
+        select: { toAddress: true, recipientRole: true },
+      })
+    : [];
+  const memberTags: Record<string, MemberTag> = founding
+    ? deriveMemberTags({
+        senderPhone: foundingSenderPhone,
+        recipients: foundingRows.map((row) => ({
+          phone: phoneOf(row.toAddress),
+          recipientRole: row.recipientRole,
+        })),
+      })
+    : {};
+
   return NextResponse.json(
     {
       threadKey,
@@ -157,6 +194,9 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       members,
       memberNames,
       memberAddresses,
+      // Each member's role in this conversation: 'sender' | 'receiver' | 'cc'.
+      // Empty only when a thread has no founding broadcast to derive from.
+      memberTags,
       subject: latest?.subject ?? "",
       count: messages.length,
       unread,
@@ -168,6 +208,9 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
         fromName: nameFor(phoneOf(message.fromAddress)),
         from: message.fromAddress,
         to: message.toAddress,
+        // The sender's role tag on THIS message's row, so the thread can label a
+        // sender line without recomputing the derivation per bubble.
+        fromTag: memberTags[phoneOf(message.fromAddress)] ?? null,
         subject: message.subject,
         body: message.body,
         isRead: message.isRead,

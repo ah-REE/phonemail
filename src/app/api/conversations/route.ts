@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
+import { isEmailFolder, type EmailFolder } from "@/lib/folders";
 import { contactNamesByPhone } from "@/lib/contacts";
 import { prisma } from "@/lib/prisma";
 import { FAVORITE_TAG } from "@/lib/tags";
@@ -82,16 +83,34 @@ export async function GET(request: Request) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
+  /**
+   * ROUND 9: WHICH FOLDER, because the desktop rail is a real navigation now.
+   *
+   * The inbox keeps its original shape: what arrived in it, plus everything I
+   * sent (mail I sent belongs in my conversation list whatever the recipient
+   * later did with their copy). Spam and Trash are different questions - they
+   * are the VIEWER's own filing - so there the answer is only what I filed
+   * there, and my sent mail does not follow me into them.
+   *
+   * An unknown value falls back to the inbox rather than to an empty list, so a
+   * hand-typed URL still shows mail.
+   */
+  const requestedFolder = new URL(request.url).searchParams.get("folder") ?? "inbox";
+  const folder: EmailFolder = isEmailFolder(requestedFolder) ? requestedFolder : "inbox";
+
   const emails = await prisma.email.findMany({
     where: {
       // folder is RECIPIENT state: my own incoming spam/trash leaves the chat
       // list, while everything I sent stays visible to me regardless of what
       // the recipient did with it. Day 9 adds the same shape for a DELETED chat:
       // the flags are per viewer, so my side disappears and theirs does not.
-      OR: [
-        { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
-        { fromUserId: user.sub, deletedForSender: false },
-      ],
+      OR:
+        folder === "inbox"
+          ? [
+              { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
+              { fromUserId: user.sub, deletedForSender: false },
+            ]
+          : [{ toUserId: user.sub, folder, deletedForRecipient: false }],
     },
     orderBy: { createdAt: "desc" },
     take: SCAN_LIMIT,
@@ -126,7 +145,7 @@ export async function GET(request: Request) {
             // spam/trash rows leave my group view, other members' are unaffected -
             // and so does a chat I deleted on my side (Day 9).
             OR: [
-              { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
+              { toUserId: user.sub, folder, deletedForRecipient: false },
               { toUserId: { not: user.sub }, deletedForSender: false },
             ],
           },

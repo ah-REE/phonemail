@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { ChatListSkeleton } from "@/components/skeleton";
 import { Avatar } from "@/components/avatar";
 import { BottomBar } from "@/components/bottom-bar";
-import { WideScreenRedirect } from "@/components/wide-screen-redirect";
 import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
@@ -261,9 +260,9 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-1 flex-col">
-      {/* ROUND 8: on a laptop, `/` hands over to the desktop client; `/mobile` is the
-          explicit phone URL and this does nothing there. */}
-      <WideScreenRedirect />
+      {/* ROUND 9: the wide-screen handover moved to the route group's layout, so it
+          also covers the screens that redirect a signed-out reader - see
+          components/wide-screen-redirect.tsx. */}
       <div className="relative flex w-full flex-1 flex-col">
 
         {/* 1. Top bar */}

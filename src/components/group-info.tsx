@@ -1,6 +1,8 @@
 "use client";
 
 import { Avatar } from "@/components/avatar";
+import { MemberTagChip } from "@/components/member-tag-chip";
+import type { MemberTag } from "@/lib/roles";
 
 /**
  * Group info.
@@ -20,6 +22,12 @@ import { Avatar } from "@/components/avatar";
 export interface GroupInfoProps {
   members: string[];
   memberNames: (string | null)[];
+  /**
+   * ROUND 9: each member's role, keyed by canonical phone number - the same
+   * derivation the thread payload carries, so the list here cannot disagree with
+   * the names on the bubbles.
+   */
+  memberTags?: Record<string, MemberTag>;
   memberAddresses: string[];
   /** The signed-in user's own number, marked in the list. */
   me: string;
@@ -30,6 +38,7 @@ export interface GroupInfoProps {
 export function GroupInfo({
   members,
   memberNames,
+  memberTags = {},
   memberAddresses,
   me,
   onOpenMember,
@@ -72,9 +81,10 @@ export function GroupInfo({
               >
                 <Avatar size={44} />
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-base font-semibold text-on-surface">
-                    {name}
-                    {isMe && <span className="ml-2 text-xs font-medium text-chat-meta">you</span>}
+                  <span className="flex min-w-0 items-center gap-2 text-base font-semibold text-on-surface">
+                    <span className="truncate">{name}</span>
+                    {isMe && <span className="shrink-0 text-xs font-medium text-chat-meta">you</span>}
+                    {memberTags[member] ? <MemberTagChip tag={memberTags[member]} /> : null}
                   </span>
                   <span className="mt-0.5 truncate text-[13px] text-chat-meta">
                     {memberAddresses[index] || `${member}@phonemail.com`}

@@ -1,19 +1,41 @@
 "use client";
 
+import Link from "next/link";
 import { ChatListSkeleton, ThreadSkeleton } from "@/components/skeleton";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
+import { AttachmentCards } from "@/components/attachments";
+import { MemberTagChip } from "@/components/member-tag-chip";
+import { isEmailFolder, type EmailFolder } from "@/lib/folders";
+import type { MemberTag } from "@/lib/roles";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
 /**
- * Desktop inbox — three zones: rail, thread list, reading pane.
+ * Desktop inbox - three zones: rail, thread list, reading pane.
  *
  * Selecting a thread loads it into the pane and marks it read (the same
  * endpoints mobile uses). "new-email" from the socket refreshes the list live,
  * with the 30s polling fallback; no page navigation anywhere.
+ *
+ * ROUND 9, TWO CHANGES.
+ *
+ * 1. THE TOOLBAR. Compose moved out of the chrome and into the strip above the
+ *    message list, next to the folder's own name, so the action sits with the
+ *    thing it acts on. The folder name is also the folder parameter the rail
+ *    links with (`?folder=spam`), and the list endpoint answers it - the rail's
+ *    items are the three real values of Email.folder, not decoration.
+ *
+ * 2. THE READING PANE IS TRADITIONAL MAIL, not chat. It used to render bubbles -
+ *    aligned left and right in accent-soft - in a Gmail-shaped window, which is
+ *    the one thing this client should not be: the phone app is the chat, this is
+ *    the mail client. Each message is now a stacked EMAIL with its own header
+ *    block (sender and role, To, the date, the subject), its full body, its
+ *    attachment cards, and its own Reply action that opens the traditional
+ *    compose. Groups render the same way with each sender named and their role
+ *    tag beside the name. There are no bubbles anywhere in this pane.
  */
 
 interface Thread {
@@ -28,14 +50,19 @@ interface Thread {
 
 interface Message {
   id: string;
+  /** One value per submission: a broadcast is one bubble, not one per recipient. */
+  submissionId?: string | null;
   mine: boolean;
   from: string;
+  fromName?: string | null;
+  fromTag?: MemberTag | null;
   to: string;
   subject: string;
   body: string;
   createdAt: string;
   repliedAt: string | null;
   tag: string | null;
+  attachments?: { id: string; filename: string; contentType: string; sizeBytes: number }[] | null;
 }
 
 /**
@@ -53,6 +80,12 @@ interface GroupThread {
   unread: number;
 }
 
+const FOLDER_TITLES: Record<EmailFolder, string> = {
+  inbox: "Inbox",
+  spam: "Spam",
+  trash: "Trash",
+};
+
 function formatWhen(iso: string): string {
   const date = new Date(iso);
   return date.toDateString() === new Date().toDateString()
@@ -60,9 +93,24 @@ function formatWhen(iso: string): string {
     : date.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 }
 
-export default function DesktopInboxPage() {
+function formatFull(iso: string): string {
+  const date = new Date(iso);
+  return `${date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}, ${date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function phoneOf(address: string): string {
+  return address.replace(/@.*$/, "");
+}
+
+function InboxInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status, token, authorizedFetch } = useAuth();
+
+  // The rail's folder links. An unknown value falls back to the inbox rather than
+  // to an empty list, so a hand-typed URL still shows mail.
+  const folderParam = searchParams?.get("folder") ?? "inbox";
+  const folder: EmailFolder = isEmailFolder(folderParam) ? folderParam : "inbox";
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [groups, setGroups] = useState<GroupThread[]>([]);
@@ -78,7 +126,7 @@ export default function DesktopInboxPage() {
 
   const loadThreads = useCallback(async () => {
     try {
-      const response = await authorizedFetch("/api/conversations");
+      const response = await authorizedFetch(`/api/conversations?folder=${folder}`);
       if (response.status === 401) {
         router.replace("/desktop");
         return;
@@ -96,7 +144,7 @@ export default function DesktopInboxPage() {
     } finally {
       setLoadingList(false);
     }
-  }, [authorizedFetch, router]);
+  }, [authorizedFetch, router, folder]);
 
   const openThread = useCallback(
     async (phone: string) => {
@@ -160,6 +208,9 @@ export default function DesktopInboxPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
+      setLoadingList(true);
+      setSelected(null);
+      setMessages([]);
       void loadThreads();
     }
   }, [status, loadThreads]);
@@ -207,99 +258,129 @@ export default function DesktopInboxPage() {
     window.setTimeout(() => void loadThreads(), 2500);
   }
 
+  /**
+   * The traditional compose, opened from a message: the same screen the phone
+   * client uses, prefilled with what a reply needs. In a group the thread key
+   * rides along, so a reply addressed to one member still lands in the GROUP
+   * conversation rather than in that member's 1:1 chat.
+   */
+  function replyHrefFor(message: Message): string {
+    const params = new URLSearchParams({ replyTo: message.id, origSubject: message.subject });
+    if (selectedGroup) {
+      const others = selectedGroup.members.filter((member) => member !== phoneOf(message.from));
+      params.set("to", (others.length > 0 ? others : selectedGroup.members).join(","));
+      params.set("threadKey", selectedGroup.threadKey);
+    } else {
+      params.set("to", selectedThread?.counterpart ?? phoneOf(message.from));
+    }
+    params.set("quote", message.body.replace(/\s+/g, " ").slice(0, 160));
+    return `/compose?${params.toString()}`;
+  }
+
   if (status !== "authenticated") {
-    return <p className="p-10 text-on-surface-variant">Loading…</p>;
+    return <p className="p-10 text-on-surface-variant">Loading...</p>;
   }
 
   return (
-    <main className="flex h-[calc(100vh-56px)] overflow-hidden">
-      {/* Left rail */}
-      <nav className="flex w-56 flex-col gap-2 border-r border-outline-variant bg-surface-container-lowest p-4">
-        <button type="button" className="btn-primary w-full" onClick={() => setComposeOpen(true)}>
-          Compose
-        </button>
-        <span className="mt-2 rounded-card bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface">Inbox</span>
-        {realtimeStatus !== "socket" && (
-          <span
-            className="mx-3 mt-2 h-2 w-2 rounded-full bg-on-surface-variant"
-            title={realtimeStatus}
-            aria-label={`Connection: ${realtimeStatus}`}
-          />
-        )}
-      </nav>
+    <main className="flex h-screen min-w-0 flex-1 overflow-hidden">
+      {/* Thread list, with the toolbar the brief asks for: the folder's name and
+          the Compose action, above the message list. */}
+      <section className="flex w-96 shrink-0 flex-col overflow-hidden border-r border-outline-variant bg-surface-container-lowest">
+        <div className="flex items-center gap-3 border-b border-outline-variant px-4 py-3">
+          <h1 className="font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
+            {FOLDER_TITLES[folder]}
+          </h1>
+          {realtimeStatus !== "socket" && (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-on-surface-variant"
+              title={realtimeStatus}
+              aria-label={`Connection: ${realtimeStatus}`}
+            />
+          )}
+          <button
+            type="button"
+            className="btn-primary ml-auto min-h-0 px-4 py-2 text-sm"
+            onClick={() => {
+              setSelected(null);
+              setComposeOpen(true);
+            }}
+          >
+            Compose
+          </button>
+        </div>
 
-      {/* Thread list */}
-      <section className="flex w-96 flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest">
-        <h1 className="border-b border-outline-variant px-4 py-3 font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
-          Inbox
-        </h1>
-        {loadingList && <ChatListSkeleton rows={5} />}
-        {!loadingList && threads.length + groups.length === 0 && (
-          <p className="p-4 text-on-surface-variant">No conversations yet.</p>
-        )}
-        {groups.length > 0 && (
-          <ul className="border-b-2 border-primary-container/30">
-            {groups.map((group) => (
-              <li key={group.threadKey} className="border-b border-outline-variant">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loadingList && <ChatListSkeleton rows={5} />}
+          {!loadingList && threads.length + groups.length === 0 && (
+            <p className="p-4 text-on-surface-variant">Nothing in {FOLDER_TITLES[folder]}.</p>
+          )}
+          {groups.length > 0 && (
+            <ul className="border-b-2 border-primary-container/30">
+              {groups.map((group) => (
+                <li key={group.threadKey} className="border-b border-outline-variant">
+                  <button
+                    type="button"
+                    onClick={() => void openGroup(group.threadKey)}
+                    className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                      selected === group.threadKey ? "bg-surface-container-low" : ""
+                    }`}
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className={`truncate ${group.unread > 0 ? "font-bold" : "font-semibold"}`}>
+                        Group -{" "}
+                        {group.members
+                          .map((member, index) => (group as { memberNames?: (string | null)[] }).memberNames?.[index]?.trim() || member)
+                          .join(", ")}
+                      </span>
+                      <span className="ml-auto shrink-0 text-xs text-on-surface-variant">
+                        {formatWhen(group.lastAt)}
+                      </span>
+                    </span>
+                    <span className="block truncate text-sm">{group.subject}</span>
+                    <span className="block truncate text-sm text-on-surface-variant">
+                      {group.members.length} members - {group.preview}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ul>
+            {threads.map((thread) => (
+              <li key={thread.counterpartAddress} className="border-b border-outline-variant">
                 <button
                   type="button"
-                  onClick={() => void openGroup(group.threadKey)}
+                  onClick={() => void openThread(thread.counterpart)}
                   className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
-                    selected === group.threadKey ? "bg-surface-container-low" : ""
+                    selected === thread.counterpart ? "bg-surface-container-low" : ""
                   }`}
                 >
                   <span className="flex items-baseline gap-2">
-                    <span className={`truncate ${group.unread > 0 ? "font-bold" : "font-semibold"}`}>
-                      Group -{" "}
-                      {group.members
-                        .map((member, index) => (group as { memberNames?: (string | null)[] }).memberNames?.[index]?.trim() || member)
-                        .join(", ")}
+                    <span className={`truncate ${thread.unread > 0 ? "font-bold" : "font-semibold"}`}>
+                      {thread.counterpartName?.trim() || thread.counterpart}
                     </span>
-                    <span className="ml-auto shrink-0 text-xs text-on-surface-variant">
-                      {formatWhen(group.lastAt)}
-                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-on-surface-variant">{formatWhen(thread.lastAt)}</span>
                   </span>
-                  <span className="block truncate text-sm">{group.subject}</span>
-                  <span className="block truncate text-sm text-on-surface-variant">
-                    {group.members.length} members - {group.preview}
-                  </span>
+                  <span className="block truncate text-sm">{thread.subject}</span>
+                  <span className="block truncate text-sm text-on-surface-variant">{thread.preview}</span>
                 </button>
               </li>
             ))}
           </ul>
-        )}
-        <ul>
-          {threads.map((thread) => (
-            <li key={thread.counterpartAddress} className="border-b border-outline-variant">
-              <button
-                type="button"
-                onClick={() => void openThread(thread.counterpart)}
-                className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
-                  selected === thread.counterpart ? "bg-surface-container-low" : ""
-                }`}
-              >
-                <span className="flex items-baseline gap-2">
-                  <span className={`truncate ${thread.unread > 0 ? "font-bold" : "font-semibold"}`}>
-                    {thread.counterpartName?.trim() || thread.counterpart}
-                  </span>
-                  <span className="ml-auto shrink-0 text-xs text-on-surface-variant">{formatWhen(thread.lastAt)}</span>
-                </span>
-                <span className="block truncate text-sm">{thread.subject}</span>
-                <span className="block truncate text-sm text-on-surface-variant">{thread.preview}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        </div>
       </section>
 
-      {/* Reading pane */}
-      <section className="flex flex-1 flex-col overflow-hidden bg-surface-container-lowest">
+      {/* Reading pane: stacked EMAILS, never bubbles. */}
+      <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low">
         {!selected && !composeOpen && (
-          <p className="p-10 text-on-surface-variant">Select a conversation to read it.</p>
+          <p className="p-10 text-on-surface-variant">
+            Select a conversation to read it, or write a new message.
+          </p>
         )}
+
         {composeOpen && (
           <form className="flex max-w-3xl flex-col gap-3 p-6" onSubmit={sendCompose}>
-            <h2 className="text-lg font-semibold">New message</h2>
+            <h2 className="font-headline text-lg font-bold text-on-surface">New message</h2>
             <input
               className="field"
               placeholder="To (number or alias)"
@@ -331,45 +412,100 @@ export default function DesktopInboxPage() {
             </div>
           </form>
         )}
-        {notice && <p className="px-6 text-sm text-primary-container">{notice}</p>}
+
+        {notice && <p className="px-6 pt-4 text-sm text-primary-container">{notice}</p>}
         {error && (
-          <p className="px-6 text-sm text-wa-alert" role="alert">
+          <p className="px-6 pt-4 text-sm text-wa-alert" role="alert">
             {error}
           </p>
         )}
 
         {selected && !composeOpen && (
           <>
-            <header className="border-b border-outline-variant px-6 py-4">
-              <h2 className="text-xl font-semibold">
+            <header className="border-b border-outline-variant bg-surface-container-lowest px-6 py-4">
+              <h2 className="font-headline text-xl font-bold tracking-[-0.01em] text-on-surface">
                 {selectedGroup
                   ? `Group - ${selectedGroup.members.join(", ")}`
                   : selectedThread?.counterpartName?.trim() || selected}
               </h2>
-              <p className="text-sm text-on-surface-variant">{threadSubject || selectedThread?.subject}</p>
+              <p className="text-sm text-on-surface-variant">
+                {threadSubject || selectedThread?.subject}{" "}
+                {messages.length > 0 && `- ${messages.length} ${messages.length === 1 ? "message" : "messages"}`}
+              </p>
             </header>
-            <div className="flex-1 overflow-y-auto p-6">
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {loadingThread && <ThreadSkeleton bubbles={3} />}
-              {messages.map((message) => (
-                <article
-                  key={message.id}
-                  className={`mb-4 rounded-card border p-4 ${
-                    message.mine ? "ml-auto max-w-[75%] border-primary-container/20 bg-accent-soft" : "max-w-[75%] border-outline-variant"
-                  }`}
-                >
-                  <p className="text-xs text-on-surface-variant">
-                    {message.from} · {formatWhen(message.createdAt)}
-                    {message.tag ? ` · ${message.tag}` : ""}
-                    {message.repliedAt ? " · replied" : ""}
-                  </p>
-                  <p className="mt-1 text-base font-semibold">{message.subject}</p>
-                  <p className="mt-1 whitespace-pre-wrap text-base">{message.body}</p>
-                </article>
-              ))}
+              {!loadingThread &&
+                messages.map((message) => (
+                  <article
+                    key={message.submissionId ?? message.id}
+                    className="mb-4 rounded-card border border-outline-variant bg-surface-container-lowest shadow-card"
+                  >
+                    {/* The header block: who, from where, to where, when. */}
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-outline-variant px-5 py-3">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-base font-bold text-on-surface">
+                          {message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
+                        </span>
+                        {message.fromTag ? <MemberTagChip tag={message.fromTag} /> : null}
+                      </span>
+                      <span className="min-w-0 truncate text-xs text-outline">
+                        From: {message.from}
+                      </span>
+                      <span className="ml-auto shrink-0 text-xs text-outline" title={formatFull(message.createdAt)}>
+                        {formatFull(message.createdAt)}
+                      </span>
+                    </div>
+
+                    <div className="px-5 pt-3">
+                      <p className="text-xs text-outline">To: {message.to}</p>
+                      <h3 className="mt-2 font-headline text-[17px] font-bold text-on-surface">
+                        {message.subject}
+                      </h3>
+                    </div>
+
+                    <div className="px-5 pb-4 pt-2">
+                      <p className="whitespace-pre-wrap text-[15px] leading-7 text-on-surface">
+                        {message.body}
+                      </p>
+
+                      <AttachmentCards attachments={message.attachments} />
+
+                      <div className="mt-4 flex items-center gap-3">
+                        <Link
+                          href={replyHrefFor(message)}
+                          className="inline-flex min-h-0 items-center gap-2 rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-accent"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M9 7L4 12l5 5" />
+                            <path d="M4 12h9a6 6 0 0 1 6 6v1" />
+                          </svg>
+                          Reply
+                        </Link>
+                        {message.repliedAt && (
+                          <span className="text-xs text-on-surface-variant">Replied</span>
+                        )}
+                        {message.tag && (
+                          <span className="text-xs text-on-surface-variant">{message.tag}</span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
             </div>
           </>
         )}
       </section>
     </main>
+  );
+}
+
+export default function DesktopInboxPage() {
+  // useSearchParams needs a Suspense boundary when the route is prerendered.
+  return (
+    <Suspense fallback={<p className="p-10 text-on-surface-variant">Loading...</p>}>
+      <InboxInner />
+    </Suspense>
   );
 }

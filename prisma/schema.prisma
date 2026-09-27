@@ -88,6 +88,12 @@ model Contact {
 /// path (/api/mail/inbound), never by the send endpoint, so a message that
 /// never made it through SMTP cannot masquerade as delivered.
 model Email {
+  /// ROUND 9: which list this fan-out row's recipient came from - 'to' or 'cc' -
+  /// stamped by the send path's submission note (see lib/submissions.ts). NULL for
+  /// pairwise rows: a 1:1 message has no To/Cc distinction to record. The group
+  /// member role tags are DERIVED from the founding mail's rows (lib/roles.ts).
+  recipientRole String?
+
   id          String   @id @default(cuid())
   fromUserId  String
   toUserId    String

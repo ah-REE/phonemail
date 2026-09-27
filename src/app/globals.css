@@ -160,6 +160,28 @@
 
 .spinner { animation: spinner-turn 800ms linear infinite; }
 
+/*
+ * ROUND 9: the contact-save confirmation.
+ *
+ * The save block MORPHS into the green disc, so the disc scales up from 0.4 with
+ * the same curve the sheets enter on (cubic-bezier(0.22, 1, 0.36, 1)) - it reads
+ * as the row BECOMING the confirmation rather than a second thing appearing
+ * beside it. One smooth transition, no overshoot: this confirms something, and a
+ * bounce would make a confirmation feel like a celebration.
+ */
+@keyframes save-morph {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.save-morph { animation: save-morph 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }

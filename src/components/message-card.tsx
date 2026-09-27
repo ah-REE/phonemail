@@ -28,6 +28,8 @@
 import type { ReactNode } from "react";
 
 import { Avatar } from "@/components/avatar";
+import { MemberTagChip } from "@/components/member-tag-chip";
+import type { MemberTag } from "@/lib/roles";
 
 export interface MessageCardProps {
   /** Which side. Mine sits right, theirs left - and the squared corner says so. */
@@ -41,6 +43,12 @@ export interface MessageCardProps {
   showName?: boolean;
   /** The address under the name, for the reader's benefit, not the layout's. */
   secondary?: string;
+  /**
+   * ROUND 9: the sender's role in a GROUP conversation - 'sender' | 'receiver' |
+   * 'cc' - drawn as a chip beside the name. Absent in a 1:1, where there is no
+   * role to state, and absent for a member the derivation could not place.
+   */
+  senderTag?: MemberTag | null;
   when: string;
   body: string;
   /** The single sent tick, on a message of mine. */
@@ -77,6 +85,7 @@ export function MessageCard({
   isLastInRun = true,
   name,
   showName = false,
+  senderTag,
   secondary,
   when,
   body,
@@ -124,8 +133,9 @@ export function MessageCard({
 
       <div className="flex min-w-0 max-w-[78%] flex-col">
         {showName && !mine && isFirstInRun ? (
-          <span className="mb-1 px-1 text-[13px] font-semibold text-on-surface-variant">
-            {name?.trim() || secondary || "Them"}
+          <span className="mb-1 flex items-center gap-1.5 px-1 text-[13px] font-semibold text-on-surface-variant">
+            <span className="truncate">{name?.trim() || secondary || "Them"}</span>
+            {senderTag ? <MemberTagChip tag={senderTag} /> : null}
           </span>
         ) : null}
 

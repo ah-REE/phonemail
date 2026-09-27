@@ -29,6 +29,30 @@ export interface PendingSubmission {
   threadKey?: string | null;
   /** The row this message answers. */
   replyToId?: string | null;
+  /**
+   * ROUND 9: which list each recipient came from, keyed by canonical address
+   * ('to' | 'cc'), so the inbound fan-out can stamp Email.recipientRole on the row
+   * it creates. The MIME Cc header tells the mail SERVICE the same thing for the
+   * hop, but a header cannot reach the row - the note is what survives.
+   */
+  roles?: Record<string, "to" | "cc"> | null;
+}
+
+/**
+ * The note is read back from Redis, so its shape is not trusted: only 'to' and
+ * 'cc' values survive, and only under string keys.
+ */
+function readRoles(value: unknown): Record<string, "to" | "cc"> | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const roles: Record<string, "to" | "cc"> = {};
+  for (const [address, role] of Object.entries(value as Record<string, unknown>)) {
+    if (role === "to" || role === "cc") {
+      roles[address] = role;
+    }
+  }
+  return Object.keys(roles).length > 0 ? roles : null;
 }
 
 const TTL_SECONDS = 180;
@@ -65,6 +89,7 @@ export async function takeSubmission(key: string): Promise<PendingSubmission> {
     return {
       threadKey: typeof parsed.threadKey === "string" ? parsed.threadKey : null,
       replyToId: typeof parsed.replyToId === "string" ? parsed.replyToId : null,
+      roles: readRoles(parsed.roles),
     };
   } catch (error) {
     console.error("[submissions] could not read the metadata", error);
