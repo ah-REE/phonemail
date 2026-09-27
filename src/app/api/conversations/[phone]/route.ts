@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 const THREAD_LIMIT = 200;
 
 export async function GET(request: Request, context: { params: Promise<{ phone: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
@@ -138,7 +138,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
  * conversation again, because the flags only hide what existed at this moment.
  */
 export async function DELETE(request: Request, context: { params: Promise<{ phone: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

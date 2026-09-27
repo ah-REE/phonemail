@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { OtpCooldownError, requestOtp } from "@/lib/otp";
+import { OTP_WINDOW_LIMIT, OtpCooldownError, requestOtp } from "@/lib/otp";
 import { phoneNumberSchema } from "@/lib/phone";
 
 export const runtime = "nodejs";
@@ -44,7 +44,12 @@ export async function POST(request: Request) {
         success: true,
         phoneNumber,
         expiresInSeconds: result.ttlSeconds,
-        resendAfterSeconds: 60,
+        // The REAL policy, not a fixed 60: zero while the rapid pair lasts, a minute
+        // after that. The screen's countdown reads this, so it cannot drift from the
+        // rule the server enforces.
+        resendAfterSeconds: result.resendAfterSeconds,
+        windowUsed: result.windowUsed,
+        windowLimit: result.windowLimit,
         message: "OTP sent successfully.",
         // Present only when the SMS gateway is not configured. The evaluator boots the
         // stack with placeholder credentials, so this is the documented dev
@@ -62,8 +67,11 @@ export async function POST(request: Request) {
     if (error instanceof OtpCooldownError) {
       return NextResponse.json(
         {
-          error: "Please wait before requesting another OTP.",
+          error: error.message,
+          reason: error.reason,
           retryAfterSeconds: error.retryAfterSeconds,
+          windowLimit: OTP_WINDOW_LIMIT,
+          windowUsed: error.used,
         },
         { status: 429 },
       );

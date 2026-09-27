@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * single-message changes.
  */
 export async function POST(request: Request, context: { params: Promise<{ phone: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

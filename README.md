@@ -32,6 +32,13 @@ docker compose up -d
 
 Then open <http://localhost:3000>.
 
+**On a laptop you land on the desktop client.** The root `/` hands a viewport of
+768px or wider to `/desktop` once per tab; the phone layout answers `/mobile`
+explicitly, and choosing it keeps you there (the choice lives in the tab's
+sessionStorage, so the in-app links back to `/` do not bounce you out). On a narrow
+viewport - a real phone, or dev-tools mobile - `/` is the phone client as it always
+was.
+
 The first boot builds the images, which takes a few minutes; after that the app
 starts in seconds. No `.env` file, no manual `npm install`, no credentials —
 every value both sides need is wired into `docker-compose.yml`, and anything
@@ -61,6 +68,12 @@ two stacks at once, change the host side of that one line.
 `docker-compose.yml` ships *placeholder* SMS credentials, and the app treats
 those as "not configured" on purpose:
 
+- **The OTP request policy is tiered.** The first **two** requests for a number are
+  immediate (the rapid pair - somebody who mistyped wants the code now), from the
+  third the spacing is **60 seconds**, and a number may have at most **five** codes per
+  **2-hour** window. The window is set with the first request and does not slide, so the
+  budget refills on a predictable clock. Every refusal says which rule it hit and how
+  long the actual wait is.
 - `POST /api/auth/send-otp` answers with the fixed development code **123456**
   and a **`devHint`** field saying so, and **no SMS is attempted**.
 - Every verification run recorded in this repository was made in that mode, and
@@ -113,7 +126,11 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
 7. **A contact.** Open a thread and tap the person's name. The detail sheet opens;
    **Add** saves them, closes the sheet by itself, and the chat shows the name
    you gave them immediately — no reload.
-8. **Settings.** In Profile: the **SMS notification** switch (real state the
+8. **Settings.** In Profile: **Signed-in devices** (every session with a readable
+   label - "Chrome on Windows" - when it signed in, when it was last active, a *This
+   device* marker and a **Log out** that really ends that device's token), **Font
+   size** (Normal / Large / Extra large, applied before first paint and remembered on
+   this device), the **SMS notification** switch (real state the
    delivery path reads), the **Language** row, the **Folders** rows (Drafts,
    Spam, Trash — each opens its own screen, and a thread's chevron panel moves a
    mail into Spam or Trash), the display-name row, and **Delete account**, which
@@ -310,31 +327,31 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **714 assertions across 22 suites, green on the loaded database**, in dev mode
+- **737 assertions across 23 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
-  reader, 27 for display names, 45 for the group chat, 42 for the final functional
-  items, 31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the
+  reader, 21 for display names, 39 for the group chat, 36 for the final functional
+  items, 25 for aliases plus the non-member 403 path, 37 for contacts, 60 for the
   round-2 fixes, 54 for the round-3 items, 32 for the settings reference
   (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
   (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
   sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
   deployed stylesheet plus the attachment round trip, hashes included), 33 for round
   8 (the raised limits, the three affordances, the in-message cards, the upload
-  states), 47 for round 9 (the five fixes, CC, delete chat's scoping and the
-  security report's references - including the reply-privacy invariant proven for
-  the payload AND the socket), and 50 for round 10, the IVR tree: **28 mocked
-  branches** of the voice flow driven as a pure function (the greeting, both
-  languages, both menu digits, both replay limits, the missing digit, the unknown
-  stage, the Exotel one-shot, the spaced-digit address, XML hygiene) and **22 live
-  checks** against the running app - ten of which drive the request shape Twilio
-  actually sends, with the digits in the POST BODY. That last ten exist because the
-  body path was silently broken and the mocked half could never have caught it: the
-  flow was right, and the route was reading the digits from the query alone. `ct5/settings_ref.mjs`,
+  states), 47 for round 9 (the five fixes, CC, delete chat's scoping and the security
+  report's references - including the reply-privacy invariant proven for the payload
+  AND the socket), 50 for round 10 (the IVR tree: 28 mocked branches plus 22 live
+  checks), and **53 for round 11**: the contact sheet's in-place confirmation, the
+  font-size module and its pre-paint bootstrap, the wide-screen handover and
+  `/mobile`, the **tiered OTP policy driven live** (the rapid pair, the third refused
+  with its reason and real wait, the sixth refused on the WINDOW with hours remaining,
+  the reset), sessions (**a second sign-in is a second device; logging it out makes
+  that token 401 while this one keeps working**), the device-label parser, and the
+  desktop routes with their token hygiene. `ct5/settings_ref.mjs`,
   `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
   **source-only** suites: they grade a design, a copy rule and the shape of the
-  markup, which live in the source and the tokens, so they need no server, no OTP
-  and no mode - and are never a reason to touch one.
+  markup, which live in the source and the tokens, so they need no server, no OTP and
+  no mode - and are never a reason to touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all FOURTEEN migrations applying on a clean volume,

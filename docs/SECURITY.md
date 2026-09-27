@@ -20,7 +20,9 @@ treated as a bug in this document.
 | 6-digit codes from a cryptographic RNG, not `Math.random` | `src/lib/otp.ts` | `randomInt(100000, 1000000)` (imported from `node:crypto`) |
 | Codes expire in **300 seconds** | `src/lib/otp.ts` | `OTP_TTL_SECONDS = 300` |
 | A code is **one-time**: it is deleted the moment it verifies | `src/lib/otp.ts` | `redis.del(otpKey(phoneNumber))` inside the success path of `verifyOtp` |
-| Resend cooldown of **60 seconds** per number | `src/lib/otp.ts` | `OTP_COOLDOWN_SECONDS = 60`, `class OtpCooldownError` |
+| **Tiered request policy**: the first two requests are immediate, then 60s apart, and at most 5 codes per number per 2-hour window | `src/lib/otp.ts` | `OTP_RAPID_REQUESTS = 2`, `OTP_COOLDOWN_SECONDS = 60`, `OTP_WINDOW_LIMIT = 5`, `OTP_WINDOW_SECONDS = 2 * 60 * 60`, `class OtpCooldownError` with its `reason` |
+| The window is set with the FIRST request and never extended (a sliding window would let a caller hold the budget open) | `src/lib/otp.ts` | `windowTtl > 0 ? windowTtl : OTP_WINDOW_SECONDS` |
+| Every refusal names its reason ("cooldown" or "window") and the actual wait | `src/app/api/auth/send-otp/route.ts` | `reason: error.reason`, `retryAfterSeconds: error.retryAfterSeconds` |
 | **5 wrong attempts burns the code** (brute-force bound) | `src/lib/otp.ts` | `OTP_MAX_ATTEMPTS = 5`, `redis.incr(otpAttemptsKey(...))`, `attempts >= OTP_MAX_ATTEMPTS` |
 | There is **no password path** at all | whole tree | `grep -rn "password" src` returns only the SMS-gateway credential (`SMS_GATE_PASSWORD`), never a user password |
 
@@ -170,10 +172,16 @@ These are real, and they are limitations rather than oversights:
    They are reported rather than patched: no dependency was upgraded during the
    build, because the verified artefact is the committed one. Upgrading the
    `next`/`postcss` chain is the next maintenance step.
-3. **The JWT lives for 7 days with no revocation.** There is no denylist, no
-   refresh-token rotation and no server-side session table: signing out clears
-   `sessionStorage` on that device, and a leaked token is valid until it expires.
-   A production build would add a revocation list or short-lived tokens.
+3. **Tokens are revocable per device; their LIFETIME is still 7 days.** Every sign-in
+   creates a `Session` row (`prisma/schema.prisma`), the JWT carries its id (`sid`,
+   `src/lib/jwt.ts`), and `requireUser` (`src/lib/auth.ts`) refuses a token whose row
+   is gone - so "log this device out" deletes the row and that device's next request is
+   401, and deleting the account deletes every session FIRST
+   (`src/app/api/me/delete/route.ts`). What remains true: a token is valid for up to
+   7 days with **no refresh rotation**, and there is no denylist of individual tokens -
+   revocation is per session, which is the unit a person actually thinks in ("log out
+   that laptop"), not per token. Short-lived access tokens with a refresh pair are the
+   next step if this ever leaves localhost.
 4. **Committed placeholder secrets.** `docker-compose.yml` ships placeholder
    values for `JWT_SECRET`, `MAIL_WEBHOOK_SECRET`, `IVR_WEBHOOK_SECRET` and the
    SMS gateway credentials so that `docker compose up -d` works with no `.env`.

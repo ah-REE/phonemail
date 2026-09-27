@@ -28,7 +28,7 @@ const ContactInput = z.object({
 
 /** GET /api/contacts - mine, oldest first, with the live account name alongside. */
 export async function GET(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 
 /** POST /api/contacts - add by mail id, resolved and validated. */
 export async function POST(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

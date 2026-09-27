@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { FONT_SIZE_BOOTSTRAP } from "@/lib/fontSize";
+
 import "./globals.css";
 
 /**
@@ -61,6 +63,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
     >
+      {/* THE FONT SIZE PREFERENCE, APPLIED BEFORE ANYTHING PAINTS. Every size in the
+          app is in rem, so the chosen level is one number on this element - and doing
+          it here rather than in an effect is what stops the text jumping from 18px to
+          22px after hydration. No storage (or a private-mode refusal) simply leaves
+          the design's own size in place. */}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: FONT_SIZE_BOOTSTRAP }} />
+      </head>
       <body>{children}</body>
     </html>
   );

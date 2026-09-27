@@ -70,7 +70,7 @@ const sendSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
@@ -385,7 +385,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

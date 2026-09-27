@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * else's row is not a permission error here, it simply matches nothing.
  */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

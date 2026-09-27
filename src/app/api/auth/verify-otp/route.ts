@@ -88,7 +88,17 @@ export async function POST(request: Request) {
       select: { id: true, phoneNumber: true, createdAt: true, registeredVia: true },
     });
 
-    const token = signAuthToken(user);
+    // Day 9: every sign-in IS a session. The token carries the row's id, so this
+    // device can be listed in settings, logged out on its own, and ended by account
+    // deletion - none of which is possible with a self-contained token.
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        userAgent: request.headers.get("user-agent")?.slice(0, 300) ?? null,
+      },
+      select: { id: true },
+    });
+    const token = signAuthToken(user, session.id);
 
     return NextResponse.json(
       {

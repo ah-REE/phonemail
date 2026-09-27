@@ -34,7 +34,7 @@ const patchSchema = z
   );
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

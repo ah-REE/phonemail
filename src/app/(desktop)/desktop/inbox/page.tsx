@@ -208,20 +208,20 @@ export default function DesktopInboxPage() {
   }
 
   if (status !== "authenticated") {
-    return <p className="p-10 text-wa-muted">Loading…</p>;
+    return <p className="p-10 text-on-surface-variant">Loading…</p>;
   }
 
   return (
     <main className="flex h-[calc(100vh-56px)] overflow-hidden">
       {/* Left rail */}
-      <nav className="flex w-56 flex-col gap-2 border-r border-wa-line bg-wa-panel p-4">
+      <nav className="flex w-56 flex-col gap-2 border-r border-outline-variant bg-surface-container-lowest p-4">
         <button type="button" className="btn-primary w-full" onClick={() => setComposeOpen(true)}>
           Compose
         </button>
-        <span className="mt-2 rounded-card bg-wa-bg px-3 py-2 text-sm font-semibold text-wa-ink">Inbox</span>
+        <span className="mt-2 rounded-card bg-surface-container-low px-3 py-2 text-sm font-semibold text-on-surface">Inbox</span>
         {realtimeStatus !== "socket" && (
           <span
-            className="mx-3 mt-2 h-2 w-2 rounded-full bg-wa-muted"
+            className="mx-3 mt-2 h-2 w-2 rounded-full bg-on-surface-variant"
             title={realtimeStatus}
             aria-label={`Connection: ${realtimeStatus}`}
           />
@@ -229,21 +229,23 @@ export default function DesktopInboxPage() {
       </nav>
 
       {/* Thread list */}
-      <section className="flex w-96 flex-col overflow-y-auto border-r border-wa-line bg-wa-panel">
-        <h1 className="border-b border-wa-line px-4 py-3 text-lg font-semibold">Inbox</h1>
+      <section className="flex w-96 flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest">
+        <h1 className="border-b border-outline-variant px-4 py-3 font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
+          Inbox
+        </h1>
         {loadingList && <ChatListSkeleton rows={5} />}
         {!loadingList && threads.length + groups.length === 0 && (
-          <p className="p-4 text-wa-muted">No conversations yet.</p>
+          <p className="p-4 text-on-surface-variant">No conversations yet.</p>
         )}
         {groups.length > 0 && (
-          <ul className="border-b-2 border-wa-teal/30">
+          <ul className="border-b-2 border-primary-container/30">
             {groups.map((group) => (
-              <li key={group.threadKey} className="border-b border-wa-line">
+              <li key={group.threadKey} className="border-b border-outline-variant">
                 <button
                   type="button"
                   onClick={() => void openGroup(group.threadKey)}
-                  className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-wa-bg ${
-                    selected === group.threadKey ? "bg-wa-bg" : ""
+                  className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                    selected === group.threadKey ? "bg-surface-container-low" : ""
                   }`}
                 >
                   <span className="flex items-baseline gap-2">
@@ -253,12 +255,12 @@ export default function DesktopInboxPage() {
                         .map((member, index) => (group as { memberNames?: (string | null)[] }).memberNames?.[index]?.trim() || member)
                         .join(", ")}
                     </span>
-                    <span className="ml-auto shrink-0 text-xs text-wa-muted">
+                    <span className="ml-auto shrink-0 text-xs text-on-surface-variant">
                       {formatWhen(group.lastAt)}
                     </span>
                   </span>
                   <span className="block truncate text-sm">{group.subject}</span>
-                  <span className="block truncate text-sm text-wa-muted">
+                  <span className="block truncate text-sm text-on-surface-variant">
                     {group.members.length} members - {group.preview}
                   </span>
                 </button>
@@ -268,22 +270,22 @@ export default function DesktopInboxPage() {
         )}
         <ul>
           {threads.map((thread) => (
-            <li key={thread.counterpartAddress} className="border-b border-wa-line">
+            <li key={thread.counterpartAddress} className="border-b border-outline-variant">
               <button
                 type="button"
                 onClick={() => void openThread(thread.counterpart)}
-                className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-wa-bg ${
-                  selected === thread.counterpart ? "bg-wa-bg" : ""
+                className={`w-full px-4 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                  selected === thread.counterpart ? "bg-surface-container-low" : ""
                 }`}
               >
                 <span className="flex items-baseline gap-2">
                   <span className={`truncate ${thread.unread > 0 ? "font-bold" : "font-semibold"}`}>
                     {thread.counterpartName?.trim() || thread.counterpart}
                   </span>
-                  <span className="ml-auto shrink-0 text-xs text-wa-muted">{formatWhen(thread.lastAt)}</span>
+                  <span className="ml-auto shrink-0 text-xs text-on-surface-variant">{formatWhen(thread.lastAt)}</span>
                 </span>
                 <span className="block truncate text-sm">{thread.subject}</span>
-                <span className="block truncate text-sm text-wa-muted">{thread.preview}</span>
+                <span className="block truncate text-sm text-on-surface-variant">{thread.preview}</span>
               </button>
             </li>
           ))}
@@ -291,9 +293,9 @@ export default function DesktopInboxPage() {
       </section>
 
       {/* Reading pane */}
-      <section className="flex flex-1 flex-col overflow-hidden bg-wa-panel">
+      <section className="flex flex-1 flex-col overflow-hidden bg-surface-container-lowest">
         {!selected && !composeOpen && (
-          <p className="p-10 text-wa-muted">Select a conversation to read it.</p>
+          <p className="p-10 text-on-surface-variant">Select a conversation to read it.</p>
         )}
         {composeOpen && (
           <form className="flex max-w-3xl flex-col gap-3 p-6" onSubmit={sendCompose}>
@@ -329,7 +331,7 @@ export default function DesktopInboxPage() {
             </div>
           </form>
         )}
-        {notice && <p className="px-6 text-sm text-wa-teal">{notice}</p>}
+        {notice && <p className="px-6 text-sm text-primary-container">{notice}</p>}
         {error && (
           <p className="px-6 text-sm text-wa-alert" role="alert">
             {error}
@@ -338,13 +340,13 @@ export default function DesktopInboxPage() {
 
         {selected && !composeOpen && (
           <>
-            <header className="border-b border-wa-line px-6 py-4">
+            <header className="border-b border-outline-variant px-6 py-4">
               <h2 className="text-xl font-semibold">
                 {selectedGroup
                   ? `Group - ${selectedGroup.members.join(", ")}`
                   : selectedThread?.counterpartName?.trim() || selected}
               </h2>
-              <p className="text-sm text-wa-muted">{threadSubject || selectedThread?.subject}</p>
+              <p className="text-sm text-on-surface-variant">{threadSubject || selectedThread?.subject}</p>
             </header>
             <div className="flex-1 overflow-y-auto p-6">
               {loadingThread && <ThreadSkeleton bubbles={3} />}
@@ -352,10 +354,10 @@ export default function DesktopInboxPage() {
                 <article
                   key={message.id}
                   className={`mb-4 rounded-card border p-4 ${
-                    message.mine ? "ml-auto max-w-[75%] border-wa-teal/20 bg-wa-bubble" : "max-w-[75%] border-wa-line"
+                    message.mine ? "ml-auto max-w-[75%] border-primary-container/20 bg-accent-soft" : "max-w-[75%] border-outline-variant"
                   }`}
                 >
-                  <p className="text-xs text-wa-muted">
+                  <p className="text-xs text-on-surface-variant">
                     {message.from} · {formatWhen(message.createdAt)}
                     {message.tag ? ` · ${message.tag}` : ""}
                     {message.repliedAt ? " · replied" : ""}

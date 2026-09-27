@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * opaque id. Caching is disabled: the bytes are the user's private mail.
  */
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

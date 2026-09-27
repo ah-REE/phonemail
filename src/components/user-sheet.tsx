@@ -121,12 +121,19 @@ export function UserSheet({
         setError(body.error ?? "Could not save that contact.");
         return;
       }
-      setNotice(nameDraft.trim() ? `Saved as ${nameDraft.trim()}.` : "Saved to your contacts.");
-      // ROUND 4: hand the new name up, then close. Order matters - the callback
-      // must fire while this component is still mounted.
+      setNotice(
+        nameDraft.trim()
+          ? `Saved successfully as ${nameDraft.trim()}.`
+          : "Saved successfully to your contacts.",
+      );
+      // ROUND 8: the sheet STAYS OPEN after a save. Saving is not the end of the
+      // interaction any more - the confirmation appears here, the chat behind it
+      // shows the new name immediately, and the reader closes the sheet when they are
+      // ready. (Closing itself made the confirmation invisible and took the sheet
+      // away before anyone had read it.) The name is handed up FIRST, while this
+      // component is still mounted.
       onSaved?.(nameDraft.trim() || null);
       await loadContacts();
-      onClose();
     } catch {
       setError("Network error. Please try again.");
     } finally {

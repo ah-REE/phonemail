@@ -34,7 +34,7 @@ const patchSchema = z
   });
 
 export async function GET(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

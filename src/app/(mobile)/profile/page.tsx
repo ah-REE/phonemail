@@ -8,6 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
 import { Switch } from "@/components/switch";
+import { FONT_SIZES, applyFontSize, readFontSize, type FontSizeId } from "@/lib/fontSize";
 import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/lib/useAuth";
 
@@ -47,6 +48,7 @@ const ALIAS_LIMIT = 1;
 type IconName =
   | "back"
   | "bell"
+  | "text"
   | "check"
   | "chevron"
   | "copy"
@@ -138,6 +140,14 @@ function Icon({
           <path d="M13 21l4-10 4 10M14.6 17.4h4.8" {...stroke} />
         </>
       )}
+      {/* The type mark for the font-size row: a serif-ish "T", which is what a
+          typeface control looks like everywhere else. */}
+      {name === "text" && (
+        <>
+          <path d="M5 7V5h14v2" {...stroke} />
+          <path d="M12 5v14M9.5 19h5" {...stroke} />
+        </>
+      )}
       {name === "trash" && (
         <>
           <path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" {...stroke} />
@@ -204,6 +214,64 @@ export default function ProfilePage() {
   const [smsSaving, setSmsSaving] = useState(false);
   const [smsNotice, setSmsNotice] = useState<string | null>(null);
   const [language, setLanguage] = useState("en");
+  // A display preference, per device. Read on mount so the row shows what is
+  // actually applied (the head script set it before paint); written on change.
+  const [fontSize, setFontSize] = useState<FontSizeId>("normal");
+  // Day 9: the devices signed in to this account.
+  const [sessions, setSessions] = useState<
+    { id: string; device: string; current: boolean; createdAt: string; lastActive: string }[]
+  >([]);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [loggingOutId, setLoggingOutId] = useState<string | null>(null);
+
+  // Read what is actually applied AFTER mount rather than during render: the head
+  // script has already set the size, and reading storage while rendering would make
+  // the server's markup and the client's first render disagree.
+  useEffect(() => {
+    setFontSize(readFontSize());
+  }, []);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      const response = await authorizedFetch("/api/sessions");
+      if (!response.ok) {
+        setSessionsError("Could not read your signed-in devices.");
+        return;
+      }
+      const body = (await response.json()) as { sessions?: typeof sessions };
+      setSessions(body.sessions ?? []);
+      setSessionsError(null);
+    } catch {
+      setSessionsError("Network error.");
+    }
+  }, [authorizedFetch]);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  /**
+   * Log ONE device out by deleting its session. Deleting the row is what ends that
+   * token: the next request from that device is refused. When it is THIS device, the
+   * client clears its own session and returns to the door, which is what signing out
+   * has always done.
+   */
+  async function logOutDevice(session: { id: string; current: boolean }) {
+    setLoggingOutId(session.id);
+    try {
+      const response = await authorizedFetch(`/api/sessions/${session.id}`, { method: "DELETE" });
+      if (session.current || response.status === 401) {
+        signOut();
+        router.push("/onboarding");
+        return;
+      }
+      if (response.ok) {
+        await loadSessions();
+      }
+    } finally {
+      setLoggingOutId(null);
+    }
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteStep, setDeleteStep] = useState<"confirm" | "otp">("confirm");
   const [deleteOtp, setDeleteOtp] = useState("");
@@ -699,8 +767,87 @@ export default function ProfilePage() {
 
         {/* ------------------------------------------------------- PREFERENCES */}
         <section>
+          <SectionHeading>Signed-in devices</SectionHeading>
+          <Card>
+            {sessionsError ? (
+              <p className="px-4 py-3 text-sm text-wa-alert" role="alert">
+                {sessionsError}
+              </p>
+            ) : null}
+            {sessions.length === 0 && !sessionsError ? (
+              <p className="px-4 py-3 text-sm text-settings-quiet">Reading your devices...</p>
+            ) : null}
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[17px] font-semibold text-settings-ink">
+                      {session.device}
+                    </span>
+                    {session.current ? (
+                      <span className="shrink-0 rounded-full bg-settings-pill px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-settings-quiet">
+                        This device
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-[13px] text-settings-quiet">
+                    Signed in {new Date(session.createdAt).toLocaleDateString()} &middot;{" "}
+                    {session.lastActive}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="min-h-0 shrink-0 rounded-full bg-settings-pill px-4 py-2 text-[14px] font-semibold text-settings-ink disabled:opacity-60"
+                  disabled={loggingOutId === session.id}
+                  onClick={() => void logOutDevice(session)}
+                >
+                  {loggingOutId === session.id ? "Logging out..." : "Log out"}
+                </button>
+              </div>
+            ))}
+          </Card>
+        </section>
+
+        <section>
           <SectionHeading>Preferences</SectionHeading>
           <Card>
+            {/* FONT SIZE: the elder-friendly design makes this worth having, and it
+                scales the whole system because every size is in rem. */}
+            <div className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3">
+              <span className="flex min-w-0 items-center gap-4">
+                <Chip>
+                  <Icon name="text" size={21} />
+                </Chip>
+                <label className="text-[17px] font-semibold text-settings-ink" htmlFor="font-size">
+                  Font size
+                </label>
+              </span>
+              <span className="relative flex shrink-0 items-center">
+                <select
+                  id="font-size"
+                  className="appearance-none bg-transparent pr-7 text-right text-[15px] font-medium text-settings-quiet outline-none"
+                  value={fontSize}
+                  onChange={(event) => {
+                    const next = event.target.value as FontSizeId;
+                    setFontSize(next);
+                    applyFontSize(next);
+                  }}
+                >
+                  {FONT_SIZES.map((size) => (
+                    <option key={size.id} value={size.id}>
+                      {size.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-0 text-settings-faint">
+                  <Icon name="chevron" size={16} />
+                </span>
+              </span>
+            </div>
+
             {/* Language is the other carried-over row. English is the one language
                 that ships; the other two say so rather than pretending. */}
             <div className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3">

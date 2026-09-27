@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 const THREAD_LIMIT = 200;
 
 export async function GET(request: Request, context: { params: Promise<{ key: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

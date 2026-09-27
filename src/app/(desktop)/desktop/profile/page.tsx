@@ -17,19 +17,19 @@ export default function DesktopProfilePage() {
   }, [status, router]);
 
   if (status !== "authenticated") {
-    return <p className="p-10 text-wa-muted">Loading…</p>;
+    return <p className="p-10 text-on-surface-variant">Loading…</p>;
   }
 
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-2xl font-semibold">Profile</h1>
+      <h1 className="font-headline text-2xl font-bold tracking-[-0.015em] text-on-surface">Profile</h1>
       <dl className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="surface p-5">
-          <dt className="text-sm text-wa-muted">Phone number</dt>
+          <dt className="text-sm text-on-surface-variant">Phone number</dt>
           <dd className="text-lg font-semibold">{user?.phoneNumber ?? "—"}</dd>
         </div>
         <div className="surface p-5">
-          <dt className="text-sm text-wa-muted">Your address</dt>
+          <dt className="text-sm text-on-surface-variant">Your address</dt>
           <dd className="text-lg">{user ? `${user.phoneNumber}@phonemail.com` : "—"}</dd>
         </div>
       </dl>

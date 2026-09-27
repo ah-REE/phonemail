@@ -35,7 +35,7 @@ const deleteSchema = z.object({
 });
 
 export async function DELETE(request: Request) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
@@ -85,6 +85,11 @@ export async function DELETE(request: Request) {
   }
 
   const [emails, aliases, contacts] = await prisma.$transaction([
+    // Day 9: SESSIONS FIRST. Every device is logged out before the data cascade -
+    // the schema would take them with the user row anyway, but deleting them first is
+    // what makes "deleting the account ends every session" true as an ORDER rather
+    // than as a side effect.
+    prisma.session.deleteMany({ where: { userId: account.id } }),
     prisma.email.deleteMany({ where: { OR: [{ fromUserId: account.id }, { toUserId: account.id }] } }),
     prisma.alias.deleteMany({ where: { userId: account.id } }),
     prisma.contact.deleteMany({ where: { userId: account.id } }),

@@ -26,6 +26,9 @@ model User {
   phoneNumber String   @unique
   createdAt   DateTime @default(now())
 
+  /// Day 9: one row per signed-in device. Deleting the account takes them all.
+  sessions Session[]
+
   /// Day 7 display name. NULL means "show the number" - every reader falls back
   /// to the phone number through labelFor(), so nobody is ever nameless.
   displayName String?
@@ -156,6 +159,32 @@ model Email {
   @@index([submissionId])
   /// Serves a folder screen: WHERE toUserId = ? AND folder = ? ORDER BY createdAt.
   @@index([toUserId, folder, createdAt])
+}
+
+/// ONE SIGNED-IN DEVICE.
+///
+/// The JWT has always been self-contained, which made it impossible to end: a token
+/// stayed valid until it expired, and "log out" only forgot it locally. The token now
+/// carries this row's id, so a session is valid only while this row exists - which is
+/// what makes "log this device out", and "deleting the account logs every device out",
+/// real WITHOUT a denylist of revoked tokens (a denylist grows for ever; a row does
+/// not).
+///
+/// lastActiveAt is written THROTTLED (see lib/auth.ts): the row exists to be
+/// recognised, not to be a request log.
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  /// Whatever the client sent, so the list can say "Chrome on Windows" instead of
+  /// showing a raw string. Null when the request carried none.
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The list is always "this user's sessions".
+  @@index([userId])
 }
 
 /// A file attached to a delivered message. The BYTES LIVE IN POSTGRES, like the

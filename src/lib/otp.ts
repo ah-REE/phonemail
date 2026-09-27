@@ -26,8 +26,28 @@ import { getRedis } from "@/lib/redis";
 
 /** OTP lifetime in Redis (5 minutes). */
 export const OTP_TTL_SECONDS = 300;
-/** Minimum gap between two OTP requests for the same number. */
+/**
+ * THE REQUEST POLICY, tiered rather than one flat cooldown.
+ *
+ * A single 60-second gap treated a first-time caller and somebody hammering the
+ * endpoint the same way. The tiers are what the two actually need:
+ *
+ *   1st and 2nd request in a window   immediate - the RAPID PAIR, because a caller
+ *                                     who mistyped wants the second code NOW, not in
+ *                                     a minute
+ *   3rd request onward                60 seconds apart, so the endpoint cannot be
+ *                                     used as a free SMS pump
+ *   at most 5 codes per number        the window itself: 2 hours, counted from the
+ *   per 2-hour window                  FIRST request and not sliding, so the budget
+ *                                     refills on a predictable clock
+ */
 export const OTP_COOLDOWN_SECONDS = 60;
+/** How many requests are immediate before the spacing applies. */
+export const OTP_RAPID_REQUESTS = 2;
+/** Codes allowed per number per window. */
+export const OTP_WINDOW_LIMIT = 5;
+/** The window's length, in seconds (2 hours). */
+export const OTP_WINDOW_SECONDS = 2 * 60 * 60;
 /** Failed verifications allowed before the pending OTP is burned. */
 export const OTP_MAX_ATTEMPTS = 5;
 /** Code used in fallback mode; also the value the evaluator test uses. */
@@ -58,6 +78,20 @@ const PLACEHOLDER_PASSWORD = "replace-with-real-sms-gate-password";
 
 export function otpKey(phoneNumber: string): string {
   return `otp:${phoneNumber}`;
+}
+
+/**
+ * The window counter: how many codes this number has asked for since the window
+ * opened. Its TTL IS the window - set with the first request and never extended, so
+ * the counter and the window expire together.
+ */
+export function otpWindowKey(phoneNumber: string): string {
+  return `otp-window:${phoneNumber}`;
+}
+
+/** When this number last asked for a code, in epoch seconds. */
+export function otpLastRequestKey(phoneNumber: string): string {
+  return `otp-last:${phoneNumber}`;
 }
 
 export function otpCooldownKey(phoneNumber: string): string {
@@ -136,14 +170,33 @@ export function otpMessage(otp: string): string {
   return format.replace("{otp}", otp);
 }
 
-/** Raised when a second OTP is requested inside the cooldown window. */
+/**
+ * Raised when a request is refused by the policy. The REASON and the ACTUAL WAIT
+ * travel with it, because a refusal that does not say how long to wait is a dead end
+ * for the person reading it - and the two reasons need different words (one is "slow
+ * down", the other is "you have used this number's codes for now").
+ */
+export type OtpRefusalReason = "cooldown" | "window";
+
 export class OtpCooldownError extends Error {
   readonly retryAfterSeconds: number;
+  readonly reason: OtpRefusalReason;
+  readonly used: number;
 
-  constructor(retryAfterSeconds = OTP_COOLDOWN_SECONDS) {
-    super("Please wait before requesting another OTP.");
+  constructor(
+    retryAfterSeconds = OTP_COOLDOWN_SECONDS,
+    reason: OtpRefusalReason = "cooldown",
+    used = 0,
+  ) {
+    super(
+      reason === "window"
+        ? `This number has requested the maximum of ${OTP_WINDOW_LIMIT} codes for now. Please try again in ${Math.ceil(retryAfterSeconds / 60)} minutes.`
+        : `Please wait ${retryAfterSeconds}s before requesting another OTP.`,
+    );
     this.name = "OtpCooldownError";
     this.retryAfterSeconds = retryAfterSeconds;
+    this.reason = reason;
+    this.used = used;
   }
 }
 
@@ -200,6 +253,12 @@ export interface RequestOtpResult {
   /** True when the fixed dev OTP was used and no SMS was sent. */
   devMode: boolean;
   ttlSeconds: number;
+  /** Seconds until another request is allowed (0 while the rapid pair lasts). */
+  resendAfterSeconds: number;
+  /** How many codes this number has asked for inside the current window. */
+  windowUsed: number;
+  /** How many the window allows. */
+  windowLimit: number;
 }
 
 /**
@@ -217,10 +276,28 @@ export interface RequestOtpResult {
 export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult> {
   const redis = await getRedis();
 
-  if (await redis.get(otpCooldownKey(phoneNumber))) {
-    throw new OtpCooldownError();
+  // 1. THE WINDOW. Five codes per number per two hours; the sixth is refused with the
+  // time left on the window, which is the only useful thing to tell somebody.
+  const used = Number.parseInt((await redis.get(otpWindowKey(phoneNumber))) ?? "0", 10) || 0;
+  if (used >= OTP_WINDOW_LIMIT) {
+    const remaining = await remainingTtl(redis, otpWindowKey(phoneNumber), OTP_WINDOW_SECONDS);
+    throw new OtpCooldownError(remaining, "window", used);
   }
 
+  // 2. THE SPACING. The rapid pair is free; from the third request on, a minute
+  // between requests.
+  if (used >= OTP_RAPID_REQUESTS) {
+    const last = Number.parseInt((await redis.get(otpLastRequestKey(phoneNumber))) ?? "0", 10) || 0;
+    if (last > 0) {
+      const elapsed = Math.floor(Date.now() / 1000) - last;
+      if (elapsed < OTP_COOLDOWN_SECONDS) {
+        throw new OtpCooldownError(OTP_COOLDOWN_SECONDS - elapsed, "cooldown", used);
+      }
+    }
+  }
+
+  // 3. THE SEND, attempted BEFORE anything is written, so a transport failure leaves
+  // no code behind and does not consume the budget.
   const devMode = !isSmsConfigured();
   const otp = devMode ? DEV_FALLBACK_OTP : generateOtp();
 
@@ -231,9 +308,39 @@ export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult>
   await redis.set(otpKey(phoneNumber), otp, { EX: OTP_TTL_SECONDS });
   // Fresh code, fresh attempts.
   await redis.del(otpAttemptsKey(phoneNumber));
-  await redis.set(otpCooldownKey(phoneNumber), "1", { EX: OTP_COOLDOWN_SECONDS });
 
-  return { devMode, ttlSeconds: OTP_TTL_SECONDS };
+  // 4. THE COUNT. The window's TTL is set with the first request and never extended:
+  // a sliding window would let a determined caller hold the budget open for ever.
+  const windowTtl = await remainingTtl(redis, otpWindowKey(phoneNumber), 0);
+  await redis.set(otpWindowKey(phoneNumber), String(used + 1), {
+    EX: windowTtl > 0 ? windowTtl : OTP_WINDOW_SECONDS,
+  });
+  await redis.set(otpLastRequestKey(phoneNumber), String(Math.floor(Date.now() / 1000)), {
+    EX: OTP_WINDOW_SECONDS,
+  });
+
+  // What the NEXT request will need - which is what the screen's countdown shows.
+  // The rapid pair is spent once THIS request is the second one, so the next is the
+  // third and must wait: `used + 1 < 2` was the off-by-one that reported "immediate"
+  // for a request the policy would in fact refuse for a minute.
+  const nextIsImmediate = used + 1 < OTP_RAPID_REQUESTS;
+  return {
+    devMode,
+    ttlSeconds: OTP_TTL_SECONDS,
+    resendAfterSeconds: nextIsImmediate ? 0 : OTP_COOLDOWN_SECONDS,
+    windowUsed: used + 1,
+    windowLimit: OTP_WINDOW_LIMIT,
+  };
+}
+
+/** Seconds left on a key, with a fallback when the key has no expiry or has gone. */
+async function remainingTtl(
+  redis: Awaited<ReturnType<typeof getRedis>>,
+  key: string,
+  fallback: number,
+): Promise<number> {
+  const ttl = await redis.ttl(key);
+  return typeof ttl === "number" && ttl > 0 ? ttl : fallback;
 }
 
 export type VerifyOtpFailureReason = "missing" | "mismatch" | "locked";

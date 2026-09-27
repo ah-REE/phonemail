@@ -20,6 +20,14 @@ import type { SignOptions } from "jsonwebtoken";
  *    Day 1. Add claims (not a new token format) when groups arrive.
  */
 export interface AuthTokenPayload {
+  /**
+   * Day 9: the SESSION this token belongs to. A token is only good while its row
+   * still exists, which is what makes logging one device out - and logging every
+   * device out when the account is deleted - actually end the token. A token issued
+   * before sessions existed carries no sid, and requireUser treats that as
+   * unauthenticated so the client re-authenticates once and gets one.
+   */
+  sid?: string;
   sub: string;
   phoneNumber: string;
   iat: number;
@@ -48,11 +56,18 @@ function getJwtSecret(): string {
   return secret;
 }
 
-/** Signs a 7-day HS256 token for the given account. */
-export function signAuthToken(user: { id: string; phoneNumber: string }): string {
+/**
+ * Signs a 7-day HS256 token for the given account, bound to a session when one is
+ * given. The session id rides in `sid`; everything else about the token is unchanged.
+ */
+export function signAuthToken(
+  user: { id: string; phoneNumber: string },
+  sessionId?: string,
+): string {
   const claims = {
     sub: user.id,
     phoneNumber: user.phoneNumber,
+    ...(sessionId ? { sid: sessionId } : {}),
   };
   const options: SignOptions = {
     algorithm: JWT_ALGORITHM,

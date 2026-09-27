@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * authorizing in one statement.
  */
 export async function DELETE(request: Request, context: { params: Promise<{ localPart: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

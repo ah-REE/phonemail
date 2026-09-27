@@ -119,7 +119,7 @@ export default function DesktopLoginPage() {
   }
 
   if (status === "loading") {
-    return <p className="p-10 text-wa-muted">Loading…</p>;
+    return <p className="p-10 text-on-surface-variant">Loading…</p>;
   }
 
   return (
@@ -129,7 +129,7 @@ export default function DesktopLoginPage() {
         <h1 className="flex flex-wrap items-center gap-x-2 text-2xl font-semibold">
           Sign in to <Wordmark as="span" size={24} />
         </h1>
-        <p className="mt-1 text-wa-muted">
+        <p className="mt-1 text-on-surface-variant">
           Your phone number is your email address. By continuing you agree to the{" "}
           <Link href="/portal" className="underline">
             terms
@@ -138,11 +138,11 @@ export default function DesktopLoginPage() {
         </p>
       </div>
 
-      <label className="text-sm text-wa-muted" htmlFor="phone">
+      <label className="text-sm text-on-surface-variant" htmlFor="phone">
         Phone number
       </label>
       <div className="flex items-stretch gap-2">
-        <span className="flex min-h-tap items-center rounded-card border border-wa-line bg-wa-panel px-4 text-lg">
+        <span className="flex min-h-tap items-center rounded-card border border-outline-variant bg-surface-container-lowest px-4 text-lg">
           +91
         </span>
         <input
@@ -167,7 +167,7 @@ export default function DesktopLoginPage() {
 
       {otpSent && (
         <>
-          <p className="text-sm text-wa-muted">Enter the 6-digit code sent to +91 {normalized}.</p>
+          <p className="text-sm text-on-surface-variant">Enter the 6-digit code sent to +91 {normalized}.</p>
           <div className="flex gap-2">
             {digits.map((digit, index) => (
               <input
@@ -175,7 +175,7 @@ export default function DesktopLoginPage() {
                 ref={(element) => {
                   inputsRef.current[index] = element;
                 }}
-                className="h-14 w-12 rounded-card border border-wa-line bg-wa-panel text-center text-2xl"
+                className="h-14 w-12 rounded-card border border-outline-variant bg-surface-container-lowest text-center text-2xl"
                 inputMode="numeric"
                 maxLength={1}
                 value={digit}

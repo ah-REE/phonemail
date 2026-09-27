@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  * rather than one PATCH per message.
  */
 export async function POST(request: Request, context: { params: Promise<{ key: string }> }) {
-  const user = requireUser(request);
+  const user = await requireUser(request);
   if (!user) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }

@@ -2036,6 +2036,81 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twenty-fourth session: ROUND 8 - the contact sheet, the font-size
+  preference, desktop by default, the tiered OTP policy, sessions with per-device
+  revocation, and the desktop coherence pass.
+  - TASK 1, THE CONTACT SHEET STAYS OPEN. Saving used to close the sheet immediately,
+  which made the confirmation invisible and took the sheet away before it was read. It
+  now confirms INSIDE the sheet ("Saved successfully as X."), the name still reaches
+  the open chat at once, and the reader closes it when they are ready.
+  - TASK 2, FONT SIZE: Normal / Large / Extra large, in settings on BOTH clients. Every
+  size in this app is in rem, so the preference is ONE NUMBER on <html> - and it is
+  applied by a script in the document head, BEFORE anything paints, so there is no
+  flash (the alternative was a visible jump from 18px to 22px after hydration).
+  Remembered per device in localStorage, which is right for a display preference: the
+  phone in a pocket and the laptop on a desk do not want the same size. Levels: 18 /
+  20 / 22px.
+  - TASK 3, DESKTOP BY DEFAULT ON A WIDE SCREEN. `/` hands a >=768px viewport to
+  /desktop once per tab; /mobile is the explicit phone URL and is never redirected
+  away from, and the choice is remembered in sessionStorage so an in-app link back to
+  `/` does not bounce the reader out of the layout they picked. The desktop header's
+  "Mobile version" now points at /mobile (it pointed at `/`, which would have handed a
+  laptop straight back to desktop). The hop is a client-side replace, so a per-tab
+  session survives it.
+  - TASK 4, THE TIERED OTP POLICY, replacing the flat 60-second cooldown: the first two
+  requests in a window are IMMEDIATE (the rapid pair), from the third the spacing is 60
+  seconds, and a number may have at most FIVE codes per 2-hour window. The window is
+  set with the first request and never extended - a sliding window would let a
+  determined caller hold the budget open for ever. Every refusal carries its REASON
+  and the ACTUAL wait, and the OTP screen's countdown reads the server's number
+  instead of a hardcoded 60. Keys: otp-window:<phone> (the counter AND the window),
+  otp-last:<phone> and the existing otp-attempts:<phone>.
+  - A CONSEQUENCE WORTH WRITING DOWN: five codes per number per two hours would have
+  starved the harness - a dozen suites sign in as the same two numbers, which is about
+  twelve OTPs per number per run. The policy is right and the harness was wasteful, so
+  the suites now share ONE login per number per run (a token cache in
+  _shared/session.mjs, validated against /api/me before it is reused). The policy was
+  NOT loosened to suit the tests.
+  - TASK 5, SESSIONS. A Session model (userAgent, createdAt, lastActiveAt) and the
+  token now carries its id, so a token is only good while its row exists. That makes
+  "log this device out" real - the row is deleted and THAT device's next request is
+  401 - and "deleting the account logs every device out" true as an ORDER in the
+  deletion transaction rather than as a side effect, with no denylist to keep. A token
+  with no sid (minted before sessions existed) is treated as unauthenticated, so the
+  client re-authenticates once. requireUser became async across all 18 call sites, and
+  lastActiveAt is written THROTTLED (5 minutes) because the row exists to be
+  recognised, not to be a request log. Settings gained "Signed-in devices": the parsed
+  label, when it signed in, when it was last active, a "This device" marker and a Log
+  out action.
+  - TASK 6, THE DESKTOP COHERENCE PASS. Research first, and the finding changed the
+  plan: the desktop group already had the three-zone Gmail layout (rail, list, reading
+  pane) AND its palette was already the logo's - hidden behind the legacy `wa-*` names
+  (wa-teal IS the mark's navy #1e3a8a; wa-bg IS the illustration's off-white #f8fafc).
+  So this was never a colour problem: the desktop spoke the ALIAS set the chat screens
+  keep, and its headings were not on the display face. The five desktop files now use
+  the design system's own tokens, the headings are on font-headline, the chrome is the
+  same navy as the phone client, and both settings screens carry the font-size row.
+  Structure, navigation and functionality are untouched - folders, aliases,
+  attachments, group threads and the reading pane all still work.
+  - A TWENTY-THIRD SUITE, ct20/round8_regression.mjs: the sheet's behaviour, the font
+  module plus the bootstrap actually shipping in the SERVED HTML, the redirect and
+  /mobile, the OTP policy LIVE (the rapid pair, the third refused inside the spacing
+  with its reason and real wait, allowed once the spacing has passed, the sixth refused
+  with the WINDOW reason and hours remaining), sessions live (a second sign-in appears
+  as a second device, logging it out makes THAT token 401 while this one keeps
+  working), the device-label parser, and the desktop routes plus its token hygiene.
+  - VERIFICATION: 737 assertions across TWENTY-THREE suites green on the loaded
+  database in dev mode; build green; and the fresh-clone evaluator simulation from
+  ORIGIN is recorded in the entry that follows this one.
+  - AN HONEST NOTE ON THIS SESSION'S OWN MISTAKE: before switching the stack into dev
+  mode I probed send-otp for the mode, and the stack was still in REAL mode from the
+  previous session - so ONE REAL SMS went to the dev fixture number 8072788917. The
+  harness's own login helper refused to proceed (it checks for the devHint), and the
+  probe I ran afterwards is what sent it. Nothing else left the machine, the number is
+  a dev-only fixture, and the sequence is recorded here rather than glossed.
+  - Mode found: REAL. Dev mode for the run and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), twenty-third session: THE IVR ROUTE WAS READING THE WRONG PLACE.
   One bug - reproduced before it was fixed - and a suite that could not have caught it,
   because it drove a request shape the provider never sends.
