@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
 import { Avatar } from "@/components/avatar";
-import { AttachmentChips } from "@/components/attachments";
+import { Spinner } from "@/components/spinner";
+import { AttachmentDrafts } from "@/components/attachments";
 import { validateAttachmentSet } from "@/lib/attachments";
 import { clearDraft, readDraft, saveDraft } from "@/lib/folders";
 import { useAuth } from "@/lib/useAuth";
@@ -85,7 +86,7 @@ function phonePartOf(address: string): string {
 function ComposeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status, token, authorizedFetch } = useAuth();
+  const { status, token, authorizedFetch, authorizedUpload } = useAuth();
 
   const presetTo = searchParams.get("to") ?? "";
   const replyToId = searchParams.get("replyTo") ?? "";
@@ -116,13 +117,19 @@ function ComposeForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ to?: string; subject?: string; body?: string }>({});
-  // ROUND 7: the paperclip is a REAL picker now - the "coming soon" panel it used
-  // to raise is gone, along with the three decorative buttons beside it that all
-  // raised the same panel. One control, one meaning: choose files (multi, capped by
-  // the shared rule that the send route enforces again server-side).
+  // ROUND 8: THREE affordances, because "attach a file" was hiding three different
+  // intentions behind one paperclip - a document, a picture, and the camera. Each is
+  // a clean circle that opts out of the global 56px button floor (min-h-0 - the rule
+  // that made the old controls render as ovals), and each opens its own input with
+  // its own accept/capture filter. The chosen files render as CARDS in the message
+  // body region, in the same language the thread uses for a delivered file.
   const [files, setFiles] = useState<File[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "failed">("idle");
+  const [progress, setProgress] = useState(0);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   function addFiles(picked: FileList | null) {
     if (!picked || picked.length === 0) {
@@ -137,6 +144,7 @@ function ComposeForm() {
       return;
     }
     setFiles(next);
+    setUploadPhase("idle");
   }
   const [contacts, setContacts] = useState<SavedContact[]>([]);
 
@@ -274,8 +282,12 @@ function ComposeForm() {
     return Object.keys(next).length === 0;
   }
 
-  async function handleSend(event: React.FormEvent) {
-    event.preventDefault();
+  /**
+   * The event is OPTIONAL because the failed cards retry the send directly - there
+   * is no form event to prevent on that path.
+   */
+  async function handleSend(event?: React.FormEvent) {
+    event?.preventDefault();
     setError(null);
     setNotice(null);
     if (busy || !validate()) {
@@ -284,11 +296,22 @@ function ComposeForm() {
 
     setBusy(true);
     try {
-      // A message WITH files goes as multipart/form-data, so the files ride the same
-      // ONE SMTP submission the text does; a message without them keeps the plain
-      // JSON body it always had, byte for byte.
-      let requestInit: RequestInit;
+      // A message WITH files goes as multipart/form-data over the SAME single SMTP
+      // submission the text uses - and through XMLHttpRequest, so a 20MB upload
+      // reports real progress rather than a spinner that says nothing. A message
+      // without files keeps the plain JSON body it always had, byte for byte.
+      interface SendResponse {
+        error?: string;
+        to?: string | string[];
+        threadKey?: string | null;
+        subject?: string;
+      }
+      let sendStatus = 0;
+      let payload: SendResponse = {};
+
       if (files.length > 0) {
+        setUploadPhase("uploading");
+        setProgress(0);
         const form = new FormData();
         recipients.forEach((recipient) => form.append("to", recipient));
         form.append("subject", subject);
@@ -296,9 +319,11 @@ function ComposeForm() {
         if (replyToId) form.append("replyToId", replyToId);
         if (groupThreadKey) form.append("threadKey", groupThreadKey);
         files.forEach((file) => form.append("attachments", file));
-        requestInit = { method: "POST", body: form };
+        const result = await authorizedUpload("/api/emails", form, setProgress);
+        sendStatus = result.status;
+        payload = (result.body ?? {}) as SendResponse;
       } else {
-        requestInit = {
+        const response = await authorizedFetch("/api/emails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -309,19 +334,18 @@ function ComposeForm() {
             ...(replyToId ? { replyToId } : {}),
             ...(groupThreadKey ? { threadKey: groupThreadKey } : {}),
           }),
-        };
+        });
+        sendStatus = response.status;
+        payload = (await response.json().catch(() => ({}))) as SendResponse;
       }
 
-      const response = await authorizedFetch("/api/emails", requestInit);
-      const payload = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        to?: string | string[];
-        threadKey?: string | null;
-        subject?: string;
-      };
-
-      if (!response.ok) {
-        if (response.status === 409) {
+      if (sendStatus < 200 || sendStatus >= 300) {
+        // A failed flight leaves the files where they are, in an error state with a
+        // retry - it does not throw away what the reader chose.
+        if (files.length > 0) {
+          setUploadPhase("failed");
+        }
+        if (sendStatus === 409) {
           setError("You have already replied to that message.");
         } else {
           setError(payload.error ?? "Could not send the message.");
@@ -331,6 +355,7 @@ function ComposeForm() {
 
       // The message reached the mail service, so the draft has done its job.
       clearDraft();
+      setUploadPhase("idle");
       const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
       // Sending is silent on purpose: the message simply appears in the thread
       // once the SMTP round trip has written the row. Saying "handed to the mail
@@ -516,6 +541,22 @@ function ComposeForm() {
           value={body}
           onChange={(event) => setBody(event.target.value)}
         />
+        {/* ROUND 8: the chosen files live INSIDE the message body region, as cards -
+            not as chips in the toolbar. They are part of the message being written,
+            so they belong next to the words. */}
+        <AttachmentDrafts
+          files={files}
+          phase={uploadPhase}
+          progress={progress}
+          disabled={busy}
+          onRemove={(index) => {
+            setAttachError(null);
+            setUploadPhase("idle");
+            setFiles((current) => current.filter((_, position) => position !== index));
+          }}
+          onRetry={() => void handleSend()}
+        />
+
         {fieldErrors.body && (
           <p className="text-sm text-wa-alert" role="alert">
             {fieldErrors.body}
@@ -529,25 +570,42 @@ function ComposeForm() {
           </p>
         )}
 
-        <AttachmentChips
-          files={files}
-          disabled={busy}
-          onRemove={(index) => {
-            setAttachError(null);
-            setFiles((current) => current.filter((_, position) => position !== index));
-          }}
-        />
         {attachError && (
           <p className="px-4 pb-1 text-sm text-wa-alert" role="alert">
             {attachError}
           </p>
         )}
         <input
-          ref={fileInputRef}
+          ref={documentInputRef}
           type="file"
           multiple
+          accept=".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
           className="hidden"
-          aria-label="Choose files to attach"
+          aria-label="Choose documents to attach"
+          onChange={(event) => {
+            addFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+        <input
+          ref={imageInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          aria-label="Choose images to attach"
+          onChange={(event) => {
+            addFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          aria-label="Take a photo to attach"
           onChange={(event) => {
             addFiles(event.target.files);
             event.target.value = "";
@@ -556,34 +614,66 @@ function ComposeForm() {
 
         <div className="flex h-14 w-full shrink-0 items-center justify-between border-t border-wa-line bg-surface-container-lowest px-4">
           <div className="flex items-center gap-2">
+            {/* ROUND 8: three affordances, three intentions. Every one of them is a
+                fixed-size circle WITH min-h-0, so the global 56px button floor cannot
+                turn it into the oval it made of the single paperclip's predecessor. */}
             <button
               type="button"
-              aria-label="Attach files"
-              title="Attach files"
-              className="flex min-h-0 h-11 w-11 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
-              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach a document"
+              title="Attach a document"
+              className="flex min-h-0 h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => documentInputRef.current?.click()}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
+                <path d="M7 3h7l4 4v14H7z" />
+                <path d="M14 3v5h5M10 13h6M10 17h4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Attach an image"
+              title="Attach an image"
+              className="flex min-h-0 h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="5" width="16" height="14" rx="2" />
+                <path d="M4 16l4.5-4.5L13 16M14 13l2.5-2.5L20 14" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Take a photo"
+              title="Take a photo"
+              className="flex min-h-0 h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary-container active:bg-surface-variant"
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+                <circle cx="12" cy="13" r="3.2" />
               </svg>
             </button>
           </div>
+          {/* The send action: fixed geometry, brand-filled like the thread's own message
+              action, with an in-flight state that matches the cards' - while it flies
+              the button is disabled and shows a spinner, and the cards show the
+              percentage. */}
           <button
             type="submit"
-            aria-label={isReply ? "Send reply" : "Send message"}
-            className="flex min-h-0 h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-surface disabled:opacity-60"
+            aria-label={busy ? "Sending" : isReply ? "Send reply" : "Send message"}
+            aria-busy={busy}
+            className="flex min-h-0 h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-card transition-transform duration-ui active:scale-95 disabled:opacity-70"
             disabled={busy}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 12l16-8-6 8 6 8-16-8z" />
-            </svg>
+            {busy ? (
+              <Spinner label="Sending" />
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12l16-8-6 8 6 8-16-8z" />
+              </svg>
+            )}
           </button>
         </div>
-          {busy && (
-          <p className="px-4 py-2 text-sm text-on-surface-variant">
-            Sending{files.length > 0 ? ` ${files.length} file${files.length === 1 ? "" : "s"}` : ""}.
-          </p>
-        )}
 
       </form>
     </main>

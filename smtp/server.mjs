@@ -14,11 +14,17 @@ const PORT = Number(process.env.SMTP_PORT ?? 25);
 const MAIL_DOMAIN = (process.env.MAIL_DOMAIN ?? "phonemail.com").toLowerCase();
 const INBOUND_URL = process.env.APP_INBOUND_URL ?? "http://app:3000/api/mail/inbound";
 const WEBHOOK_SECRET = process.env.MAIL_WEBHOOK_SECRET;
-// The hop's own ceiling. The app enforces 5MB per file and 10MB per message of
-// RAW bytes; base64 on the wire plus MIME framing add about a third, so this needs
-// headroom ABOVE the app's limit rather than matching it - otherwise a legitimate
-// message would be refused by the transport instead of by the rule.
-const MAX_MESSAGE_BYTES = 20 * 1024 * 1024;
+// The hop's own ceiling, DERIVED from the app's limits rather than guessed.
+//
+// The app allows 20MB per file and 40MB per message of RAW bytes. Those bytes ride
+// this hop as base64 MIME parts, which costs about 4/3 of the raw size, plus the
+// MIME framing for each part: 40MB x ~1.37 is about 55MB... which is why the app's
+// per-message cap, not the per-file cap, is the number that matters here. 20MB
+// SINGLE file: 20 x 1.37 = ~27.4MB, comfortably inside 30MB. Two 20MB files (40MB
+// total, the app's legal maximum): 40 x 1.37 = ~54.8MB, so THIS ceiling has to sit
+// above that too - 60MB - or a legal two-file message would be refused by the
+// transport instead of by the rule.
+const MAX_MESSAGE_BYTES = 60 * 1024 * 1024;
 const DELIVERY_ATTEMPTS = 5;
 const DELIVERY_DELAY_MS = 2000;
 

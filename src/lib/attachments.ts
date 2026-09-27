@@ -7,16 +7,32 @@
  * message whose attachments would blow the same budget. A limit that lives in
  * three places is a limit that will disagree with itself.
  *
+ * THE TRANSPORT'S OWN CEILING IS DERIVED FROM THESE, not guessed: attachments ride
+ * the SMTP hop as base64 MIME parts, which costs about 1.37x the raw bytes, so
+ * 40MB per message is roughly 55MB on the wire - and the SMTP service's
+ * MAX_MESSAGE_BYTES is set from that arithmetic in smtp/server.mjs. Raise these
+ * without raising that and the transport, not the rule, becomes the thing that
+ * refuses a legal message.
+ *
  * This module is deliberately PURE - no Prisma, no Node APIs - so a client
  * component can import it without dragging the database into the browser bundle.
  */
 
-/** Files per message. */
+/** Files per message. Unchanged when the byte limits were raised. */
 export const MAX_FILES = 3;
-/** Bytes per file. */
-export const MAX_FILE_BYTES = 5 * 1024 * 1024;
-/** Bytes per message, across all of its files. */
-export const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+/**
+ * Bytes per file. Raised from 5MB once the round trip was proven: a 20MB file
+ * survives the hop, and 20MB is what a phone photograph or a scanned PDF actually
+ * weighs, so the old ceiling refused the very thing the feature exists for.
+ */
+export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+/**
+ * Bytes per message, across all of its files. Raised from 10MB to 40MB with the
+ * per-file limit, so two full-size files fit and a third only fits if the three are
+ * modest - which is why the file count stayed at 3: the message cap, not the count,
+ * is what actually bounds a group broadcast's storage.
+ */
+export const MAX_TOTAL_BYTES = 40 * 1024 * 1024;
 
 export interface AttachmentMeta {
   filename: string;

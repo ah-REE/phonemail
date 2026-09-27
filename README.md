@@ -124,11 +124,17 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
    "27 Sep"); a long mail collapses behind *Read full message*; the chevron under
    a mail opens Move to Spam / Move to Trash / Favorite / Reply. Unread state is
    the chat list's own badge - the cards carry no marker.
-10. **A file.** In the compose screen the paperclip opens a REAL picker: up to three
-   files, 5MB each, 10MB per message. Chosen files appear as chips with their sizes
-   and come off again with one tap, and an oversize file is refused before it is
-   uploaded. The message arrives with a download card inside its bubble, and the
-   home screen's **Attachments** chip filters to the conversations that carry one.
+10. **A file.** In the compose screen THREE affordances sit where the single
+   paperclip used to be: a **document** icon (file picker filtered to documents), an
+   **image** icon (filtered to images) and a **camera** icon (which asks a phone for
+   a capture). Up to three files, 20MB each, 40MB per message. The chosen files
+   appear as cards in the MESSAGE BODY - an icon for the kind, the name, the size -
+   and come off again with one tap; an oversize file is refused before it is
+   uploaded. Pressing send shows real upload progress on those cards (a percentage,
+   because the send goes through XMLHttpRequest precisely so it can), a failed send
+   leaves them with a retry, and the message arrives with a download card inside its
+   bubble in the same language. The home screen's **Attachments** chip filters to the
+   conversations that carry one.
 
 ## 5. Feature-to-spec mapping
 
@@ -265,7 +271,7 @@ among short, verified wordings. Full history: PROJECT.md §9 and §10.
 Written down rather than hidden:
 
 - **Attachments have limits, and they are deliberate.** Three files per message,
-  5MB each, 10MB in total, enforced in the browser, in the send route and again on
+  20MB each, 40MB in total, enforced in the browser, in the send route and again on
   the inbound webhook. A group message stores its files once per recipient row
   rather than sharing them through a join table - duplicated bytes in exchange for
   an attachment owned by exactly the row it belongs to, which is what keeps the
@@ -302,26 +308,27 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **584 assertions across 19 suites, green on the loaded database**, in dev mode
+- **617 assertions across 20 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
-  items (search-to-chat, the Favorites/Attachments chips, the group-folder add-on),
-  31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the round-2
-  fixes, 54 for the round-3 items, 32 for the settings reference (source-only), 20
-  for the round-3 chat fixes, 10 for the round-4 polish rules (source-only), 26 for
-  round 4, 25 for round 5 (the service worker **executed in a sandbox** rather than
-  read, plus the canvas rules), 26 for round 6 (source-only), and 32 for round 7:
-  the deployed stylesheet for the three controls, then the whole attachment round
-  trip - two files uploaded and delivered and downloaded **hash-identical**, with
-  content types and the disposition filename checked; the sender allowed, a
-  non-party refused 403, no token 401; 6MB refused, four files refused, 12MB
-  refused, each naming its limit; a group broadcast carrying a file; and the
-  Attachments chip filtering on a real count. `ct5/settings_ref.mjs`,
-  `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
-  **source-only** suites: they grade a design, a copy rule and the shape of the
-  markup, which live in the source and the tokens, so they need no server, no OTP
-  and no mode - and are never a reason to touch one.
+  items, 31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the
+  round-2 fixes, 54 for the round-3 items, 32 for the settings reference
+  (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
+  (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
+  sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
+  deployed stylesheet plus the whole attachment round trip, hashes included), and 33
+  for round 8: the raised limits enforced at the boundary (a 21MB file and a 42MB
+  message, each refused naming the NEW number), a **20MB file** uploaded, delivered
+  and downloaded **hash-identical** with its content type intact, the three
+  affordances and their input filters, the draft cards' position inside the message
+  body, the uploading (real percentage) and failed (retry) states, the send button's
+  geometry, and the `min-h-0` opt-out on **every** new fixed-size control.
+  `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
+  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
+  design, a copy rule and the shape of the markup, which live in the source and the
+  tokens, so they need no server, no OTP and no mode - and are never a reason to
+  touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
   then `docker compose up -d`, all THIRTEEN migrations (the attachment table

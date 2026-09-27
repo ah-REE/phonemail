@@ -8,9 +8,14 @@ import { useAuth } from "@/lib/useAuth";
 /**
  * Attachments, in the two places they appear.
  *
- * `AttachmentCards` is what a message shows: one card per file, inside the bubble's
- * documented attachment slot. `AttachmentChips` is what the compose screen shows
- * while you are choosing: the file, its size, and a way to take it off again.
+ * `AttachmentCards` is what a delivered message shows: one card per file, inside the
+ * bubble's documented attachment slot, and a tap downloads it.
+ * `AttachmentDrafts` is what the compose screen shows while you are writing: the
+ * same card language, in the message body region, carrying the state only a draft
+ * has - uploading with a real percentage, or failed with a retry.
+ *
+ * They are deliberately the same visual language in both places, so a file looks the
+ * same while it is being written as it does once it has arrived.
  *
  * THE DOWNLOAD IS A FETCH, NOT A LINK. The session's JWT lives in sessionStorage
  * and travels in an Authorization header, so a plain `<a href>` to the attachment
@@ -134,14 +139,34 @@ export function AttachmentCards({ attachments }: { attachments?: AttachmentRef[]
   );
 }
 
-/** The files chosen but not yet sent, as removable chips. */
-export function AttachmentChips({
+/**
+ * How the send flight is going, for the draft cards.
+ *
+ * `uploading` carries a REAL percentage: the compose screen sends through
+ * XMLHttpRequest precisely because `fetch` cannot report upload progress, and a
+ * 20MB file behind a button that only spins is a screen that looks broken.
+ */
+export type DraftPhase = "idle" | "uploading" | "failed";
+
+/**
+ * The files chosen but not yet sent, as CARDS in the message body region - the same
+ * language the thread uses for a delivered file (an icon for the kind, the name, the
+ * size), plus the state only a draft can have: uploading with a percentage, or
+ * failed with a retry.
+ */
+export function AttachmentDrafts({
   files,
+  phase,
+  progress,
   onRemove,
+  onRetry,
   disabled = false,
 }: {
   files: File[];
+  phase: DraftPhase;
+  progress: number;
   onRemove: (index: number) => void;
+  onRetry: () => void;
   disabled?: boolean;
 }) {
   if (files.length === 0) {
@@ -149,27 +174,69 @@ export function AttachmentChips({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 pb-1" aria-label="Files to attach">
-      {files.map((file, index) => (
-        <span
-          key={`${file.name}-${index}`}
-          className="flex max-w-full items-center gap-2 rounded-full bg-surface-container px-3 py-1 text-sm"
-        >
-          <span className="truncate" title={file.name}>
-            {file.name}
-          </span>
-          <span className="shrink-0 text-xs text-on-surface-variant">{formatBytes(file.size)}</span>
-          <button
-            type="button"
-            aria-label={`Remove ${file.name}`}
-            disabled={disabled}
-            onClick={() => onRemove(index)}
-            className="min-h-0 leading-none text-on-surface-variant disabled:opacity-50"
+    <div className="flex flex-col gap-1.5 px-4 pb-1" aria-label="Files to attach">
+      {files.map((file, index) => {
+        const failed = phase === "failed";
+        return (
+          <div
+            key={`${file.name}-${index}`}
+            className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
+              failed ? "border-wa-alert/40 bg-wa-alert/[0.04]" : "border-black/[0.06] bg-black/[0.02]"
+            }`}
           >
-            x
-          </button>
-        </span>
-      ))}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-accent">
+              <KindIcon kind={attachmentKind(file.type || "application/octet-stream")} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-[13.5px] font-semibold text-on-surface" title={file.name}>
+                {file.name}
+              </span>
+              <span className="text-[11.5px] text-on-surface-variant">
+                {formatBytes(file.size)} &middot;{" "}
+                {phase === "uploading"
+                  ? `Uploading ${progress}%`
+                  : failed
+                    ? "Upload failed"
+                    : "Ready to send"}
+              </span>
+              {phase === "uploading" && (
+                <span
+                  className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-black/[0.08]"
+                  role="progressbar"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`Uploading ${file.name}`}
+                >
+                  <span
+                    className="block h-full rounded-full bg-accent transition-[width] duration-ui"
+                    style={{ width: `${Math.max(4, progress)}%` }}
+                  />
+                </span>
+              )}
+            </span>
+            {failed ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="min-h-0 shrink-0 rounded-full bg-accent-soft px-3 py-1 text-[13px] font-semibold text-accent"
+              >
+                Retry
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Remove ${file.name}`}
+                disabled={disabled}
+                onClick={() => onRemove(index)}
+                className="min-h-0 shrink-0 px-1 leading-none text-on-surface-variant disabled:opacity-50"
+              >
+                x
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

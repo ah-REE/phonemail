@@ -2036,6 +2036,62 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), twentieth session, THE LAST BEFORE SUBMISSION: THE COMPOSE
+  ATTACHMENT EXPERIENCE - limits raised, three affordances, the cards moved into the
+  message, a real upload state, and a send button that cannot be inflated. Landed and
+  verified.
+  - TASK 1, LIMITS RAISED in the ONE shared module: 20MB per file (was 5MB), 40MB per
+    message (was 10MB), three files unchanged. The rejection messages read the
+    constants (`formatBytes(MAX_FILE_BYTES)`), so they moved with the numbers and
+    needed no second edit - which is the reason the limits live in one module at all.
+  - THE TRANSPORT CEILING, AND A DELIBERATE DEVIATION. The brief asked for 30MB. The
+    brief's own per-message limit is 40MB, and attachments ride the hop as base64 -
+    about 4/3 the raw size - so 20MB single is ~27.4MB on the wire and the app's LEGAL
+    maximum of 40MB is ~54.8MB. A 30MB ceiling would therefore have refused a message
+    the app's own rules allow, which is the exact failure the brief's principle warns
+    against ("otherwise a legal message would be refused by the transport"). The
+    ceiling is set to 60MB, with the arithmetic written into the comment, and the
+    deviation and the one-line change back to 30MB are both recorded here and in the
+    report.
+  - VERIFIED AT THE BOUNDARY, LIVE: a 21MB file is refused 400 naming 20.0 MB; 42MB
+    of three LEGAL 14MB files is refused 400 naming 40.0 MB; and a full-size 20MB
+    file goes all the way - accepted, across the SMTP hop, stored against the
+    delivered row, downloaded, and HASH-IDENTICAL, with its content type intact.
+  - TASK 2, THREE AFFORDANCES where the single paperclip was: a document picker
+    (accept filtered to documents), an image picker (image/*), and a camera
+    (image/* plus capture="environment" - the pragmatic web path to a phone camera).
+    Each is a clean 44px circle, and EACH OPTS OUT of the 56px element floor with
+    min-h-0, asserted one by one: the trap that produced the oval buttons is not
+    allowed to eat these.
+  - TASK 3, THE CARDS MOVED INTO THE MESSAGE BODY REGION - asserted by position in
+    the source (after the body field, before the field errors), not by eye - and they
+    speak the thread's own card language: an icon for the kind, the filename, the
+    size, a remove. They carry the states only a draft has: UPLOADING with a REAL
+    percentage, because the send now goes through XMLHttpRequest (fetch cannot report
+    upload progress, and 20MB behind a button that only spins is a screen that looks
+    broken), and FAILED with a Retry that re-sends the same files instead of
+    discarding them. The thread card and the draft card are deliberately one language,
+    so a file looks the same while it is written as when it arrives.
+  - TASK 4, THE SEND ACTION: fixed geometry (48px, min-h-0), brand-filled like the
+    thread's own message action, disabled with a spinner while it flies and
+    aria-busy for assistive tech - the same moment the cards show their percentage.
+  - A TWENTIETH SUITE, ct17/compose_attachments_regression.mjs, 33 assertions: the
+    new limits at the boundary, the 20MB hash-identical round trip, the three
+    affordances with their input filters, the cards' position, the uploading and
+    failed states and the retry, the send button's geometry, and the min-h-0 opt-out
+    on every new fixed-size control.
+  - TWO ASSERTIONS RE-POINTED, NOT DELETED: ct16's boundary probes moved with the
+    limits - a 6MB file is now LEGAL, so its per-file probe is 21MB, and 12MB across
+    three files is now legal, so its per-message probe is 42MB. Same claims, new
+    numbers.
+  - DOCS: the README's limits (20MB / 40MB / 3), its demo step (three affordances,
+    cards in the message) and its evidence counts were all updated to match.
+  - VERIFICATION: 617 assertions across TWENTY suites green on the loaded database in
+    dev mode; build green; the fresh-clone evaluator simulation from ORIGIN is
+    recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the runs and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), nineteenth session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION from ORIGIN at this commit - and this time it RAN, after the last
   session's Safety Guard refusal.

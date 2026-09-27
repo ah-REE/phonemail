@@ -42,6 +42,16 @@ export interface AuthState {
   signIn: (token: string, user: AuthUser) => void;
   signOut: () => void;
   authorizedFetch: (input: string, init?: RequestInit) => Promise<Response>;
+  /**
+   * The same authorized call, but over XMLHttpRequest - because `fetch` cannot
+   * report UPLOAD progress, and a 20MB attachment needs to show one. Resolves with
+   * the status and the parsed body instead of a Response, since XHR gives text.
+   */
+  authorizedUpload: (
+    input: string,
+    body: FormData,
+    onProgress?: (percent: number) => void,
+  ) => Promise<{ status: number; body: unknown }>;
 }
 
 interface Session {
@@ -126,5 +136,45 @@ export function useAuth(): AuthState {
     [],
   );
 
-  return { status, token: session.token, user: session.user, signIn, signOut, authorizedFetch };
+  const authorizedUpload = useCallback(
+    (input: string, body: FormData, onProgress?: (percent: number) => void) =>
+      new Promise<{ status: number; body: unknown }>((resolve, reject) => {
+        const current = window.sessionStorage.getItem(TOKEN_KEY);
+        const request = new XMLHttpRequest();
+        request.open("POST", input);
+        if (current) {
+          request.setRequestHeader("Authorization", `Bearer ${current}`);
+        }
+
+        request.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        });
+
+        request.addEventListener("load", () => {
+          // Same session rule as authorizedFetch: a rejected token means the
+          // session is gone, so it is cleared and the guards can act.
+          if (request.status === 401) {
+            clearSession();
+            setSession({ token: null, user: null });
+            setHydrated(true);
+          }
+          let parsed: unknown = null;
+          try {
+            parsed = JSON.parse(request.responseText);
+          } catch {
+            parsed = null;
+          }
+          resolve({ status: request.status, body: parsed });
+        });
+        request.addEventListener("error", () => reject(new Error("Network error.")));
+        request.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
+
+        request.send(body);
+      }),
+    [],
+  );
+
+  return { status, token: session.token, user: session.user, signIn, signOut, authorizedFetch, authorizedUpload };
 }
