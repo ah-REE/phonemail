@@ -124,6 +124,11 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
    "27 Sep"); a long mail collapses behind *Read full message*; the chevron under
    a mail opens Move to Spam / Move to Trash / Favorite / Reply. Unread state is
    the chat list's own badge - the cards carry no marker.
+10. **A file.** In the compose screen the paperclip opens a REAL picker: up to three
+   files, 5MB each, 10MB per message. Chosen files appear as chips with their sizes
+   and come off again with one tap, and an oversize file is refused before it is
+   uploaded. The message arrives with a download card inside its bubble, and the
+   home screen's **Attachments** chip filters to the conversations that carry one.
 
 ## 5. Feature-to-spec mapping
 
@@ -150,7 +155,7 @@ a documented deviation, or cut with a reason.
 | Home: two ways to compose — traditional (bottom-right button) and chat view (search a number) | Home | **Done** — and since round 4 they are the *only* ways: a thread has no composer, so a message can only start from Home or from a mail's Reply |
 | No separate Inbox or Sent — everything is a conversation | `GET /api/conversations` | **Done** |
 | Full-width search bar | Home | **Done** |
-| Filter chips: All, Unread, Attachments, Favorites | Home | **Done** — **Attachments is an affordance with an honest empty state; there is no attachment backend** (see limitations) |
+| Filter chips: All, Unread, Attachments, Favorites | Home | **Done** — all four filter. **Attachments** filters on a real count of the files a conversation carries |
 | Top-left menu: Home, Drafts, Spam, Trash | Settings → Folders | **Deviation, resolved** — the drawer was removed at the owner's request and the folders became rows in Settings, each opening its own screen, with move-to-folder in a thread's chevron panel. The destination changed; the feature is present |
 | Profile icon, top-right → account settings: alias IDs, language, personal details, profile picture and more | Home → `/profile` | **Done** for aliases, language, the display name, the folders, the notification switch and account deletion; **the profile picture is not built** (see limitations) |
 | Compact Subject field above the message box | traditional `/compose` | **Done as superseded** — the subject field's home is the **traditional compose**, and the thread's message box is a **New mail** button that opens it. A mail that opened a subject renders `Subject: <subject>`; only a reply renders `re: <subject>` |
@@ -236,7 +241,15 @@ fallback**, and matching respects the full URL including search params (no
 `ignoreSearch`). That is what stops a returning user — or the installed PWA — from
 being served a previous build's shell.
 
-**Migrations are committed** (`prisma/migrations/`, 12 of them) and applied by the
+**Attachments are rows, not files.** A file's bytes live in Postgres (`Attachment`),
+like the avatar, because the container filesystem is not durable and "no filesystem
+storage" was the requirement. A message with files is submitted as
+multipart/form-data over the SAME single SMTP submission the text uses, the SMTP
+service hands the MIME parts on, and the inbound webhook - still the only writer of
+an `Email` row - stores the files with it. Downloads are JWT-gated and party-only:
+401 without a token, 403 for anyone but the message's sender and recipient.
+
+**Migrations are committed** (`prisma/migrations/`, 13 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
@@ -251,12 +264,15 @@ among short, verified wordings. Full history: PROJECT.md §9 and §10.
 
 Written down rather than hidden:
 
-- **Attachments are cut.** There is no attachment backend. The paperclip appears
-  in the thread bar and on the compose screen because the design calls for it, and
-  tapping it says "Attachments coming soon". The Attachments filter chip carries
-  the same honest empty state — a chip that opens an empty screen is worse than a
-  chip that says why.
-- **Personal details are the name row only.** The display name is real, editable
+- **Attachments have limits, and they are deliberate.** Three files per message,
+  5MB each, 10MB in total, enforced in the browser, in the send route and again on
+  the inbound webhook. A group message stores its files once per recipient row
+  rather than sharing them through a join table - duplicated bytes in exchange for
+  an attachment owned by exactly the row it belongs to, which is what keeps the
+  download check the row's own party check. There is no share link: a download needs
+  a session, and the bytes are fetched with the same Authorization header
+  everything else uses, so a token never appears in a URL.
+ The display name is real, editable
   and what the profile header leads with. A **profile picture is not built**: no
   upload, no serving route, the `User.avatar*` columns are unused scaffolding, and
   every account shows the same neutral person mark.
@@ -286,29 +302,26 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **552 assertions across 18 suites, green on the loaded database**, in dev mode
+- **584 assertions across 19 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 27 for display names, 45 for the group chat, 42 for the final functional
   items (search-to-chat, the Favorites/Attachments chips, the group-folder add-on),
   31 for aliases plus the non-member 403 path, 39 for contacts, 64 for the round-2
-  fixes (single-send, self-sends, the notification switch, account deletion, reply
-  linkage, the input pass), 54 for the round-3 items (the contact and alias send, the
-  group's per-viewer reply model, the restored settings rows, the swipe reply, the
-  live subject divider, the message-card design), 32 for the settings reference
-  (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
-  (source-only), 26 for round 4 itself (the registration lookup both ways,
-  reply-once enforced live, `Subject:` against `re:`, the contact save reaching the
-  chat, the shared back control and the shared wordmark), 25 for round 5 (the
-  service worker **executed in a sandbox** rather than read, plus the canvas rules),
-  and 26 for round 6, also source-only by design: the bubble's padding, the absence
-  of the NEW mark **tree-wide**, the reply swipe's wiring and its guard, the
-  switch's construction, both buttons' geometry, and the one header and empty-state
-  rule. `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
-  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
-  design, a copy rule and the shape of the markup, which live in the source and the
-  tokens, so they need no server, no OTP and no mode - and are never a reason to
-  touch one.
+  fixes, 54 for the round-3 items, 32 for the settings reference (source-only), 20
+  for the round-3 chat fixes, 10 for the round-4 polish rules (source-only), 26 for
+  round 4, 25 for round 5 (the service worker **executed in a sandbox** rather than
+  read, plus the canvas rules), 26 for round 6 (source-only), and 32 for round 7:
+  the deployed stylesheet for the three controls, then the whole attachment round
+  trip - two files uploaded and delivered and downloaded **hash-identical**, with
+  content types and the disposition filename checked; the sender allowed, a
+  non-party refused 403, no token 401; 6MB refused, four files refused, 12MB
+  refused, each naming its limit; a group broadcast carrying a file; and the
+  Attachments chip filtering on a real count. `ct5/settings_ref.mjs`,
+  `ct8/polish_regression.mjs` and `ct15/clickthrough6_regression.mjs` are the
+  **source-only** suites: they grade a design, a copy rule and the shape of the
+  markup, which live in the source and the tokens, so they need no server, no OTP
+  and no mode - and are never a reason to touch one.
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently at the round-5 commit (`b392769`). The round-6 changes do not alter that
   result: everything they touched is either source-only (the round-6 suite grades the
@@ -369,7 +382,7 @@ src/app/portal/        registration-only web portal
 src/app/api/           every endpoint (auth, emails, conversations, aliases, contacts, mail/inbound, ivr, health)
 src/components/        shared UI (message card, app bar, back button, wordmark, user sheet, avatar)
 src/lib/               domain logic (alias, threadKey, timeline, folders, inbound, notify, otp, socket, phone)
-prisma/                schema + 12 committed migrations
+prisma/                schema + 13 committed migrations
 smtp/                  the self-hosted SMTP service and its README
 design/                the Stitch exports the visual language was built from
 docs/                  SPEC.md (the organiser's task) and ivr-setup.md

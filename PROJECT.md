@@ -2036,6 +2036,78 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), nineteenth session: THE THREE CONTROLS, ROOT-CAUSED (they were
+  never the markup's fault) and ATTACHMENTS, end to end. Landed and verified.
+  - THE THREE CONTROLS. The user had already rejected them once, and round 6's
+    markup-level rebuild changed nothing that renders - so this session walked the
+    ancestor chain and found the constraint was NOT an ancestor at all:
+        globals.css, @layer base:  button, a[role="button"], input, select, textarea
+                                   { min-height: 56px }      // the elder-friendly floor
+    A min-height BEATS a height, so EVERY button in the app is at least 56px tall.
+    The switch's 44x24 track rendered as a tall pill; the 40px pencil badge and the
+    32px "+" rendered as ovals, 40x56 and 32x56; the message card's 24px chevron
+    rendered 24x56 - which is the "dead band" round 6 chased through padding - and
+    even the shared 48px BackButton was stretched to 48x56, quietly breaking the one
+    alignment rule on every screen it was introduced for.
+  - THE PROOF IS THE DEPLOYED STYLESHEET, not the source: the served CSS carries
+    `button,...{min-height:56px}`, and the new suite asserts that rule AND the
+    opt-out utility as they are actually shipped.
+  - THE FIX, AT BOTH ENDS. A fixed-size control OPTS OUT with `min-h-0` (a class
+    beats that element selector, so the floor keeps applying to every ordinary
+    button), and globals.css now says so in a comment that names the rule. A tree
+    scan found 17 buttons below the floor: the 12 that declared NO min-height of
+    their own were distorted and now opt out (the switch, the card's chevron, the
+    shared BackButton, the profile badge, compose's four round buttons and its send
+    button, contacts' Add, the onboarding clear button, the thread's paperclip chip,
+    group-info's close button and the sheet's two); the 3 that declared their own
+    smaller min-height were deliberate and were left alone. The rebuilt
+    constructions are exactly as specified - the switch is a RELATIVE fixed 44x24
+    track with an ABSOLUTE 20px knob (centred by top-1/2 -translate-y-1/2, moved by
+    translate-x, no flex anywhere); the badge is a fixed 40px square at the avatar's
+    corner by absolute + translate, outside any overflow-hidden wrapper; the "+" is
+    a 32px square in a row that centres rather than stretches.
+  - ATTACHMENTS, THE FEATURE. An Attachment model (filename, contentType, sizeBytes,
+    data BYTEA) with the 13th committed migration. The bytes live in POSTGRES, like
+    the avatar, because the container filesystem is not durable and "no filesystem
+    storage" was the requirement. ONE ROW PER (Email row, file): a group broadcast
+    fans out into one row per recipient, and the documented trade is duplicated
+    bytes in that case in exchange for an attachment owned by exactly the row it
+    belongs to - so the download check IS the row's own party check, and deleting a
+    message takes its bytes with it through the cascade.
+  - THE ROAD. The paperclip is a real picker (multi, capped at 3) and the "coming
+    soon" panel - along with the three decorative buttons that all raised it - is
+    gone. A message with files is submitted as multipart/form-data on the SAME one
+    SMTP submission the text uses; nodemailer builds the MIME parts; the SMTP
+    service hands them on base64 (its own ceiling raised to 20MB, because 10MB of
+    raw bytes is about 13MB on the wire); the inbound webhook validates the same
+    limits again and the inbound writer stores the rows. The limits - 5MB per file,
+    10MB per message, 3 files - live in ONE module shared by the browser, the send
+    route and the webhook.
+  - DOWNLOADS: GET /api/attachments/[id], JWT-gated and PARTY-ONLY (401 without a
+    token, 403 for anyone but the message's sender and recipient). The card fetches
+    the bytes with the session's Authorization header and hands them to the browser
+    as a blob, so the token never appears in a URL, a history entry or a log. A
+    message's files render in the bubble's documented attachment slot, and the home
+    screen's Attachments chip now filters on a real count instead of the constant
+    zero it used to carry.
+  - A NINETEENTH SUITE, ct16/attachments_regression.mjs, 32 assertions: the deployed
+    CSS for the three controls; then the whole attachment round trip - two files (a
+    text file and a real PNG) uploaded, delivered and downloaded HASH-IDENTICAL,
+    with the content types and the disposition filename checked; the sender may
+    download, a non-party gets 403, no token gets 401; 6MB refused, four files
+    refused, 12MB refused, each naming the limit it broke; a group broadcast
+    carrying a file; and the chip filtering on real data.
+  - ONE ASSERTION RE-POINTED: the final-items suite asserted "attachments: 0 (no
+    attachment backend)" - the constant the field used to carry. It now grades a
+    real count, which is what the field was always for.
+  - VERIFICATION: 584 assertions across NINETEEN suites green on the loaded database
+    in dev mode; build green; the 13th migration applied by the container entrypoint
+    on the loaded database (migrate status: up to date; the "Attachment" table
+    readable); and the fresh-clone evaluator simulation from ORIGIN is recorded in
+    the entry that follows this one.
+  - Mode found: REAL. Dev mode for the runs and REAL mode restored at the end, four
+    healthy containers.
+
 - Day 8 (Sun Sep 27), eighteenth session: CLICK-THROUGH ROUND 6 - the visual
   corrections the owner photographed, and the reply swipe. Landed and verified.
   - THE BUBBLE'S DEAD BAND, MEASURED. The complaint was "body, then the time +

@@ -8,6 +8,7 @@ import { addressForPhone } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { emitNewEmail } from "@/lib/socket";
 import { notifyNewMail, shouldNotify, type NotificationOutcome } from "@/lib/notify";
+import type { InboundAttachment } from "@/lib/attachments";
 import { newSubmissionId, submissionKey, takeSubmission } from "@/lib/submissions";
 import { deriveThreadKey } from "@/lib/threadKey";
 
@@ -49,6 +50,8 @@ export interface InboundMessage {
   to: string[];
   subject: string;
   body: string;
+  /** The files that travelled with the message, base64 (Day 8). */
+  attachments?: InboundAttachment[];
 }
 
 export type InboundResult =
@@ -116,6 +119,8 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
   // one bubble per message rather than one per recipient.
   const submissionId = newSubmissionId();
 
+  const attachments: InboundAttachment[] = message.attachments ?? [];
+
   const deliveries: InboundDelivery[] = [];
 
   for (const recipient of recipients) {
@@ -137,6 +142,22 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
       },
       select: { id: true, subject: true, body: true },
     });
+
+    // Day 8: the attachment rows belong to THIS row, one set per fan-out row. A
+    // group message therefore stores its files once per recipient - see the
+    // Attachment model for why that trade was taken (ownership and the download
+    // check stay the row's own business, at the cost of duplicated bytes).
+    if (attachments.length > 0) {
+      await prisma.attachment.createMany({
+        data: attachments.map((file) => ({
+          emailId: email.id,
+          filename: file.filename,
+          contentType: file.contentType,
+          sizeBytes: file.sizeBytes,
+          data: Buffer.from(file.contentBase64, "base64"),
+        })),
+      });
+    }
 
     // Realtime notification, one per fan-out row. No-op when the custom server
     // is not in use.

@@ -97,7 +97,7 @@ export function GroupInfo({
 
         <button
           type="button"
-          className="mt-4 h-12 w-full shrink-0 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+          className="mt-4 min-h-0 h-12 w-full shrink-0 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
           onClick={onClose}
         >
           Close

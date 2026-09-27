@@ -207,7 +207,7 @@ export function MessageCard({
                 onClick={onMore}
                 aria-label={moreOpen ? "Hide message actions" : "Show message actions"}
                 aria-expanded={moreOpen}
-                className="ml-0.5 -mb-0.5 -mr-1 flex h-6 w-6 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
+                className="ml-0.5 -mb-0.5 -mr-1 flex min-h-0 h-6 w-6 items-center justify-center rounded-full text-chat-meta transition-colors duration-ui hover:bg-black/[0.05]"
               >
                 <svg
                   width="16"

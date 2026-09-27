@@ -49,6 +49,8 @@ interface ThreadAccumulator {
   unread: number;
   /** Day 6: true when ANY message in the thread carries the favorite tag. */
   favorite: boolean;
+  /** Day 8: how many files the thread's messages carry, in total. */
+  attachments: number;
   /**
    * True when the thread's NEWEST message is one this user sent. The list row
    * needs it to prefix its preview with "You: ", which is the difference between
@@ -68,6 +70,8 @@ interface GroupAccumulator {
   unread: number;
   /** Day 6: true when ANY message in the group carries the favorite tag. */
   favorite: boolean;
+  /** Day 8: how many files the group's messages carry, in total. */
+  attachments: number;
   /** See ThreadAccumulator.outgoing - the same rule for a group's newest row. */
   outgoing: boolean;
 }
@@ -101,6 +105,9 @@ export async function GET(request: Request) {
       createdAt: true,
       threadKey: true,
       tag: true,
+      // Day 8: how many files the row carries, so the Attachments chip can filter
+      // on a real count instead of the constant zero it used to be.
+      _count: { select: { attachments: true } },
     },
   });
 
@@ -125,6 +132,7 @@ export async function GET(request: Request) {
             // The group row reports whether the NEWEST message is mine, so the
             // scan has to know who sent it.
             fromUserId: true,
+            _count: { select: { attachments: true } },
             fromAddress: true,
             toAddress: true,
             subject: true,
@@ -162,6 +170,7 @@ export async function GET(request: Request) {
         lastAt: email.createdAt,
         unread: isUnread ? 1 : 0,
         favorite: email.tag === FAVORITE_TAG,
+        attachments: email._count.attachments,
         outgoing: !incoming,
       });
       continue;
@@ -173,6 +182,7 @@ export async function GET(request: Request) {
     if (email.tag === FAVORITE_TAG) {
       existing.favorite = true;
     }
+    existing.attachments += email._count.attachments;
   }
 
   for (const row of groupRows) {
@@ -193,6 +203,7 @@ export async function GET(request: Request) {
         lastAt: row.createdAt,
         unread: row.toUserId === user.sub && !row.isRead ? 1 : 0,
         favorite: row.tag === FAVORITE_TAG,
+        attachments: row._count.attachments,
         outgoing: row.fromUserId === user.sub,
       });
       continue;
@@ -208,15 +219,15 @@ export async function GET(request: Request) {
     if (row.tag === FAVORITE_TAG) {
       existing.favorite = true;
     }
+    existing.attachments += row._count.attachments;
   }
 
   const ordered = [...threads.values()]
     .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
     .slice(0, THREAD_LIMIT)
-    // `attachments` is a constant 0 on purpose: there is no attachment backend
-    // in this build, and the chip exists so the empty state is honest rather
-    // than absent.
-    .map((thread) => ({ ...thread, attachments: 0, lastAt: thread.lastAt.toISOString() }));
+    // Day 8: `attachments` is now the REAL count, accumulated from the rows, which
+    // is what makes the Attachments chip a filter rather than an empty state.
+    .map((thread) => ({ ...thread, lastAt: thread.lastAt.toISOString() }));
 
   const orderedGroups = [...groups.values()]
     .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
@@ -231,7 +242,7 @@ export async function GET(request: Request) {
       lastAt: group.lastAt.toISOString(),
       unread: group.unread,
       favorite: group.favorite,
-      attachments: 0,
+      attachments: group.attachments,
     }));
 
   // Day 7: hand each thread the name to show for its counterpart, and each group

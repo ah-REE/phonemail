@@ -133,6 +133,10 @@ model Email {
   fromUser User @relation("SentEmails", fields: [fromUserId], references: [id])
   toUser   User @relation("ReceivedEmails", fields: [toUserId], references: [id])
 
+  /// The files that travelled with this message (Day 8). One row per fan-out row,
+  /// so the bytes are owned by the message they belong to - see the model below.
+  attachments Attachment[]
+
   /// Serves the inbox query: WHERE toUserId = ? ORDER BY createdAt DESC.
   @@index([toUserId, createdAt])
   /// Serves the thread query: WHERE (fromUserId = ? AND toUserId = ?) OR vice versa.
@@ -143,6 +147,32 @@ model Email {
   @@index([submissionId])
   /// Serves a folder screen: WHERE toUserId = ? AND folder = ? ORDER BY createdAt.
   @@index([toUserId, folder, createdAt])
+}
+
+/// A file attached to a delivered message. The BYTES LIVE IN POSTGRES, like the
+/// avatar: the container filesystem is not durable, so a file on disk would not
+/// survive a rebuild, and "no filesystem storage" was the requirement.
+///
+/// ONE ROW PER (Email row, file). A group broadcast fans out into one Email row per
+/// recipient, so its attachments are stored once per row rather than shared through
+/// a join table. That is a deliberate trade: it costs duplicated bytes for a group
+/// message, and it buys the property that an attachment is owned by exactly the row
+/// it belongs to - so the download check is the SAME party check the row already
+/// has, with no second table to keep consistent, and deleting a message takes its
+/// bytes with it through the cascade.
+model Attachment {
+  id          String   @id @default(cuid())
+  emailId     String
+  filename    String
+  contentType String
+  sizeBytes   Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  email Email @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  /// Serves the per-message lookup: WHERE emailId = ? (and the delete cascade).
+  @@index([emailId])
 }
 
 /// A second address for one account (Day 6). localPart is unique AND is checked

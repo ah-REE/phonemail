@@ -495,7 +495,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       aria-label="Clear the number"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center text-on-surface-variant"
+                      className="flex min-h-0 h-9 w-9 shrink-0 items-center justify-center text-on-surface-variant"
                       onClick={() => {
                         setPhoneNumber("");
                         setPhoneError(null);

@@ -363,7 +363,7 @@ export default function HomePage() {
             </p>
             <p className="text-sm text-on-surface-variant">
               {filter === "attachments"
-                ? "Attachments are not supported yet - this is where they will appear."
+                ? "Attach a file to a message and it will appear here."
                 : filter === "favorites"
                   ? "Open a message and use the tag button to mark it a favorite."
                   : threads.length + groupThreads.length === 0

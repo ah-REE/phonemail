@@ -73,6 +73,11 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
       tag: true,
       submissionId: true,
       replyToId: true,
+      // Day 8: the files on each row, metadata only (see the 1:1 thread route).
+      attachments: {
+        select: { id: true, filename: true, contentType: true, sizeBytes: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -169,6 +174,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
         createdAt: message.createdAt,
         repliedAt: message.repliedAt,
         tag: message.tag,
+        attachments: message.attachments,
       })),
     },
     { status: 200 },

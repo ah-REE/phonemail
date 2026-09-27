@@ -56,6 +56,13 @@ export interface OutboundEmail {
   to: string | string[];
   subject: string;
   body: string;
+  /**
+   * The files that travel WITH the message (Day 8). They are passed to nodemailer
+   * as real MIME parts, so they cross the same SMTP hop the body does and come back
+   * through the inbound webhook - which is what keeps "the row is only written by
+   * the inbound path" true for attachments too.
+   */
+  attachments?: { filename: string; contentType: string; content: Buffer }[];
 }
 
 /** Submits a message to the SMTP service. Throws when submission fails. */
@@ -65,5 +72,12 @@ export async function submitOutboundEmail(message: OutboundEmail): Promise<void>
     to: message.to,
     subject: message.subject,
     text: message.body,
+    // Nodemailer builds the multipart/mixed message: a message with no files is
+    // byte-for-byte what it was before this feature existed.
+    attachments: (message.attachments ?? []).map((file) => ({
+      filename: file.filename,
+      content: file.content,
+      contentType: file.contentType,
+    })),
   });
 }

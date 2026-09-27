@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { classifyToken, lookupRecipientUsers, recipientToken } from "@/lib/alias";
+import { validateAttachmentSet } from "@/lib/attachments";
 import { EMAIL_FOLDERS, isEmailFolder } from "@/lib/folders";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +27,10 @@ export const dynamic = "force-dynamic";
  * path, so there is no loop here and no chance of half a group receiving it.
  * The response carries the DERIVED threadKey of the member set so the client can
  * open the group thread it just created without computing anything itself.
+ *
+ * Day 8 (attachments): a message may carry up to three files (5MB each, 10MB per
+ * message). They are submitted as real MIME parts on the ONE SMTP message, so they
+ * take the same round trip as the body and are stored by the inbound path alone.
  *
  * Replying (optional `replyToId`) is enforced here as reply-ONCE: the original
  * message is claimed with a conditional update, so a second reply cannot be
@@ -56,11 +61,49 @@ export async function POST(request: Request) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
+  // ROUND 7 (attachments): this endpoint takes multipart/form-data as well as JSON,
+  // so a message with files is ONE submission - the files ride the SMTP hop and
+  // come back through the inbound webhook exactly like the body does.
+  const contentTypeHeader = request.headers.get("content-type") ?? "";
   let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  let files: File[] = [];
+
+  if (contentTypeHeader.startsWith("multipart/form-data")) {
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid form data." }, { status: 400 });
+    }
+    const toEntries = form
+      .getAll("to")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry.length > 0);
+    body = {
+      to: toEntries.length > 1 ? toEntries : toEntries[0],
+      subject: form.get("subject") ?? undefined,
+      body: form.get("body") ?? undefined,
+      replyToId: form.get("replyToId") ?? undefined,
+      threadKey: form.get("threadKey") ?? undefined,
+    };
+    files = form
+      .getAll("attachments")
+      .filter((entry): entry is File => typeof entry !== "string" && entry.size > 0);
+  } else {
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+  }
+
+  // Hard limits, checked here as well as in the browser: a client is a convenience,
+  // never the guard.
+  const attachmentProblem = validateAttachmentSet(
+    files.map((file) => ({ filename: file.name, sizeBytes: file.size })),
+  );
+  if (attachmentProblem) {
+    return NextResponse.json({ error: attachmentProblem }, { status: 400 });
   }
 
   const parsed = sendSchema.safeParse(body);
@@ -226,6 +269,14 @@ export async function POST(request: Request) {
     });
   }
 
+  const attachmentPayload = await Promise.all(
+    files.map(async (file) => ({
+      filename: file.name,
+      contentType: file.type || "application/octet-stream",
+      content: Buffer.from(await file.arrayBuffer()),
+    })),
+  );
+
   try {
     await submitOutboundEmail({
       from: fromAddress,
@@ -233,6 +284,7 @@ export async function POST(request: Request) {
       to: addresses,
       subject,
       body: parsed.data.body,
+      attachments: attachmentPayload,
     });
   } catch (error) {
     console.error("[emails] SMTP submission failed", error);
@@ -264,6 +316,7 @@ export async function POST(request: Request) {
       threadKey,
       subject,
       replyToId: claimedReplyTo,
+      attachments: attachmentPayload.length,
       message: "Message submitted to the mail service.",
     },
     { status: 202 },

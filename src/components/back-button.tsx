@@ -21,6 +21,10 @@ import Link from "next/link";
  *
  * The three variants below differ only in fill (which the chrome they sit on
  * decides), never in geometry - which is the whole point of the rule.
+ *
+ * ROUND 7: `min-h-0` is not decoration. The base layer floors every button at
+ * 56px, so without it this 48x48 control rendered 48x56 and the rule it exists to
+ * enforce was quietly broken on every screen.
  */
 export const HEADER_BACK_SIZE = 48;
 export const HEADER_BACK_GLYPH = 24;
@@ -52,7 +56,7 @@ export function BackButton({
           ? ""
           : "text-on-primary active:bg-white/10";
 
-  const classes = `flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors duration-fast ease-out-quint ${fill} ${className}`;
+  const classes = `flex min-h-0 h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors duration-fast ease-out-quint ${fill} ${className}`;
 
   const glyph = (
     <svg

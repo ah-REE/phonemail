@@ -1,22 +1,29 @@
 "use client";
 
 /**
- * THE SWITCH - the app's one toggle, conventionally built.
+ * THE SWITCH - the app's one toggle.
  *
- * Round 6 rebuilt this because the notifications switch rendered off centre: the
- * knob used to be `absolute` inside a flex track, so its vertical position came
- * from its STATIC position rather than from the track, and the browser resolved
- * that differently from what the markup implied.
+ * THE SHAPE WAS NEVER THE MARKUP'S FAULT. This control has now been rebuilt three
+ * times and still rendered wrong, because the constraint was never a parent: the
+ * design system's base layer sets
  *
- * The construction here cannot do that:
- *   - the track is 44x24 with a 2px inset (px-0.5);
- *   - the knob is a 20px block IN FLOW, so the track's own `items-center` centres
- *     it vertically - no absolute positioning is involved at all;
- *   - it moves by `transform` only, so the travel is exactly 44 - 20 - 2*2 = 20px.
+ *     button { min-height: 56px }     // the elder-friendly tap floor
  *
- * A switch is a `role="switch"` button with `aria-checked`, not a checkbox with
- * invented styling: a screen reader then announces the state, which is the point
- * of the control.
+ * so EVERY button in the app is at least 56px tall. A 44x24 track inside a 56px
+ * box is a tall pill, and a 20px knob centred in it reads as a smear rather than a
+ * switch. The control therefore declares its own size and opts out of the floor
+ * with `min-h-0` - a class beats that element selector, so the floor keeps
+ * applying to every ordinary button.
+ *
+ * The construction is deliberately the simplest that cannot distort:
+ *   - the track is a RELATIVE, FIXED-SIZE box - w-[44px] h-[24px], rounded-full,
+ *     background by state;
+ *   - the knob is its ABSOLUTE child - 20px, rounded-full, centred vertically by
+ *     `top-1/2 -translate-y-1/2` and moved along the track by `translate-x`;
+ *   - no flex, no inset arithmetic, and nothing above it can set its height.
+ *
+ * It is a real `role="switch"` button with `aria-checked`, so a screen reader
+ * announces the state rather than describing a decorative pill.
  */
 export function Switch({
   checked,
@@ -38,13 +45,13 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       onClick={onChange}
-      className={`flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors duration-ui ease-out-quint disabled:opacity-60 ${
+      className={`relative min-h-0 h-[24px] w-[44px] shrink-0 rounded-full transition-colors duration-ui ease-out-quint disabled:opacity-60 ${
         checked ? "bg-settings-brand" : "bg-settings-track"
       }`}
     >
       <span
         aria-hidden="true"
-        className={`block h-5 w-5 shrink-0 rounded-full bg-white shadow-card transition-transform duration-ui ease-out-quint ${
+        className={`absolute left-[2px] top-1/2 block h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-card transition-transform duration-ui ease-out-quint ${
           checked ? "translate-x-[20px]" : "translate-x-0"
         }`}
       />

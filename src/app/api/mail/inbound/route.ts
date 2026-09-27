@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { validateAttachmentSet } from "@/lib/attachments";
 import { submitInboundEmail } from "@/lib/inbound";
 
 export const runtime = "nodejs";
@@ -33,6 +34,22 @@ const inboundSchema = z.object({
     .refine((list) => list.length > 0, { message: "to must contain at least one recipient" }),
   subject: z.string().trim().default("(no subject)"),
   body: z.string().default(""),
+  // Day 8: the SMTP service hands the MIME parts on, base64-encoded. The array is
+  // capped HERE as well as at the send route, because the webhook is reachable by
+  // anything holding the shared secret and the limits must not depend on the
+  // caller having respected them.
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string().trim().min(1).max(200),
+        contentType: z.string().trim().min(1).max(120),
+        sizeBytes: z.number().int().nonnegative(),
+        contentBase64: z.string().min(1),
+      }),
+    )
+    .max(3)
+    .optional()
+    .default([]),
 });
 
 export async function POST(request: Request) {
@@ -61,6 +78,12 @@ export async function POST(request: Request) {
       { error: "Invalid inbound message.", details: parsed.error.issues.map((i) => i.message) },
       { status: 400 },
     );
+  }
+
+  // The same limits the send route applies, applied to what actually arrived.
+  const attachmentProblem = validateAttachmentSet(parsed.data.attachments);
+  if (attachmentProblem) {
+    return NextResponse.json({ error: attachmentProblem }, { status: 400 });
   }
 
   const result = await submitInboundEmail(parsed.data);

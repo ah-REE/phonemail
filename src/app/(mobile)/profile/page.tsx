@@ -486,12 +486,16 @@ export default function ProfilePage() {
             />
             {/* The reference's badge is a pencil, not a tick: it opens the name
                 field rather than reporting something that already happened.
-                ROUND 6: the geometry is spelled out so nothing can distort the
-                circle - an explicit square box, border-box sizing, no padding and
-                no line-height, the glyph centred by flex. */}
+                ROUND 6/7: the geometry is spelled out so nothing can distort the
+                circle - an explicit square box, border-box sizing, no padding, no
+                line-height, the glyph centred by flex, and `min-h-0` because the
+                base layer floors every button at 56px (without it this 40px badge
+                rendered 40x56: an oval). The corner placement is an absolute
+                position plus a translate, and the wrapper is a plain `relative`
+                box with NO overflow-hidden, so the badge can never be clipped. */}
             <button
               type="button"
-              className="absolute -bottom-0.5 -right-0.5 box-border flex aspect-square h-10 w-10 shrink-0 items-center justify-center rounded-full bg-settings-brand p-0 leading-none text-white ring-[3px] ring-white shadow-card transition-transform duration-ui active:scale-95"
+              className="absolute bottom-0 right-0 min-h-0 box-border flex aspect-square h-10 w-10 shrink-0 translate-x-[2px] translate-y-[2px] items-center justify-center rounded-full bg-settings-brand p-0 leading-none text-white ring-[3px] ring-white shadow-card transition-transform duration-ui active:scale-95"
               aria-label="Change your display name"
               onClick={() => {
                 nameFieldRef.current?.focus();

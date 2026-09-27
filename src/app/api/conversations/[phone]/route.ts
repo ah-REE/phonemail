@@ -66,6 +66,12 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
       repliedAt: true,
       tag: true,
       replyToId: true,
+      // Day 8: the files that travelled with each message, metadata only - the
+      // bytes are fetched from /api/attachments/[id], which does its own check.
+      attachments: {
+        select: { id: true, filename: true, contentType: true, sizeBytes: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -108,6 +114,7 @@ export async function GET(request: Request, context: { params: Promise<{ phone: 
         repliedAt: message.repliedAt,
         replyToId: message.replyToId,
         tag: message.tag,
+        attachments: message.attachments,
       })),
     },
     { status: 200 },

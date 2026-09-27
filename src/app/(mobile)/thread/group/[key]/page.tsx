@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { AttachmentCards } from "@/components/attachments";
 import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { GroupInfo } from "@/components/group-info";
@@ -60,6 +61,8 @@ interface GroupMessage {
   createdAt: string;
   repliedAt: string | null;
   tag: string | null;
+  /** Day 8: the files on this row (metadata; bytes fetched on demand). */
+  attachments?: { id: string; filename: string; contentType: string; sizeBytes: number }[] | null;
   /** Local-only: true when this message was unread when the thread opened. */
   wasUnread?: boolean;
 }
@@ -335,6 +338,7 @@ export default function GroupThreadPage() {
               when={formatWhen(message.createdAt)}
               body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
               tick={message.mine}
+              attachments={<AttachmentCards attachments={message.attachments} />}
               quoted={
                 original
                   ? `${original.mine ? "You" : original.fromName?.trim() || phoneOf(original.from)}: ${original.body.slice(0, 90)}`

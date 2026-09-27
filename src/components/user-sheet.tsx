@@ -241,7 +241,7 @@ export function UserSheet({
                 />
                 <button
                   type="button"
-                  className="flex h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
+                  className="flex min-h-0 h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
                   onClick={() => void addContact()}
                   disabled={busy}
                 >
@@ -264,7 +264,7 @@ export function UserSheet({
 
         <button
           type="button"
-          className="mt-6 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+          className="mt-6 min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
           onClick={onClose}
         >
           Close

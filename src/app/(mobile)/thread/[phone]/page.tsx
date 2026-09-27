@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
+import { AttachmentCards } from "@/components/attachments";
 import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { MailReader } from "@/components/mail-reader";
@@ -50,6 +51,8 @@ interface ThreadMessage {
   /** The row this message answers, when it is a reply. */
   replyToId?: string | null;
   tag: string | null;
+  /** Day 8: the files that travelled with this message (metadata; bytes on demand). */
+  attachments?: { id: string; filename: string; contentType: string; sizeBytes: number }[] | null;
   /** Local-only: true when this message was unread when the thread opened. */
   wasUnread?: boolean;
   /** Local-only: a bubble built from the socket payload before the row arrived. */
@@ -95,8 +98,10 @@ export default function ThreadPage() {
   // that mail directly (quoted context, derived subject, replyToId, reply-once);
   // swipe LEFT keeps the tag/move panel. The old two-step (reveal a footer link,
   // then tap it) is gone, and so is the state that drove it.
-  // The mockup's paperclip: present per the design, honest about the backend.
-  const [attachNotice, setAttachNotice] = useState(false);
+  // ROUND 7: the paperclip no longer raises a "coming soon" panel - a thread has
+  // no composer, so the honest door for a file is the traditional compose, which is
+  // one tap away and locked to this counterpart. (The chip itself is unchanged; only
+  // what it does is.)
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const swipeStart = useRef<{ id: string; x: number } | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -414,6 +419,7 @@ export default function ThreadPage() {
                 when={formatWhen(message.createdAt)}
                 body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
                 tick={message.mine}
+                attachments={<AttachmentCards attachments={message.attachments} />}
                 quoted={
                   original
                     ? `${original.mine ? "You" : original.fromName?.trim() || original.from}: ${original.body.slice(0, 90)}`
@@ -564,17 +570,16 @@ export default function ThreadPage() {
           reader's own Reply bar is the action. */}
       {!onlyIncoming && (
       <footer className="sticky bottom-0 z-20 flex w-full shrink-0 items-center gap-2 rounded-t-[28px] bg-chat-sheet px-4 pb-4 pt-3 shadow-overlay">
-        <button
-          type="button"
-          aria-label="Attach documents"
-          title="Attachments are not built in this version"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface-variant"
-          onClick={() => setAttachNotice(true)}
+        <Link
+          href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
+          aria-label="Attach a file in the traditional compose"
+          title="Attach a file in the traditional compose"
+          className="flex min-h-0 h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-rail text-on-surface-variant"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20 11l-7.6 7.6a4.2 4.2 0 0 1-6-6L14 5a2.8 2.8 0 0 1 4 4l-7.6 7.6a1.4 1.4 0 0 1-2-2L15 8" />
           </svg>
-        </button>
+        </Link>
         <Link
           href={`/compose?to=${encodeURIComponent(phone)}&lockTo=1`}
           className="btn-brand flex-1"
@@ -588,21 +593,6 @@ export default function ThreadPage() {
       </footer>
       )}
 
-      {attachNotice && (
-        <button
-          type="button"
-          onClick={() => setAttachNotice(false)}
-          aria-label="Dismiss"
-          className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-4 pb-28"
-        >
-          <span className="surface flex w-full max-w-sm flex-col items-center gap-1 p-4 text-center">
-            <span className="text-base font-semibold">Attachments coming soon</span>
-            <span className="text-sm text-on-surface-variant">
-              PhoneMail cannot carry files yet. Your message text is unaffected.
-            </span>
-          </span>
-        </button>
-      )}
       {sheetOpen && (
         <UserSheet
           subject={{

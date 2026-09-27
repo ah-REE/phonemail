@@ -45,6 +45,20 @@
     @apply min-h-tap;
   }
 
+  /* THE FLOOR IS A DEFAULT, NOT A STRAIGHTJACKET - and this rule is what made
+     three controls render as ovals for two rounds. A min-height BEATS a height, so
+     any control whose drawn height is smaller than 56px renders TALLER than it was
+     designed: a 44x24 switch became a tall pill, a 40px badge and a 32px round
+     button became ovals, and the message card's 24px chevron inflated the row it
+     sits in (which is what read as a dead band under the body).
+
+     A fixed-size control therefore OPTS OUT with `min-h-0` - a class beats this
+     element selector, so the floor still applies to every ordinary button. Round 7
+     walked the tree for the controls that needed it: the switch, the card's
+     chevron, the shared BackButton, the profile's pencil badge, compose's round
+     buttons, contacts' Add, the onboarding clear button, the thread's paperclip
+     chip, and the two sheet buttons. */
+
   /* Caret-only focus on text entry. A browser matches :focus-visible for a text
      field even when it was reached with a mouse, which is the box that appeared
      around a field the owner had simply clicked into. Text fields now show the

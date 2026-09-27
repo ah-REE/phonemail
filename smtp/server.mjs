@@ -14,7 +14,11 @@ const PORT = Number(process.env.SMTP_PORT ?? 25);
 const MAIL_DOMAIN = (process.env.MAIL_DOMAIN ?? "phonemail.com").toLowerCase();
 const INBOUND_URL = process.env.APP_INBOUND_URL ?? "http://app:3000/api/mail/inbound";
 const WEBHOOK_SECRET = process.env.MAIL_WEBHOOK_SECRET;
-const MAX_MESSAGE_BYTES = 5 * 1024 * 1024;
+// The hop's own ceiling. The app enforces 5MB per file and 10MB per message of
+// RAW bytes; base64 on the wire plus MIME framing add about a third, so this needs
+// headroom ABOVE the app's limit rather than matching it - otherwise a legitimate
+// message would be refused by the transport instead of by the rule.
+const MAX_MESSAGE_BYTES = 20 * 1024 * 1024;
 const DELIVERY_ATTEMPTS = 5;
 const DELIVERY_DELAY_MS = 2000;
 
@@ -90,8 +94,19 @@ const server = new SMTPServer({
       const subject = parsed.subject ?? "(no subject)";
       const body = (parsed.text ?? "").trim();
 
+      // Attachments arrive as MIME parts. The APP owns their limits and their
+      // storage, so this service only hands the bytes on - base64, because the
+      // webhook speaks JSON. A message with no files produces an empty array and
+      // therefore an unchanged payload.
+      const attachments = (parsed.attachments ?? []).map((file) => ({
+        filename: file.filename ?? "attachment",
+        contentType: file.contentType ?? "application/octet-stream",
+        sizeBytes: file.size ?? (Buffer.isBuffer(file.content) ? file.content.length : 0),
+        contentBase64: Buffer.from(file.content ?? "").toString("base64"),
+      }));
+
       console.log(
-        `[smtp] accepted from=<${from}> to=<${recipients.join(",")}> subject="${subject}"`,
+        `[smtp] accepted from=<${from}> to=<${recipients.join(",")}> subject="${subject}" attachments=${attachments.length}`,
       );
 
       if (recipients.length === 0) {
@@ -106,7 +121,7 @@ const server = new SMTPServer({
       // row per recipient and derives the group thread key from the member set.
       // Looping here would produce N independent single-recipient messages and
       // the app could no longer tell a group send from separate sends.
-      await deliverToApp({ from, to: recipients, subject, body });
+      await deliverToApp({ from, to: recipients, subject, body, attachments });
 
       callback();
     } catch (error) {

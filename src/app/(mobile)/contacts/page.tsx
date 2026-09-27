@@ -219,7 +219,7 @@ export default function ContactsPage() {
           />
           <button
             type="submit"
-            className="flex h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
+            className="flex min-h-0 h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
             disabled={busy}
           >
             {busy ? <Spinner label="Saving" /> : "Add"}
