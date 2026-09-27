@@ -2031,6 +2031,74 @@ context instantly)*
   - Mode found and left: REAL. The clone directory phonemail-clone-20260926-163219
     is left in place, by the same rule as every session before it.
 
+- Day 8 (Sun Sep 27), sixteenth session: THE SERVICE-WORKER UPDATE PATH, ROOT-CAUSED
+  AND FIXED, plus the canvas polish. Landed and verified.
+  - THE DEFECT, OBSERVED IN THE CODE: the worker's fetch handler consulted the
+    precache FIRST for every same-origin GET - navigations included - so the
+    DOCUMENT itself could be answered from a cache built by a previous build. The
+    stamping route was never the problem: the served /sw.js really does carry the
+    container's own .next/BUILD_ID as its cache name, which is exactly why the
+    failure looked intermittent - a returning user got the old shell whenever the
+    current worker had not yet taken over, and no amount of cache-busting an ASSET
+    url could help, because the HTML never reached the network at all.
+  - REPRODUCED, DETERMINISTICALLY, WITH THE COUNTERFACTUAL: the worker is now
+    EXECUTED rather than read. The served /sw.js is fetched over HTTP and run in a
+    Node sandbox (stubbed self / caches / fetch / Response) and driven with real
+    requests. With a stale shell cached at "/" and the network available, the
+    PRE-FIX worker returns the stale shell for a navigation to "/", while the
+    current one returns the network's answer (probe runs the pre-fix template out of
+    git at b3050ce). Pre-fix stale, post-fix fresh: that is what makes this a root
+    cause instead of a plausible story.
+  - THE FIX: NAVIGATIONS ARE NETWORK-FIRST, and the precache is the OFFLINE FALLBACK
+    only. Cache matching respects the FULL URL - there is no ignoreSearch anywhere,
+    because "?v=123" is a different URL from "/" - so a stale entry under a
+    different URL is never substituted for the one being asked for. Unchanged by
+    design: /api/* stays network-first with an honest offline answer, /socket.io is
+    still never intercepted, content-hashed assets stay cache-first, and
+    install/activate keep skipWaiting + clients.claim and still drop every
+    non-current cache. THE GUARANTEE, asserted: after a rebuild and a reload, a
+    returning user receives the CURRENT build.
+  - A SEVENTEENTH SUITE, ct14/sw_and_canvas_regression.mjs, 25 assertions, and it
+    RUNS the worker rather than reading it: nine scenarios - network-first with a
+    stale shell cached at the exact URL, a cache-busted navigation fetching fresh,
+    the offline fallback, exact-URL matching (an uncached URL is NOT answered with a
+    neighbour's entry), /api offline honesty, /socket.io left alone - plus the
+    stamp-equals-BUILD_ID rotation checked against the LIVE container, and the
+    no-ignoreSearch rule asserted as an OPTION rather than as a word (the word
+    appears in the explanatory comment).
+  - CANVAS POLISH, all three items:
+      - DATE PILLS on a calendar-day change, in BOTH threads. The 1:1 thread drew one
+        pill at the top and nothing after it; the group thread drew none at all. Both
+        now derive the boundary from the ordered list, and it reads Today /
+        Yesterday / "27 Sep".
+      - SUBJECT DIVIDERS ON LIVE ARRIVALS, and GROUP PARITY. Because the boundary is
+        derived from the ordered list, a message that arrives over the socket cuts
+        the thread in the same place a refetched one does - the provisional bubble is
+        reconciled into the list and the rule looks at its neighbours either way. The
+        group thread now draws the same divider, labelled by the round-4 rule
+        (Subject: for a mail that opened one, re: for a reply).
+      - THE SETTINGS FOOTER WORDMARK was reviewed and set to 14px, from 13px: at 13
+        it read as fine print beside a 12.5px version line, so the NAME was smaller
+        than the thing it labelled. Recorded as a decision; the user's eye is the
+        final grade.
+  - BOTH BOUNDARIES NOW LIVE IN ONE MODULE, src/lib/timeline.ts (startsNewDay,
+    startsNewSubject, dayLabel), used by both threads - the same reason the palette
+    lives in the Tailwind config: a rule that is duplicated is a rule that drifts.
+    The suite imports it and exercises it directly (Node 22 strips the type
+    annotations), so what is asserted is the rule the components actually run, not a
+    copy of it.
+  - ONE ASSERTION RE-POINTED: ct2's "a new subject draws a divider at its
+    chronological position" named the exact line the rule used to live on; it now
+    asserts the shared helper, keeping the intent while the implementation moved off
+    that line.
+  - VERIFICATION: 526 assertions across SEVENTEEN suites green on the loaded
+    database in dev mode; build green, locally and inside the image; the worker's
+    counterfactual reproduced; and the fresh-clone evaluator simulation from ORIGIN
+    is recorded in the entry that follows this one.
+  - Mode found: REAL. Dev mode for the runs (override renamed away, the devHint
+    confirmed before any OTP request), REAL mode restored at the end with exactly
+    four healthy containers.
+
 - Day 7 (Sat Sep 26), fifteenth session, continued: THE FRESH-CLONE EVALUATOR
   SIMULATION, from ORIGIN at this commit, with the sixteen suites run AGAINST THE
   CLONE.

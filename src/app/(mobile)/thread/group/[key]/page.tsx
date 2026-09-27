@@ -11,6 +11,7 @@ import { GroupInfo } from "@/components/group-info";
 import { MessageCard } from "@/components/message-card";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
+import { dayLabel, startsNewDay, startsNewSubject } from "@/lib/timeline";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
 
@@ -86,6 +87,15 @@ function formatWhen(iso: string): string {
 
 function phoneOf(address: string): string {
   return address.replace(/@.*$/, "");
+}
+
+/**
+ * The round-4 subject rule, shared with the 1:1 thread: a mail that OPENED a
+ * subject reads "Subject: <subject>", and only a reply reads "re: <subject>".
+ */
+function subjectHeading(subject: string, isReply: boolean): string {
+  const text = subject.trim() || "Conversation";
+  return isReply || text.toLowerCase().startsWith("re:") ? text : `Subject: ${text}`;
 }
 
 export default function GroupThreadPage() {
@@ -266,7 +276,7 @@ export default function GroupThreadPage() {
       )}
 
       <div ref={listRef} className="flex-1 overflow-y-auto bg-chat-canvas px-4 py-3">
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
           const original = message.replyToId
@@ -289,7 +299,31 @@ export default function GroupThreadPage() {
           const isFirstInRun = !sameRun(messages[runIndex - 1]);
           const isLastInRun = !sameRun(messages[runIndex + 1]);
 
+          // ROUND 5: the same two boundaries the 1:1 thread draws, from the same
+          // shared rule - a day pill on a calendar change (the group had none) and
+          // a subject divider on a new subject, which is the parity the last
+          // session's report left open.
+          const newDay = index === 0 || startsNewDay(messages[index - 1].createdAt, message.createdAt);
+          const newSubject = startsNewSubject(messages[index - 1]?.subject, message.subject);
+
           return (
+            <div key={message.submissionId ?? message.id}>
+              {newDay && (
+                <div className="my-4 flex justify-center">
+                  <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
+                    {dayLabel(message.createdAt)}
+                  </span>
+                </div>
+              )}
+
+              {newSubject && (
+                <div className="my-4 flex justify-center">
+                  <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
+                    {subjectHeading(message.subject, Boolean(message.replyToId))}
+                  </span>
+                </div>
+              )}
+
             <MessageCard
               key={message.submissionId ?? message.id}
               mine={message.mine}
@@ -331,6 +365,7 @@ export default function GroupThreadPage() {
                 ) : null
               }
             />
+            </div>
           );
         })}
 

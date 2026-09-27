@@ -828,7 +828,11 @@ export default function ProfilePage() {
           </div>
           {/* ROUND 4: the name carries the wordmark treatment here too. */}
           <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-settings-faint">
-            <Wordmark as="span" size={13} />
+            {/* ROUND 5 review: 13px read as fine print under a 12.5px line, so the
+                name was smaller than the version beside it. 14px puts the wordmark
+                on the same optical rung as the message box's own small text and
+                lets "Phone" lead the line, which is the point of a wordmark. */}
+            <Wordmark as="span" size={14} />
             <span>v0.1.0</span>
           </p>
         </footer>

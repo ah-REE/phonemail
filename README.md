@@ -175,10 +175,14 @@ accounts — that is what makes the two-tab demo work — and the auth guard is
 three-phase (loading → authenticated → unauthenticated) so a refresh never flashes
 the onboarding screen.
 
-**The service worker is versioned per build.** `/sw.js` is served by a route
-handler that stamps the cache name from the image's own `.next/BUILD_ID`, so a
-rebuild invalidates the old shell and an installed PWA picks up new code instead
-of serving a stale one.
+**The service worker is versioned per build, and navigations are network-first.**
+`/sw.js` is served by a route handler that stamps the cache name from the image's
+own `.next/BUILD_ID`, so a rebuild rotates the cache and an installed PWA picks up
+new code instead of serving a stale one. Navigations are answered from the NETWORK
+whenever the network is there; the precache is only the OFFLINE fallback, and cache
+matching respects the full URL including search params (no `ignoreSearch`). That is
+what stops a returning user - or the installed PWA - from being served a stale
+shell after a rebuild.
 
 **Migrations are committed** (`prisma/migrations/`, 12 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
@@ -225,7 +229,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **501 assertions across sixteen suites**, in dev mode through the real SMTP round
+- **526 assertions across seventeen suites**, in dev mode through the real SMTP round
   trip: 15 for the onboarding forms, 27 for the auth screens, 27 for the palette, 21
   for the chat reference, 21 for the traditional reader, 27 for display names, 45 for
   the group chat, 42 for the final functional items (search-to-chat, the
@@ -237,12 +241,19 @@ claim made anywhere else.
   swipe reply, the live subject divider and the message-card design, 32 for the
   settings reference (source-only), 20 for the round 3 chat fixes (ct6 - the suite
   that proves a preview by sending real mail and re-reading the row), 10 for the
-  round 4 polish rules (source-only), and 26 for round 4 itself: the registration
-  lookup both ways, reply-once enforced live (a forced second reply answers 409), a
-  new mail's subject against a reply's `re:`, the contact save reaching the chat, the
-  shared back control and the shared wordmark. Eleven assertions were re-pointed this
-  round, every one of them describing the in-thread free composer, the three-dots
-  reveal or the markup the shared wordmark replaced - all named in PROJECT.md 9.
+  round 4 polish rules (source-only), 26 for round 4 itself (the registration lookup
+  both ways, reply-once enforced live, a new mail's subject against a reply's `re:`,
+  the contact save reaching the chat, the shared back control and the shared
+  wordmark), and 25 for round 5: the service worker EXECUTED in a sandbox rather than
+  read - network-first navigations with a stale shell cached at the exact URL, a
+  cache-busted navigation fetching fresh, the offline fallback, exact-URL matching,
+  /api offline honesty and /socket.io left alone - plus the stamp-equals-BUILD_ID
+  rotation checked against the live container, the date pills and the live-arrival
+  subject dividers in both threads, and the reviewed footer wordmark size. Twelve
+  assertions have been re-pointed across the two rounds, every one of them describing
+  the in-thread free composer, the three-dots reveal, the markup the shared wordmark
+  replaced, or the line the shared timeline rule moved off - all named in PROJECT.md
+  9.
   `ct5/settings_ref.mjs` and `ct8/polish_regression.mjs` are the two
   source-only suites: they grade a design and a copy rule, which live in the source
   and the tokens, so they need no server, no OTP and no mode - and are never a reason

@@ -12,6 +12,7 @@ import { MessageCard } from "@/components/message-card";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { EMAIL_TAGS } from "@/lib/tags";
+import { dayLabel, startsNewDay, startsNewSubject } from "@/lib/timeline";
 import { appendProvisional, mergeThreadMessages } from "@/lib/threadMerge";
 import { useAuth } from "@/lib/useAuth";
 import { useRealtime } from "@/lib/useRealtime";
@@ -363,8 +364,12 @@ export default function ThreadPage() {
         {messages.map((message, index) => {
           const long = message.body.length > LONG_MESSAGE_CHARS;
           const expanded = expandedId === message.id;
-          // A new subject opens a new chapter of the same conversation.
-          const newSubject = index > 0 && messages[index - 1].subject !== message.subject;
+          // Two boundaries, one shared rule (lib/timeline): a calendar day change
+          // draws a date pill, a subject change draws a chapter divider. Both are
+          // DERIVED from the ordered list, so a message that arrived over the
+          // socket gets its divider exactly like a refetched one.
+          const newDay = index > 0 && startsNewDay(messages[index - 1].createdAt, message.createdAt);
+          const newSubject = startsNewSubject(messages[index - 1]?.subject, message.subject);
           const original = message.replyToId
             ? messages.find((entry) => entry.id === message.replyToId)
             : undefined;
@@ -384,6 +389,14 @@ export default function ThreadPage() {
 
           return (
             <div key={message.id}>
+              {newDay && (
+                <div className="my-4 flex justify-center">
+                  <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
+                    {dayLabel(message.createdAt)}
+                  </span>
+                </div>
+              )}
+
               {newSubject && (
                 <div className="my-4 flex justify-center">
                   <span className="rounded-full bg-surface-container-high px-3.5 py-1 text-xs font-semibold text-on-surface-variant">
