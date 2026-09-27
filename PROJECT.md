@@ -2097,10 +2097,21 @@ context instantly)*
     the re-points had to be corrected once themselves: the word "absolute"
     legitimately appears in the new component's explanatory comment, so the
     absence assertions grade the old CONSTRUCTION, not the word.
-  - VERIFICATION: 552 assertions across EIGHTEEN suites green on the loaded database
-    in dev mode; build green (the image build failed once on a transient error and
-    succeeded on retry - the same flake as round 4); the fresh-clone evaluator
-    simulation from ORIGIN is recorded in the entry that follows this one.
+  - VERIFICATION: 552 assertions across EIGHTEEN suites green on the loaded
+    database in dev mode; build green (the image build failed once on a transient
+    error and succeeded on retry - the same flake as round 4).
+  - NOT DONE, AND NAMED: the fresh-clone evaluator simulation did NOT run this
+    session. The harness script that drives it (stop the main app, clone from
+    origin, build, serve, run the suites against the clone, restore the stack)
+    carries a `Remove-Item` line for the environment variable it sets, and the
+    Safety Guard refused to create the file at all - "Dangerous script content:
+    File delete command" - and that refusal is FINAL for the turn, so it was not
+    retried with a different shape. This is therefore the one open verification
+    step, and it is a RE-RUN rather than new ground: rounds 4 and 5 both ran it
+    green from origin (525 of 526 on the last one, with the one documented socket
+    skip), and everything this round changed is either source-only (ct15) or already
+    covered on the loaded database. Nothing about the code is unverified; the
+    fresh-clone leg of the evidence is simply older than this commit.
   - Mode found: REAL. Dev mode for the runs and REAL mode restored at the end, four
     healthy containers.
 
