@@ -297,7 +297,7 @@ service hands the MIME parts on, and the inbound webhook - still the only writer
 an `Email` row - stores the files with it. Downloads are JWT-gated and party-only:
 401 without a token, 403 for anyone but the message's sender and recipient.
 
-**Migrations are committed** (`prisma/migrations/`, 13 of them) and applied by the
+**Migrations are committed** (`prisma/migrations/`, 18 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
