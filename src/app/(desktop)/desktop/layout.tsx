@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 
-import { DesktopRail } from "@/components/desktop-rail";
 import { PinGate } from "@/components/pin-lock";
+import { DesktopShell } from "@/components/desktop-shell";
 
 /**
  * Desktop shell.
@@ -39,12 +39,10 @@ export default function DesktopLayout({ children }: { children: ReactNode }) {
      *   open     -> this shell
      */
     <PinGate>
-      <div className="flex h-screen bg-surface-container-low">
-        <Suspense fallback={<div className="w-56 shrink-0 border-r border-outline-variant bg-surface-container-lowest" />}>
-          <DesktopRail />
-        </Suspense>
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-      </div>
+      {/* ROUND 23b: the SHELL decides who gets chrome, once - see
+          components/desktop-shell.tsx for why two independent gates could leave the
+          mail rendered beside an absent rail. */}
+      <DesktopShell>{children}</DesktopShell>
     </PinGate>
   );
 }

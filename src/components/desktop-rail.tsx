@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { Wordmark } from "@/components/wordmark";
 import { EMAIL_FOLDERS } from "@/lib/folders";
-import { useAuth } from "@/lib/useAuth";
 
 /**
  * ROUND 9: THE DESKTOP RAIL.
@@ -29,26 +28,22 @@ import { useAuth } from "@/lib/useAuth";
 export function DesktopRail() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { status } = useAuth();
   const onInbox = pathname?.startsWith("/desktop/inbox") ?? false;
   const activeFolder = searchParams?.get("folder") ?? "inbox";
 
   /**
-   * ROUND 13: NO SHELL BEFORE SIGN-IN.
+   * ROUND 13's rule ("no shell before sign-in") is still enforced - but by the
+   * SHELL now, not here.
    *
-   * The rail lives in the desktop LAYOUT, so it used to wrap every desktop route -
-   * including /desktop itself, which is the LOGIN screen. A signed-out visitor
-   * therefore met a full mail shell (rail, folders, profile and settings links)
-   * around a login form, which is both a confusing first impression and a promise
-   * of navigation that does not exist yet.
-   *
-   * Rendering nothing until the session is confirmed fixes it at the one place the
-   * shell is defined: the shell is for signed-in readers, the login screen is for
-   * everyone else, and there is no state in between that shows both.
+   * ROUND 23b: this component used to gate on its own `useAuth()` and return null
+   * when the phase was not authenticated. Two independent instances of the hook can
+   * disagree (the rail reads its session once at mount, so an instance that mounted
+   * after a transient 401 - which clears the stored session - stayed null for the
+   * rest of the tab's life while the already-mounted page kept its token), and the
+   * result was the reported screenshot: the mail client rendered, with no rail.
+   * Whether there is chrome is now decided once, in components/desktop-shell.tsx,
+   * which renders this component only for a signed-in session. See that file.
    */
-  if (status !== "authenticated") {
-    return null;
-  }
 
   // ROUND 14: the reference image is the source of truth for this surface, and it draws the
   // rail in the mark's OWN blue - the brighter one the Compose action also wears - not the

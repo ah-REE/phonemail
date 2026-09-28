@@ -3383,6 +3383,39 @@ context instantly)*
 
 **Counterfactual, same measurement, same engine:** content visible with no pad went from 22 samples (87ms) to **0**, with the pad on screen at the first sample (79ms). `ct28` freezes the discipline at the source level (the gate's three phases, both layouts mounting the shell through it, no gating surface reading the session token itself, and the sign-in stand-down rule), and three assertions this round moved were re-pointed rather than left to fail.
 
+### Round 23b - the missing rail: the disagreement, and the screenshot
+
+The report's screenshot was the desktop client (list, reading pane, "Search mail",
+"Compose") with NO rail, and the reader's own words: "when i open in desktop it shows
+mobile mode not desktop". The browser had already failed to reproduce it in a fresh
+tab; the screenshot named the state instead: the mail rendered, the rail did not.
+
+**The cause this time is a disagreement, not a delay.** The rail called `useAuth()`
+itself and returned null unless ITS instance said authenticated, while the page had
+its own instance. Two instances reading the same storage are two chances to disagree,
+and one path makes them disagree for the life of a tab: any 401 clears the stored
+session (`authorizedFetch` does this deliberately), so a rail that mounts - or
+re-reads - after that finds no session and stays null forever, while the page mounted
+before it keeps the token in its own state and renders the mail. A reload fixes it,
+which is the "appears only after a refresh" half of the earlier report.
+
+**The fix: one decision.** `components/desktop-shell.tsx` asks once and renders the
+rail itself, exactly when its own phase is authenticated; anything else gets the
+content alone (which is how a signed-out visitor sees only the login card). The rail
+no longer imports `useAuth` at all. There is now no code path that renders the mail
+beside an absent rail, because the rail is not a decision the rail makes.
+
+**Verified in a real engine, both states and the invariant:** signed in + unlocked,
+wide -> the mail WITH the rail; signed out, wide -> the login card and no rail; and
+across 3717 consecutive samples taken while the client opened, **0 frames showed mail
+without a rail** (the same probe before the fix could not even be trusted to catch it,
+because it sampled with the pad up).
+
+**Still not reproduced:** the reader's exact tab state. The mechanism above is the
+only path in the code that produces "mail present, rail absent", and it is now
+impossible by construction - but if it recurs, the browser console for that tab would
+settle it, and that is what to send.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
