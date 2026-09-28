@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AttachmentCards } from "@/components/attachments";
+import { Avatar } from "@/components/avatar";
 import { DesktopCompose, type DesktopComposeRequest } from "@/components/desktop-compose";
 import { MemberTagChip } from "@/components/member-tag-chip";
 import { isEmailFolder, type EmailFolder } from "@/lib/folders";
@@ -423,27 +424,30 @@ function InboxInner() {
                       key={message.submissionId ?? message.id}
                       className="mb-4 rounded-card border border-outline-variant bg-surface-container-lowest shadow-card"
                     >
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-outline-variant px-5 py-3">
+                      {/* The reference's header line: a small avatar, the sender's name in
+                          bold, their address in grey beside it, and the date on the right -
+                          with no "From:"/"To:" labels and NO repeated subject, because the
+                          pane's own header already names the conversation. The member role
+                          chip rides with the name, as it does on the phone. */}
+                      <div className="flex items-center gap-3 border-b border-outline-variant px-5 py-3">
+                        <span className="shrink-0">
+                          <Avatar size={36} />
+                        </span>
                         <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate text-base font-bold text-on-surface">
+                          <span className="truncate text-sm font-bold text-on-surface">
                             {message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
                           </span>
                           {message.fromTag ? <MemberTagChip tag={message.fromTag} /> : null}
+                          <span className="min-w-0 truncate text-sm text-outline">&lt;{message.from}&gt;</span>
                         </span>
-                        <span className="min-w-0 truncate text-xs text-outline">From: {message.from}</span>
                         <span className="ml-auto shrink-0 text-xs text-outline" title={formatFull(message.createdAt)}>
                           {formatFull(message.createdAt)}
                         </span>
                       </div>
 
-                      <div className="px-5 pt-3">
-                        <p className="text-xs text-outline">To: {message.to}</p>
-                        <h3 className="mt-2 font-headline text-[17px] font-bold text-on-surface">
-                          {message.subject}
-                        </h3>
-                      </div>
+                      <p className="px-5 pt-3 text-xs text-on-surface-variant">to {message.to} ▾</p>
 
-                      <div className="px-5 pb-4 pt-2">
+                      <div className="px-5 pb-4 pt-1">
                         <p className="whitespace-pre-wrap text-[15px] leading-7 text-on-surface">
                           {message.body}
                         </p>
@@ -453,7 +457,7 @@ function InboxInner() {
                         <div className="mt-4 flex items-center gap-3">
                           <button
                             type="button"
-                            className="inline-flex min-h-0 items-center gap-2 rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:brightness-105"
+                            className="inline-flex min-h-0 items-center gap-2 rounded-full border border-outline-variant bg-surface px-4 py-2 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-surface-container-low"
                             onClick={() => openReplyTo(message)}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
