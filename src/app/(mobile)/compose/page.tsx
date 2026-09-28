@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppBar } from "@/components/app-bar";
@@ -9,7 +9,13 @@ import { Avatar } from "@/components/avatar";
 import { Spinner } from "@/components/spinner";
 import { AttachmentDrafts } from "@/components/attachments";
 import { validateAttachmentSet } from "@/lib/attachments";
-import { clearDraft, readDraft, saveDraft } from "@/lib/folders";
+import {
+  clearDraft as clearDraftEverywhere,
+  DRAFT_SAVE_DEBOUNCE_MS,
+  debounce,
+  loadDraft,
+  saveDraft as saveDraftEverywhere,
+} from "@/lib/draftSync";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -187,22 +193,42 @@ function ComposeForm() {
     };
   }, [status, authorizedFetch]);
 
-  // Resume a draft: /compose?draft=1 fills the form from this device's storage.
-  const resumingDraft = searchParams.get("draft") === "1";
+  /**
+   * ROUND 22: RESUME THE DRAFT.
+   *
+   * Opening a NEW compose restores whatever was left unfinished - from the account
+   * (server) or from this device (the copy taken in case the server was away), and
+   * the newer of the two wins. `?draft=1` is still what the Drafts screen links
+   * with, but a plain open restores too: a draft that only comes back if you find
+   * the right menu item is a draft most people will never see again.
+   *
+   * A reply is never restored - reply-once is enforced against the original mail,
+   * so a stale reply draft could only trap the reader.
+   */
+  const [draftRestored, setDraftRestored] = useState(false);
   useEffect(() => {
-    if (!resumingDraft || isReply) {
+    if (isReply || lockRecipients || draftRestored) {
       return;
     }
-    const draft = readDraft();
-    if (!draft) {
-      return;
-    }
-    if (draft.to) {
-      setRecipients(parseRecipients(draft.to));
-    }
-    setSubject(draft.subject);
-    setBody(draft.body);
-  }, [resumingDraft, isReply]);
+    let cancelled = false;
+    void (async () => {
+      const found = await loadDraft(authorizedFetch);
+      if (cancelled || !found) {
+        setDraftRestored(true);
+        return;
+      }
+      if (found.draft.to) {
+        setRecipients(parseRecipients(found.draft.to));
+      }
+      setCc(parseRecipients(found.draft.cc));
+      setSubject(found.draft.subject);
+      setBody(found.draft.body);
+      setDraftRestored(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isReply, lockRecipients, draftRestored, authorizedFetch]);
 
   /**
    * Compose abandonment (Task 3): keep what has been typed on this device, so
@@ -210,12 +236,19 @@ function ComposeForm() {
    * reply-once is enforced against the original message, so a stale reply draft
    * could only trap the user.
    */
+  const saveDraftSoon = useMemo(
+    () => debounce((payload: { to: string; cc: string; subject: string; body: string }) => {
+      void saveDraftEverywhere(authorizedFetch, payload);
+    }, DRAFT_SAVE_DEBOUNCE_MS),
+    [authorizedFetch],
+  );
+
   useEffect(() => {
-    if (isReply) {
+    if (isReply || lockRecipients || !draftRestored) {
       return;
     }
-    saveDraft({ to: recipients.join(", "), subject, body });
-  }, [recipients, subject, body, isReply]);
+    saveDraftSoon({ to: recipients.join(", "), cc: cc.join(", "), subject, body });
+  }, [recipients, cc, subject, body, isReply, lockRecipients, draftRestored, saveDraftSoon]);
 
   // The saved name for a number, so a chip reads "Amma" rather than a number the
   // user never typed. Empty string means "no name saved", and the number shows.
@@ -402,7 +435,7 @@ function ComposeForm() {
       }
 
       // The message reached the mail service, so the draft has done its job.
-      clearDraft();
+      void clearDraftEverywhere(authorizedFetch);
       setUploadPhase("idle");
       const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
       // Sending is silent on purpose: the message simply appears in the thread

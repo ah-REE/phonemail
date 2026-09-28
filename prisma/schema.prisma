@@ -46,6 +46,12 @@ model User {
   /// through the OTP flow. OTP login stays primary.
   passwordHash String?
 
+  /// ROUND 22: the app PIN, bcrypt-hashed. NULL means "no lock set". This gates
+  /// the INTERFACE on a resumed session, not the API - the session token remains
+  /// what authorises anything, which is why no other route reads this column.
+  /// See docs/SECURITY.md, "The app PIN".
+  pinHash String?
+
   /// How the account was first created. The spec sends the "you have new mail"
   /// SMS only to people who registered somewhere OTHER than the mobile app, so
   /// this field is what makes that gate possible. Missing/unknown is treated as
@@ -64,6 +70,9 @@ model User {
 
   /// Day 6 alias IDs: extra addresses that resolve to this same account.
   aliases        Alias[]
+
+  /// ROUND 22: the one active draft, if the account has an abandoned compose.
+  draft Draft?
 
   /// The owner's address book. Names here OVERRIDE a raw number in the list and
   /// the thread headers, which is why the name lives on this row and not on User.
@@ -233,4 +242,24 @@ model Alias {
 
   /// Serves the settings list: WHERE userId = ? ORDER BY createdAt.
   @@index([userId, createdAt])
+}
+
+/// ROUND 22: ONE active draft per user - the message they were writing. A draft is
+/// taken before anything is validated (an unfinished address is exactly what a draft
+/// is for), so To and Cc are stored as the raw text the composer holds.
+///
+/// `userId` is UNIQUE, which is what makes "one active draft" a rule the database
+/// enforces rather than a convention the route remembers.
+model Draft {
+  id     String @id @default(cuid())
+  userId String @unique
+  to     String @default("")
+  cc     String @default("")
+  subject String @default("")
+  body    String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6",
+    "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9",
     "next": "^15",
     "nodemailer": "^10.0.10",
@@ -24,6 +25,7 @@
     "zod": "^3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9",
     "@types/node": "^22",
     "@types/nodemailer": "^8.0.2",

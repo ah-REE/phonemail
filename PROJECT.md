@@ -3362,6 +3362,13 @@ context instantly)*
 
 ---
 
+### Round 22 - the last three features
+
+- **Full-text search.** `GET /api/search?q=` - `ILIKE` over subject and body, reusing the conversations endpoints' per-viewer rule. The suite's negative control found a real leak in the first version: carrying the group thread endpoint's "another member's broadcast" branch into an UNSCOPED query made every non-reply row visible to everyone. Membership is now derived from the caller's own rows first, and the third member of a group cannot find a private reply between the other two.
+- **The PIN.** `User.pinHash` (bcrypt) plus a lock screen on both clients. Deliberately an INTERFACE lock: the JWT remains the API's boundary. Written up in docs/SECURITY.md section 13 so the claim and the mechanism sit together.
+- **Server-side drafts.** A `Draft` row, one per user (unique index), saved debounced from both composers with a `localStorage` write-through so an offline save is never lost; the next reachable save pushes it up. The old device-only reasoning in lib/folders.ts is superseded - see the README's limitations.
+- Two migrations (`20260928120000_add_pin_hash`, `20260928130000_add_draft`), both additive.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

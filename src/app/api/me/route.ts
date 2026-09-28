@@ -48,6 +48,9 @@ export async function GET(request: Request) {
       createdAt: true,
       avatarUpdatedAt: true,
       smsNotifications: true,
+      // ROUND 22: whether the app PIN is set. The client needs the FLAG to decide
+      // whether to draw the lock screen - never the hash.
+      pinHash: true,
     },
   });
 
@@ -64,6 +67,7 @@ export async function GET(request: Request) {
         createdAt: profile.createdAt,
         hasAvatar: Boolean(profile.avatarUpdatedAt),
         smsNotifications: profile.smsNotifications,
+        hasPin: Boolean(profile.pinHash),
       },
     },
     { status: 200 },

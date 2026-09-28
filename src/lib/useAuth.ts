@@ -24,6 +24,15 @@ import { useCallback, useEffect, useState } from "react";
  * is not.
  */
 
+/**
+ * ROUND 22: whether THIS TAB has satisfied the app PIN.
+ *
+ * sessionStorage, so the lifetime is exactly the one the feature wants: a fresh
+ * tab, a reopened PWA and a new browser session all start locked, while a reload
+ * inside the tab the reader already unlocked does not ask again.
+ */
+export const PIN_UNLOCKED_STORAGE_KEY = "phonemail.pin.unlocked";
+
 const TOKEN_KEY = "phonemail.token";
 const USER_KEY = "phonemail.user";
 
@@ -80,6 +89,7 @@ function clearSession() {
   if (typeof window === "undefined") {
     return;
   }
+  window.sessionStorage.removeItem(PIN_UNLOCKED_STORAGE_KEY);
   window.sessionStorage.removeItem(TOKEN_KEY);
   window.sessionStorage.removeItem(USER_KEY);
 }
@@ -104,7 +114,10 @@ export function useAuth(): AuthState {
       : "unauthenticated";
 
   const signIn = useCallback((nextToken: string, nextUser: AuthUser) => {
-    window.sessionStorage.setItem(TOKEN_KEY, nextToken);
+    // ROUND 22: signing in IS the proof - the reader just read a code off their own
+  // SIM, so a fresh sign-in must not then be met by the PIN pad as well.
+  window.sessionStorage.setItem(PIN_UNLOCKED_STORAGE_KEY, "1");
+  window.sessionStorage.setItem(TOKEN_KEY, nextToken);
     window.sessionStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setSession({ token: nextToken, user: nextUser });
     setHydrated(true);

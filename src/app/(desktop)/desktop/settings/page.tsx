@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Spinner } from "@/components/spinner";
+import { PinSettings } from "@/components/pin-settings";
 import { Switch } from "@/components/switch";
 import { FONT_SIZES, applyFontSize, readFontSize, type FontSizeId } from "@/lib/fontSize";
 import { useAuth } from "@/lib/useAuth";
@@ -405,6 +406,11 @@ export default function DesktopSettingsPage() {
             />
           </div>
           {smsNotice && <p className="mt-2 text-sm text-accent">{smsNotice}</p>}
+        </section>
+
+        {/* ROUND 22: the PIN lock. */}
+        <section className="surface mt-4 p-5">
+          <PinSettings />
         </section>
 
         {/* Font size */}

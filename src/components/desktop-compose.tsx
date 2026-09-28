@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AttachmentDrafts, type DraftPhase } from "@/components/attachments";
+import {
+  clearDraft as clearDraftEverywhere,
+  DRAFT_SAVE_DEBOUNCE_MS,
+  debounce,
+  loadDraft,
+  saveDraft as saveDraftEverywhere,
+} from "@/lib/draftSync";
 import { validateAttachmentSet } from "@/lib/attachments";
 import { useAuth } from "@/lib/useAuth";
 
@@ -80,6 +87,56 @@ export function DesktopCompose({
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const locked = Boolean(request.lockRecipients);
+
+  /**
+   * ROUND 22: THE DRAFT, on the desktop too, through the same module the phone
+   * uses - so the message abandoned in one client is waiting in the other. A reply
+   * is never drafted (see lib/draftSync.ts).
+   */
+  const [draftRestored, setDraftRestored] = useState(locked);
+  useEffect(() => {
+    if (locked || draftRestored) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const found = await loadDraft(authorizedFetch);
+      if (cancelled || !found) {
+        setDraftRestored(true);
+        return;
+      }
+      if (found.draft.to) {
+        setToDraft(found.draft.to);
+      }
+      if (found.draft.cc) {
+        setCcDraft(found.draft.cc);
+      }
+      if (found.draft.subject) {
+        setSubjectDraft(found.draft.subject);
+      }
+      if (found.draft.body) {
+        setBodyDraft(found.draft.body);
+      }
+      setDraftRestored(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locked, draftRestored, authorizedFetch]);
+
+  const saveDraftSoon = useMemo(
+    () => debounce((payload: { to: string; cc: string; subject: string; body: string }) => {
+      void saveDraftEverywhere(authorizedFetch, payload);
+    }, DRAFT_SAVE_DEBOUNCE_MS),
+    [authorizedFetch],
+  );
+
+  useEffect(() => {
+    if (locked || !draftRestored) {
+      return;
+    }
+    saveDraftSoon({ to: toDraft, cc: ccDraft, subject: subjectDraft, body: bodyDraft });
+  }, [toDraft, ccDraft, subjectDraft, bodyDraft, locked, draftRestored, saveDraftSoon]);
   const recipients = parseRecipientList(toDraft);
   const cc = parseRecipientList(ccDraft);
 
@@ -182,6 +239,8 @@ export function DesktopCompose({
         return;
       }
 
+      // The draft has done its job the moment the mail service takes the message.
+      void clearDraftEverywhere(authorizedFetch);
       const sentTo = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to ?? recipients.join(", ");
       onSent?.(`Handed to the mail service for ${sentTo}.`);
       onClose();

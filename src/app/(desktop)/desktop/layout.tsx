@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { DesktopRail } from "@/components/desktop-rail";
+import { PinLock } from "@/components/pin-lock";
 
 /**
  * Desktop shell.
@@ -24,6 +25,9 @@ import { DesktopRail } from "@/components/desktop-rail";
 export default function DesktopLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-surface-container-low">
+      {/* ROUND 22: the app lock. Placed with the shell so it covers the rail too -
+          a lock that leaves the conversation list visible is not a lock. */}
+      <PinLock />
       <Suspense fallback={<div className="w-56 shrink-0 border-r border-outline-variant bg-surface-container-lowest" />}>
         <DesktopRail />
       </Suspense>

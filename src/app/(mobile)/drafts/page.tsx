@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AppBar } from "@/components/app-bar";
-import { clearDraft, readDraft, type LocalDraft } from "@/lib/folders";
+import { clearDraft as clearDraftEverywhere, loadDraft, type DraftPayload } from "@/lib/draftSync";
+import { useAuth } from "@/lib/useAuth";
 
 /**
  * Drafts - the one menu item that reads nothing from the server.
@@ -16,14 +17,30 @@ import { clearDraft, readDraft, type LocalDraft } from "@/lib/folders";
  */
 
 export default function DraftsPage() {
-  const [draft, setDraft] = useState<LocalDraft | null>(null);
+  const { authorizedFetch, status } = useAuth();
+  const [draft, setDraft] = useState<DraftPayload | null>(null);
 
+  // ROUND 22: the draft now lives on the account as well, so this screen reads it
+  // from there (falling back to the device's copy when the server is away) - which
+  // is what makes a draft abandoned on the desktop appear here on the phone.
   useEffect(() => {
-    setDraft(readDraft());
-  }, []);
+    if (status !== "authenticated") {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const found = await loadDraft(authorizedFetch);
+      if (!cancelled) {
+        setDraft(found?.draft ?? null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, authorizedFetch]);
 
   function discard() {
-    clearDraft();
+    void clearDraftEverywhere(authorizedFetch);
     setDraft(null);
   }
 
@@ -41,7 +58,7 @@ export default function DraftsPage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-7 text-center">
           <p className="text-lg font-semibold text-on-surface">No drafts</p>
           <p className="text-sm text-on-surface-variant">
-            Start a message and leave it unfinished - it will be kept on this device.
+            Start a message and leave it unfinished - it will be waiting for you here and in Compose.
           </p>
           <Link href="/compose" className="btn-brand mt-3">
             Write a message
@@ -57,16 +74,15 @@ export default function DraftsPage() {
                 {draft.to ? draft.to : "No recipient yet"}
               </span>
               <span className="ml-auto shrink-0 text-xs text-wa-muted">
-                {draft.savedAt ? new Date(draft.savedAt).toLocaleString() : "unsaved time"}
+                {[draft.to, draft.cc, draft.subject, draft.body].filter((value) => value.trim()).length > 0
+                  ? "draft"
+                  : "empty"}
               </span>
             </div>
             <p className="truncate text-sm text-wa-muted">{draft.subject || "(no subject)"}</p>
             <p className="mt-1 text-sm">{draft.body}</p>
             <div className="mt-2 flex gap-2">
-              <Link
-                href={"/compose?draft=1" + (draft.to ? "&to=" + encodeURIComponent(draft.to) : "")}
-                className="btn-brand"
-              >
+              <Link href="/compose?draft=1" className="btn-brand">
                 Resume
               </Link>
               <button
@@ -78,7 +94,8 @@ export default function DraftsPage() {
               </button>
             </div>
             <p className="mt-2 text-xs text-wa-muted">
-              Kept in this browser only - it never reaches the server.
+              Kept on your account and on this device, so it survives a reload, an
+              offline spell, and picking the message up on another client.
             </p>
           </li>
         </ul>

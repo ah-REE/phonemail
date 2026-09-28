@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
+import { PinSettings } from "@/components/pin-settings";
 import { Switch } from "@/components/switch";
 import { FONT_SIZES, applyFontSize, readFontSize, type FontSizeId } from "@/lib/fontSize";
 import { Wordmark } from "@/components/wordmark";
@@ -608,6 +609,17 @@ export default function ProfilePage() {
           with 12px of padding rather than 16px, and sections are 20px apart rather
           than 28px. The 64px rows are still well clear of the 56px touch floor. */}
       <div className="flex flex-1 flex-col gap-5 px-5 pb-5 pt-5">
+        {/* ROUND 22: the PIN lock, in its own section above the personal details -
+            a security setting nobody can find is a security setting nobody uses. */}
+        <section>
+          <SectionHeading>Security</SectionHeading>
+          <Card>
+            <div className="px-4 py-3">
+              <PinSettings />
+            </div>
+          </Card>
+        </section>
+
         {/* ---------------------------------------------------------- PERSONAL */}
         <section>
           <SectionHeading>Personal details</SectionHeading>

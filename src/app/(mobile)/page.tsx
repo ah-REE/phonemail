@@ -235,6 +235,52 @@ export default function HomePage() {
   // nothing - a wrong offer is worse than no offer.
   const searchNumber = /^[6-9]\d{9}$/.test(query.trim()) ? query.trim() : null;
 
+  /**
+   * ROUND 22: THE SERVER'S SEARCH, under the local filter above.
+   *
+   * The local filter can only answer from the rows already loaded and only from the
+   * subject and preview the list carries. This asks the server for the rest: older
+   * mail, and hits in the BODY. It is debounced, because a request per keystroke is
+   * a request per keystroke, and it stands down entirely for a complete number,
+   * whose meaning here is "start a conversation", not "search".
+   */
+  const [results, setResults] = useState<
+    Array<{ kind: "pair" | "group"; key: string; label: string; subject: string; snippet: string; matches: number; href: string }>
+  >([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const needle = query.trim();
+    if (needle.length < 3 || /^[6-9]\d{9}$/.test(needle)) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await authorizedFetch(`/api/search?q=${encodeURIComponent(needle)}`);
+        const body = (await response.json().catch(() => null)) as { threads?: typeof results } | null;
+        if (!cancelled) {
+          setResults(body?.threads ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSearching(false);
+        }
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, authorizedFetch]);
+
   if (status !== "authenticated") {
     return (
       <main className="flex flex-1 flex-col">
@@ -322,6 +368,41 @@ export default function HomePage() {
             </button>
           ))}
         </div>
+
+        {/* ROUND 22: the server's results, under the local ones. A hit here is a
+            THREAD (with how many of its messages matched and a snippet around the
+            first), because one broadcast is one message however many people it
+            reached. */}
+        {query.trim().length >= 3 && !searchNumber && (
+          <section className="flex w-full flex-col border-b border-surface-container-high" aria-label="Messages">
+            <p className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              {searching ? "Searching..." : `Messages (${results.length})`}
+            </p>
+            {results.map((result) => (
+              <Link
+                key={`${result.kind}:${result.key}`}
+                href={result.href}
+                className="flex min-h-[64px] w-full flex-col justify-center gap-0.5 border-b border-surface-container-high px-4 py-2 active:bg-surface-container-high/40"
+              >
+                <span className="flex items-baseline gap-2">
+                  <span className="truncate text-sm font-semibold text-on-surface">
+                    {result.kind === "group" ? `Group - ${result.label}` : result.label}
+                  </span>
+                  <span className="ml-auto shrink-0 text-xs text-on-surface-variant">
+                    {result.matches} {result.matches === 1 ? "match" : "matches"}
+                  </span>
+                </span>
+                <span className="truncate text-xs font-medium text-on-surface-variant">{result.subject}</span>
+                <span className="truncate text-xs text-on-surface-variant">{result.snippet}</span>
+              </Link>
+            ))}
+            {!searching && results.length === 0 && (
+              <p className="px-4 py-3 text-sm text-on-surface-variant">
+                No messages match &quot;{query.trim()}&quot;.
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Search-to-chat offer */}
         {searchNumber && (

@@ -201,6 +201,10 @@ a documented deviation, or cut with a reason.
 | Web home similar to Gmail; no conversation-style interface; profile and settings provided | `/desktop`, `/desktop/inbox`, `/desktop/profile`, `/desktop/settings` | **Done** — the desktop shows MAIL, not chat: the reading pane renders one stacked email per message (round 12 removed the last bubble markup), the rail's three folder items are the real `Email.folder` values, and settings carry profile/aliases/language/SMS/font size/devices/delete - the same endpoints and modules the phone uses |
 | Dockerize everything; software must be up at `docker compose up -d` | `docker-compose.yml`, `Dockerfile`, `smtp/Dockerfile` | **Done** — re-verified from a fresh clone of origin |
 
+| PIN lock | `User.pinHash`, `/api/me/pin`, `/api/me/verify-pin`, `/api/me/pin/reset`, both settings screens | **Done, honestly scoped (round 22)** - a 4-digit PIN, bcrypt-hashed server-side, that LOCKS THE INTERFACE on a resumed session (fresh tab or PWA launch). It is not an API boundary: the JWT still authorises everything and a correct PIN changes nothing about the session. Changing or removing it requires the current PIN; five wrong entries refuse it for 60 seconds; a forgotten PIN is reset through a one-time code for the account's own number. See [`docs/SECURITY.md`](docs/SECURITY.md) §13 |
+| Full-text search of the mailbox | `GET /api/search`, both clients' search bars | **Done (round 22)** - case-insensitive substring (`ILIKE`) over subject AND body, reusing the conversations endpoints' per-viewer rule: my own rows, mail addressed to me, and another member's BROADCAST in a thread I am in - and never another member's private reply. Results are THREADS with the label, a snippet around the first hit, the match count and the time, capped at 20. Queries shorter than three characters return an explained empty payload rather than a 400, because the client is typing. The phone keeps its search-to-chat offer for a complete number |
+| Drafts | `Draft` model, `/api/me/draft`, both composers, the Drafts screen | **Done (round 22)** - ONE active draft per account (a unique index, not a convention), saved debounced from either composer, restored when a new compose opens, cleared by a successful send, and written through to `localStorage` so an offline spell is never lost: a save that cannot reach the server is kept on the device and pushed up by the next reachable save. A reply is never drafted |
+
 **The two deviations that were closed**, for the record: the **Language** row and
 the **Folders** rows were both restored to Settings (they had briefly been
 removed), so the mapping no longer carries a deviation for either.
@@ -326,9 +330,14 @@ Written down rather than hidden:
 - **`/portal` keeps its original styling.** It is written with inline styles
   rather than the token system, so it did not take part in the visual refresh. It
   is functional and uses the same palette.
-- **Drafts are local to the browser.** An `Email` row needs both a sender and a
-  recipient and an abandoned compose has no recipient, so a draft is kept in
-  `localStorage` rather than the database. It does not sync between devices.
+- **Drafts are on the account now, and were local until round 22.** An `Email`
+  row needs both a sender and a recipient, so a draft still cannot be an `Email` -
+  it is its own one-per-user row (`Draft`). The browser's copy is a write-through
+  cache, which is what makes an offline spell survivable.
+- **The PIN locks the screen, not the account.** It is a convenience for a shared
+  device: the session token is untouched by it, an API call is unchanged by it, and
+  anyone holding the token can still read the mailbox. Written up in
+  [`docs/SECURITY.md`](docs/SECURITY.md) §13 rather than implied to be more.
 - **5 npm advisories** (`npm audit --omit=dev`: 1 moderate, 4 high) in the
   transitive tree. They are informational here: no dependency was upgraded during
   the build, because the verified artefact is the committed one, and upgrading the
@@ -357,7 +366,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **861 assertions across 28 suites, green on the loaded database**, in dev mode
+- **937 assertions across 30 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional
@@ -380,6 +389,19 @@ claim made anywhere else.
   the role tags proven through a real SMTP round trip on a member set that had never
   existed, the rail's real folder links, the endpoints the desktop settings reuse,
   and the absence of bubble markup in the new traditional reading pane; and **24 for round 13**: the signed-out page carrying no shell, the reading pane's empty default, the desktop composer's fields, affordances and BOTH send paths driven live, the Gmail measures, the token audit and every desktop route.
+
+  And **round 22**, the last three features: **31** for the search (subject and body
+  hits, the snippet around the first hit, thread grouping, the three-character floor,
+  the search-to-chat offer unchanged - and the INVARIANT that a group's private reply
+  is findable by its two parties and by nobody else, a control that caught a real
+  visibility leak in the first implementation), **45** for the PIN and the draft (set,
+  change and remove each requiring the current PIN, a wrong PIN refused with the
+  strikes left, five wrong entries locking for a minute with the reason, the
+  OTP-verified reset for a forgotten PIN, one draft per account enforced by the index
+  rather than a convention, the emptied-composer rule, and the OFFLINE PATH driven
+  through the real module - a save with the server unreachable stays on the device and
+  the next reachable save pushes it up). Three assertions this round's changes moved
+  were re-pointed rather than left to fail.
 
   And **round 21**, the final hardening pass: **12** for the multi-recipient fix (2 To
   + 1 Cc delivered on BOTH payload shapes, with the multipart path that used to drop

@@ -159,6 +159,34 @@ network-first, so the worker cannot serve private data from a cache or hide a
 build from the user. Its cache name is stamped from the image's own
 `.next/BUILD_ID`.
 
+## 13. The app PIN (round 22) - what it is, and what it is not
+
+**It gates the interface, not the API.** A PIN is stored as a bcrypt hash
+(`User.pinHash`, `lib/pin.ts`) and checked by `POST /api/me/verify-pin`. A correct
+PIN does nothing to the session: no token is issued, refreshed, extended or
+revoked by it. The JWT remains the only thing that authorises a request, which
+means **the PIN is convenience for a shared device, not a security boundary** - a
+borrowed phone cannot be scrolled, and that is the whole promise.
+
+Concretely, what it does not do: it does not protect an unlocked API client, it
+does not survive someone with the token (a stolen copy of `sessionStorage`, a
+browser profile copied off the disk, or any request made outside the app), and it
+is not a second authentication factor.
+
+**What it does do, and where the rules live:**
+
+| Rule | Where |
+|---|---|
+| Four digits, digits only, hashed with bcrypt (10 rounds) | `lib/pin.ts` (`pinProblem`, `hashPin`) |
+| Set / change / REMOVE all need the current PIN (removal included, or the lock is decoration) | `PUT /api/me/pin` |
+| Five wrong entries refuse the PIN for 60 seconds, per ACCOUNT rather than per tab, with the reason and the wait | `POST /api/me/verify-pin`, `pin-lock:<userId>` in Redis |
+| A forgotten PIN is reset by a live one-time code for the account's own number - the same verification account deletion uses | `POST /api/me/pin/reset`, `verifyOtp` |
+| The lock shows on a fresh tab or a PWA launch, and stands down for the tab that just signed in | `components/pin-lock.tsx`, `sessionStorage` |
+| The API's view of an account does not change because a PIN exists | no other route reads `pinHash` |
+
+The strikes are the OTP pattern's twin (see §1): a counter, then a timed refusal,
+reset by the same window expiring or by a correct entry.
+
 ## 12. Known gaps, stated plainly
 
 These are real, and they are limitations rather than oversights:

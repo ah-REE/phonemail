@@ -136,6 +136,52 @@ function InboxInner() {
   /** The composer overlay's request, or null when it is closed. */
   const [composeRequest, setComposeRequest] = useState<DesktopComposeRequest | null>(null);
 
+  /**
+   * ROUND 22: THE SEARCH BOX. The desktop list had no search at all; this adds one,
+   * backed by the same endpoint the phone uses, so both clients answer the same
+   * question with the same rows. Three characters or more runs it, debounced; below
+   * that the list is the list.
+   */
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<
+    Array<{ kind: "pair" | "group"; key: string; label: string; subject: string; snippet: string; matches: number; href: string }>
+  >([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const needle = query.trim();
+    if (needle.length < 3) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await authorizedFetch(`/api/search?q=${encodeURIComponent(needle)}`);
+        const body = (await response.json().catch(() => null)) as { threads?: typeof results } | null;
+        if (!cancelled) {
+          setResults(body?.threads ?? []);
+        }
+      } catch {
+        if (!cancelled) {
+          setResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSearching(false);
+        }
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, authorizedFetch]);
+
+  const searching_ = query.trim().length >= 3;
+
   const loadThreads = useCallback(async () => {
     try {
       const response = await authorizedFetch(`/api/conversations?folder=${folder}`);
@@ -300,7 +346,15 @@ function InboxInner() {
               aria-label={`Connection: ${realtimeStatus}`}
             />
           )}
-          <button type="button" className="btn-brand ml-auto min-h-0 px-4 py-2 text-sm" onClick={openNewCompose}>
+          <input
+            type="search"
+            className="field ml-auto mr-2 min-h-0 max-w-[220px] py-1.5 text-sm"
+            placeholder="Search mail"
+            aria-label="Search mail"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button type="button" className="btn-brand min-h-0 px-4 py-2 text-sm" onClick={openNewCompose}>
             Compose
           </button>
         </div>
@@ -313,6 +367,42 @@ function InboxInner() {
               hint="Mail you receive lands here. Write to someone with Compose and the conversation appears."
             />
           )}
+          {searching_ && (
+            <ul aria-label="Search results">
+              <li className="px-5 pt-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                {searching ? "Searching..." : `Messages (${results.length})`}
+              </li>
+              {results.map((result) => (
+                <li key={`${result.kind}:${result.key}`}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      result.kind === "group" ? void openGroup(result.key) : void openThread(result.key)
+                    }
+                    className="flex min-h-[64px] w-full flex-col justify-center gap-0.5 border-b border-outline-variant px-5 py-2 text-left transition-colors duration-ui hover:bg-surface-container-low"
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="truncate text-sm font-semibold text-on-surface">
+                        {result.kind === "group" ? `Group - ${result.label}` : result.label}
+                      </span>
+                      <span className="ml-auto shrink-0 text-xs text-on-surface-variant">
+                        {result.matches} {result.matches === 1 ? "match" : "matches"}
+                      </span>
+                    </span>
+                    <span className="truncate text-xs font-medium text-on-surface-variant">{result.subject}</span>
+                    <span className="truncate text-xs text-on-surface-variant">{result.snippet}</span>
+                  </button>
+                </li>
+              ))}
+              {!searching && results.length === 0 && (
+                <li className="px-5 py-3 text-sm text-on-surface-variant">
+                  No messages match &quot;{query.trim()}&quot;.
+                </li>
+              )}
+            </ul>
+          )}
+
+          {!searching_ && (
           <ul>
             {groups.map((group) => {
               const active = selected === group.threadKey;
@@ -368,6 +458,7 @@ function InboxInner() {
               );
             })}
           </ul>
+          )}
         </div>
       </section>
 
