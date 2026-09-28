@@ -190,7 +190,7 @@ a documented deviation, or cut with a reason.
 | Delete a conversation | the person sheet (a thread's header, or the address book) | **Done** - *Delete chat*, with a confirmation that says what actually happens. It is RECIPIENT-SCOPED: your side of the pairwise thread leaves your list, your thread and your unread count, and the counterpart's copy is untouched, because the row is shared. Group messages are never touched by it, and a new mail from the same person restarts the conversation |
 | Compose a new email in the traditional view from the space WhatsApp's camera tab occupies; `To` pre-filled and locked | the thread's **New mail** button | **Done** — the camera slot became the New mail button; `To` arrives pre-filled and locked |
 | Reply in the traditional view: swipe right and pick it, or tap the mail → full view → Reply | thread | **Done** - swipe right now OPENS the reply compose for that mail directly (quoted context, derived subject, `replyToId`, reply-once), and the spec's alternative (tap → full view → Reply) also ships |
-| CC in the traditional compose | `/compose`, `POST /api/emails` | **Done** - a real Cc field directly under To, with the same chips, the same resolution (a number or an alias), the same contacts autocomplete and per-chip removal. Cc recipients ARE recipients: they receive fan-out rows exactly as the To list does, they count towards the group, and the MIME message carries the Cc header |
+| CC in the traditional compose | `/compose`, `POST /api/emails` | **Done** - a real Cc field directly under To, with the same chips, the same resolution (a number or an alias), the same contacts autocomplete and per-chip removal. Cc recipients ARE recipients: they receive fan-out rows exactly as the To list does, they count towards the group, and the MIME message carries the Cc header. *(Round 21: the multipart send path read `to` and `attachments` and never `cc`, so a message with a file attached silently dropped every Cc recipient - no row, no thread membership, no error. Fixed, and `ct23` now freezes the 2 To + 1 Cc delivery on both payload shapes.)* |
 | Inside a conversation, new recipients cannot be added to To or CC; they stay locked in the traditional view; multiple recipients only from Home's compose | locked `lockTo` on the New mail compose | **Done** — a thread has no recipient field at all |
 | Two or more recipients from Home create a group chat; later mail to one recipient stays in its own 1:1 chat | derived thread keys (`src/lib/threadKey.ts`) | **Done** |
 | Group replies are visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | **Done** — the creator broadcasts; every other member replies from a mail, the reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
@@ -204,6 +204,25 @@ a documented deviation, or cut with a reason.
 **The two deviations that were closed**, for the record: the **Language** row and
 the **Folders** rows were both restored to Settings (they had briefly been
 removed), so the mapping no longer carries a deviation for either.
+
+### Remaining gaps, each with its recommendation
+
+Re-checked line by line against `docs/SPEC.md` on 2026-09-28. "Unverified" means
+implemented here but not provable from this repository alone.
+
+| # | Gap or unverified flag | Status | Recommendation |
+|---|---|---|---|
+| 1 | Phone verification is not automatic (no SIM, no WebOTP) | Partial, platform-limited | Accept: a web page cannot read the SIM; the last-number pre-fill plus auto-submit on the sixth digit is the honest maximum |
+| 2 | The IVR signup's real call is unverified | Unverified (operator-side) | Wire the Exotel/Twilio console, then re-run `ct19` against a live call and record the transcript |
+| 3 | Profile picture is not built | Cut | Either remove the `User.avatar*` columns or build upload plus a party-checked serving route - do not leave unused scaffolding |
+| 4 | `/portal` keeps its inline styles | Deviation, stated | Port it onto the token system the next time it is touched; it is a registration-only page |
+| 5 | Drafts live in `localStorage` | Deviation, stated | Accept for a single-device demo; a server-side draft needs a recipient-less row, which the `Email` model deliberately forbids |
+| 6 | No TLS at the app layer | Unverified (deployment) | Terminate TLS in front of the app before any real deployment; the Compose stack is HTTP for the evaluator |
+| 7 | 7-day JWT with no revocation list | Gap, documented | Per-device sessions already revoke; the token itself cannot. Accept for the demo, or shorten the TTL |
+| 8 | 5 npm advisories in the transitive tree | Unverified (informational) | Upgrade the `next`/`postcss` chains after submission; the committed artefact is the verified one |
+| 9 | Committed placeholder secrets | Deviation, documented | Rotate through `docker-compose.override.yml` (gitignored), exactly as the SMS credentials already are |
+| 10 | SMS needs the gateway phone online | Unverified (external) | Accept: a fresh clone runs in dev mode and the evaluated path never needs a real text |
+| 11 | Responsiveness is audited by a browser harness, not by a suite | Verified | 16 page-width combinations across both clients, 0 findings; it stays out of the regression because the regression must run with no browser |
 
 ## 6. Architecture
 
@@ -321,13 +340,24 @@ Written down rather than hidden:
 - **Carrier filtering is real.** Indian carriers drop templated or duplicated SMS
   text, which is why only a small set of message wordings is used and why the code
   rotates between them rather than sending one long custom sentence.
+- **There is no end-to-end encryption, and it was a decision.** The server sees
+  subject and body in plaintext. The full design that would change that - per-user
+  keypairs at signup, a non-extractable private key on the device, encrypt at
+  compose, a ciphertext-only server - is written up in
+  [`docs/E2E-FUTURE.md`](docs/E2E-FUTURE.md), together with the reason it was cut:
+  on the web there is no recovery story for a lost device that is both usable and
+  safe, and shipping without one would turn "lost my phone" into "lost my mail" for
+  exactly the users this product is for.
+- **No native shell.** The Capacitor/Android assessment is in §10.2: feasible, but
+  it needs a hosted backend, the organisers clarified web-only, and the PWA already
+  delivers install, standalone and an offline shell.
 
 ## 8. Verification evidence
 
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **815 assertions across 25 suites, green on the loaded database**, in dev mode
+- **861 assertions across 28 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional
@@ -350,6 +380,22 @@ claim made anywhere else.
   the role tags proven through a real SMTP round trip on a member set that had never
   existed, the rail's real folder links, the endpoints the desktop settings reuse,
   and the absence of bubble markup in the new traditional reading pane; and **24 for round 13**: the signed-out page carrying no shell, the reading pane's empty default, the desktop composer's fields, affordances and BOTH send paths driven live, the Gmail measures, the token audit and every desktop route.
+
+  And **round 21**, the final hardening pass: **12** for the multi-recipient fix (2 To
+  + 1 Cc delivered on BOTH payload shapes, with the multipart path that used to drop
+  the Cc recipient frozen shut), **56** for the re-pointed round-8 suite (it now
+  grades the FLAT OTP policy that ships - a second request inside 60s refused, allowed
+  after it, the 5-strike burn untouched, and no window counters in any response),
+  **17** for the security headers read off live responses including a 404, and **16**
+  for the hardening proof: the manifest, the two icons and a real service worker
+  (installable), the socket accepting a real tab token, a message landing in an OPEN
+  socket *and* in the recipient's inbox while postgres, redis and smtp sit on internal
+  networks, and the egress checks that show those three cannot reach the internet
+  while the app still can. The responsiveness audit is separate from the suites - it
+  drives a real browser at 360/390/768/1024/1440 on both clients (16 page-width
+  combinations, 0 findings) and so cannot run in a regression that must work with no
+  browser.
+
   `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
   `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
   design, a copy rule and the shape of the markup, which live in the source and the
@@ -448,6 +494,54 @@ for. The honest gaps (no TLS at the app layer, the npm advisories, the 7-day tok
 with no revocation, the committed placeholder secrets and their rotation policy)
 are at the end of the same document.
 
+## 10. Future work
+
+In the order it would actually help.
+
+### 10.1 End-to-end encryption - designed, and deliberately not built
+
+Per-user keypairs at signup, the private key non-extractable on the device, encrypt
+at compose, a server that holds ciphertext only: the whole design, with what it buys
+and what it costs, is in [`docs/E2E-FUTURE.md`](docs/E2E-FUTURE.md). The short
+version of why it is not here: on the web there is no *usable and safe* recovery for
+a lost device, and shipping encryption without one would turn "lost my phone" into
+"lost my mail" for exactly the users this product is for.
+
+### 10.2 A native shell (Capacitor / Android) - assessed, not taken
+
+**The assessment: feasible, but it needs a hosted backend.** A Capacitor wrapper is
+mechanically straightforward - the client is already a single-origin web app with a
+service worker, its storage is `sessionStorage`, and every call is same-origin HTTP.
+It would give a real install, a real icon and, the one thing the web cannot give,
+access to the platform keychain (§10.1) and to SMS Retriever for automatic OTP.
+
+What it needs first is the deployment: a Capacitor app cannot reach
+`localhost:3000`, because a phone has no Compose stack. Shipping the shell means
+operating the API and the SMTP hop at a public HTTPS origin - a deployment project,
+not a packaging one.
+
+**What the organisers said:** web-only, explicitly, so a native build would sit
+outside the brief.
+
+**What ships instead:** the PWA. `manifest.json` with `display: standalone` and both
+icons, a service worker with install/activate/fetch handlers registered from the
+mobile shell, realtime over a socket with a 30-second polling fallback, and five
+security headers on every response. That is install-from-the-browser, a standalone
+window and an offline shell - the same user-visible outcome as a thin native wrapper,
+with none of the deployment.
+
+**The call:** keep the PWA for this scope. Revisit Capacitor only alongside §10.1
+(native keychain) *and* a hosted backend, because either alone does not pay for
+itself.
+
+### 10.3 The small ones
+
+- Rotate the committed placeholder secrets and terminate TLS before any real
+  deployment (see §7 and `docs/SECURITY.md`).
+- Upgrade the `next`/`postcss` chains to clear the five advisories.
+- Build the profile picture, or remove the `User.avatar*` columns.
+- Port `/portal` onto the token system.
+
 ## Repository layout
 
 ```
@@ -460,6 +554,6 @@ src/lib/               domain logic (alias, threadKey, timeline, folders, inboun
 prisma/                schema + 13 committed migrations
 smtp/                  the self-hosted SMTP service and its README
 design/                the Stitch exports the visual language was built from
-docs/                  SPEC.md (the organiser's task) and ivr-setup.md
+docs/                  SPEC.md (the organiser's task), SECURITY.md and E2E-FUTURE.md
 PROJECT.md             the working plan and the full decisions log (§9)
 ```

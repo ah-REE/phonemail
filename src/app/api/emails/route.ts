@@ -93,8 +93,18 @@ export async function POST(request: Request) {
       .getAll("to")
       .map((entry) => String(entry).trim())
       .filter((entry) => entry.length > 0);
+    // ROUND 21 (Bug 2): the multipart branch read `to` and `attachments` and NOT
+    // `cc`, so every compose carrying a file silently dropped its Cc recipients -
+    // no row, no thread membership, no error. Both composers append "cc" entries to
+    // the same form the "to" entries ride in, so the field is read back with the
+    // same shape and normalization as `to`, one string or a list.
+    const ccEntries = form
+      .getAll("cc")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry.length > 0);
     body = {
       to: toEntries.length > 1 ? toEntries : toEntries[0],
+      ...(ccEntries.length > 0 ? { cc: ccEntries.length > 1 ? ccEntries : ccEntries[0] } : {}),
       subject: form.get("subject") ?? undefined,
       body: form.get("body") ?? undefined,
       replyToId: form.get("replyToId") ?? undefined,

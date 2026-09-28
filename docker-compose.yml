@@ -31,6 +31,9 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    # ROUND 21: the datastore is on the INTERNAL network only - no internet egress.
+    networks:
+      - internal-db
     restart: unless-stopped
 
   redis:
@@ -42,6 +45,9 @@ services:
       timeout: 3s
       retries: 12
       start_period: 5s
+    # ROUND 21: internal-only, like postgres.
+    networks:
+      - internal-db
     restart: unless-stopped
 
   app:
@@ -92,6 +98,13 @@ services:
       IVR_WEBHOOK_SECRET: "replace-with-real-ivr-webhook-secret"
     ports:
       - "3000:3000"
+    # ROUND 21: the app is the ONE service with external access, which is what it
+    # needs for api.sms-gate.app; it reaches the datastore and the mail hop over the
+    # two internal networks below.
+    networks:
+      - internal-db
+      - internal-mail
+      - egress
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health || exit 1"]
       interval: 10s
@@ -126,7 +139,23 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    # ROUND 21: the mail hop is internal-only. It accepts from the app and calls
+    # back to the app; it has no business reaching the internet.
+    networks:
+      - internal-mail
     restart: unless-stopped
+
+networks:
+  # ROUND 21 hardening: postgres and redis live here, and it is INTERNAL - the
+  # containers on it cannot reach the internet at all.
+  internal-db:
+    internal: true
+  # The app <-> smtp hop, internal for the same reason.
+  internal-mail:
+    internal: true
+  # The app's own bridge, the one network with egress.
+  egress:
+    driver: bridge
 
 volumes:
   postgres-data:
