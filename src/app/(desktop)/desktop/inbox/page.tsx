@@ -445,7 +445,17 @@ function InboxInner() {
                         </span>
                       </div>
 
-                      <p className="px-5 pt-3 text-xs text-on-surface-variant">to {message.to} ▾</p>
+                      <p className="px-5 pt-3 text-xs text-on-surface-variant">
+                        to {message.to} ▾ · from {message.from}
+                      </p>
+
+                      {/* BUG 1 FIX: the subject belongs to the MAIL, not only to the
+                          conversation header. Every card names what it is about, so a
+                          stacked thread can be read card by card without referring back
+                          to the top of the pane. */}
+                      <h3 className="px-5 pt-2 font-headline text-[17px] font-bold leading-snug text-on-surface">
+                        {message.subject}
+                      </h3>
 
                       <div className="px-5 pb-4 pt-1">
                         <p className="whitespace-pre-wrap text-[15px] leading-7 text-on-surface">
