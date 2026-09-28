@@ -20,3 +20,6 @@ Thumbs.db
 # local override carrying real secrets — never commit this
 docker-compose.override.yml
 docker-compose.override.yml.disabled
+
+# a moved-aside override is STILL the override (round 23: one got committed)
+docker-compose.override.*.yml

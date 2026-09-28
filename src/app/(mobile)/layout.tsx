@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { PinLock } from "@/components/pin-lock";
+import { PinGate } from "@/components/pin-lock";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
 import { WideScreenRedirect } from "@/components/wide-screen-redirect";
 
@@ -21,13 +21,16 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-wa-bg">
       <WideScreenRedirect />
-      <div className="mx-auto flex min-h-screen w-full max-w-phone flex-col bg-wa-panel shadow-none sm:shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
-        <ServiceWorkerRegistrar />
-        {/* ROUND 22: the app lock, over everything the phone client renders. It
-            returns nothing unless a PIN is set and this tab has not unlocked yet. */}
-        <PinLock />
-        {children}
-      </div>
+      {/* ROUND 23: the phone client waits on the resolved phase too - the same
+          window existed here (the pad arrived after the mail did). The redirect
+          stays OUTSIDE the gate: it is presentation routing, and an unauthenticated
+          wide visitor must still be handed to the desktop client. */}
+      <PinGate>
+        <div className="mx-auto flex min-h-screen w-full max-w-phone flex-col bg-wa-panel shadow-none sm:shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
+          <ServiceWorkerRegistrar />
+          {children}
+        </div>
+      </PinGate>
     </div>
   );
 }

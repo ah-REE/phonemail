@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 
 import { DesktopRail } from "@/components/desktop-rail";
-import { PinLock } from "@/components/pin-lock";
+import { PinGate } from "@/components/pin-lock";
 
 /**
  * Desktop shell.
@@ -24,14 +24,27 @@ import { PinLock } from "@/components/pin-lock";
  */
 export default function DesktopLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen bg-surface-container-low">
-      {/* ROUND 22: the app lock. Placed with the shell so it covers the rail too -
-          a lock that leaves the conversation list visible is not a lock. */}
-      <PinLock />
-      <Suspense fallback={<div className="w-56 shrink-0 border-r border-outline-variant bg-surface-container-lowest" />}>
-        <DesktopRail />
-      </Suspense>
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-    </div>
+    /*
+     * ROUND 23: THE SHELL WAITS ON THE RESOLVED PHASE.
+     *
+     * It used to render unconditionally and let the rail gate itself, and it put the
+     * PIN pad over the top of an already-rendered shell. Both of those meant the app
+     * existed on screen before either question was answered: measured at 87ms of
+     * readable mail with no pad on a warm local stack, and as long as a round trip on
+     * a cold one - which is what "the app opens straight in" and "the rail is missing"
+     * were. Now nothing of the shell exists until PinGate says the phase is resolved:
+     *
+     *   checking -> a resolving screen, no rail, no mail, no login flash
+     *   locked   -> the pad, and nothing else
+     *   open     -> this shell
+     */
+    <PinGate>
+      <div className="flex h-screen bg-surface-container-low">
+        <Suspense fallback={<div className="w-56 shrink-0 border-r border-outline-variant bg-surface-container-lowest" />}>
+          <DesktopRail />
+        </Suspense>
+        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      </div>
+    </PinGate>
   );
 }

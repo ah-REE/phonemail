@@ -3369,6 +3369,20 @@ context instantly)*
 - **Server-side drafts.** A `Draft` row, one per user (unique index), saved debounced from both composers with a `localStorage` write-through so an offline save is never lost; the next reachable save pushes it up. The old device-only reasoning in lib/folders.ts is superseded - see the README's limitations.
 - Two migrations (`20260928120000_add_pin_hash`, `20260928130000_add_draft`), both additive.
 
+### Round 23 - the mount race (the missing rail and the skipped PIN)
+
+**The report:** with a PIN set, a fresh tab opened straight into the app, and the left rail was missing until a reload.
+
+**What the browser said.** Neither symptom reproduced as a PERMANENT state: driving a real engine over CDP, the lock appeared and the rail was present at every entry point (a fresh tab straight to /desktop/inbox, the front door, the client-side handover from `/`, 768/1024/1440px, and the phone client). What DID reproduce, with numbers, is the WINDOW: the first version decided the PIN from a `GET /api/me` round trip and rendered the pad as an OVERLAY on a shell that was already mounted, so the mail was on screen - readable - for the whole round trip. Sampled every frame: 22 consecutive samples, 87ms wide, on a warm local stack. On a cold start, a slow phone or a PWA launch that window is seconds long, which is exactly "the app opens straight in" and, in the first frames, a shell with no rail in it.
+
+**The fix, structural rather than defensive.** The pin state is a first-class three-phase value (`checking | locked | open`) and the shell is mounted THROUGH `PinGate`, so there is no code path that renders the app before the phase is resolved:
+
+  checking -> a resolving screen (no rail, no mail, no login flash)
+  locked   -> the pad, as a PAGE - nothing of the app is rendered behind it
+  open     -> the shell
+
+**Counterfactual, same measurement, same engine:** content visible with no pad went from 22 samples (87ms) to **0**, with the pad on screen at the first sample (79ms). `ct28` freezes the discipline at the source level (the gate's three phases, both layouts mounting the shell through it, no gating surface reading the session token itself, and the sign-in stand-down rule), and three assertions this round moved were re-pointed rather than left to fail.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
