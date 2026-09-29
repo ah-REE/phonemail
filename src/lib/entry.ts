@@ -50,7 +50,26 @@ export function decideMobileEntry({ pathname, width, choseMobile }: MobileEntryV
  * disagree: both call it, both get the same answer, and there is no second opinion
  * about who a wide viewport belongs to.
  */
+/**
+ * PATHS THAT ARE CONTENT, NOT APP SCREENS.
+ *
+ * The handover sends a wide viewport to the mail client, which is right for the app
+ * and wrong for a page someone linked to: terms and the registration portal are
+ * things to READ, and they now render in place at any width - styled for the
+ * viewport they are opened in - instead of bouncing the reader into the app. Round
+ * 27 measured the bounce: /terms at 1440 landed on the login card (signed out) or
+ * the inbox (signed in), from the desktop login card's own terms link.
+ */
+export const CONTENT_PATHS = ["/terms", "/portal"] as const;
+
+export function isContentPath(pathname: string): boolean {
+  return CONTENT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export function wideEntryTarget({ pathname, width, choseMobile }: MobileEntryView): string | null {
+  if (isContentPath(pathname)) {
+    return null;
+  }
   return decideMobileEntry({ pathname, width, choseMobile }) === "desktop" ? DESKTOP_ENTRY_PATH : null;
 }
 

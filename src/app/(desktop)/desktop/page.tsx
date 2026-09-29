@@ -135,7 +135,7 @@ export default function DesktopLoginPage() {
         </h1>
         <p className="mt-1 text-on-surface-variant">
           Your phone number is your email address. By continuing you agree to the{" "}
-          <Link href="/portal" className="underline">
+          <Link href="/terms" className="underline">
             terms
           </Link>
           .

@@ -3499,6 +3499,38 @@ intact). `ct28` grew five assertions (37 now) for the broadcast, including one t
 checks the event constant is a real name - which matters because the tooling's masking had
 turned it into a literal "***" in the file, working but meaningless; that is repaired.
 
+### Round 27 - Terms on the desktop (and where the round stopped)
+
+**Task 1, the reported bug, reproduced and fixed.** A wide viewport clicking "terms"
+never saw the terms. Measured at 1440 in a real engine:
+
+    /terms  signed-out -> /desktop          (bounced to the login card)
+    /terms  signed-in  -> /desktop/inbox    (bounced into the mail client)
+
+The entry rule hands EVERY non-/mobile route to the desktop client - right for app
+screens, wrong for content. /terms was also inside the phone route group, so even when
+it did render it would have worn the phone frame, and the desktop login card's own
+"terms" link pointed at the registration portal rather than at the terms.
+
+**Fixed in three parts:**
+- `lib/entry.ts` gains `CONTENT_PATHS` (`/terms`, `/portal`) and `isContentPath()`;
+  `wideEntryTarget` returns null for them, so they render in place at any width.
+- `/terms` moved out of the (mobile) group to `src/app/terms/page.tsx` - it owns its
+  page now: the phone view below 640px (back bar included), and from 640px up the same
+  text in a centred card on the token surface, exactly like the portal.
+- The desktop login card's "terms" link points at `/terms`.
+
+**Verified (headless engine):** 9/9 - renders in place at 1440 and 1024, no phone
+frame, the back bar hidden, a bordered card centred at 756px wide, the phone view at
+390px intact, the portal unchanged. `ct29` grew four assertions (25 now) for the
+content rule; `ct13` and `ct15` pinned the old file path and were re-pointed.
+
+**Where the round stopped, stated plainly.** Tasks 2-5 of the final brief - the desktop
+group-info and user-detail sheets, the desktop composer's multi-recipient fix, PIN as an
+optional login method, and the motion pass - were **not started**. Task 1 is landed and
+verified; the rest is unstarted work, not partial work. The floor rule governs: land each
+item verified, stop clean, report honestly.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

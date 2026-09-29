@@ -10,13 +10,20 @@ import { Wordmark } from "@/components/wordmark";
  */
 export default function TermsPage() {
   return (
-    <main className="flex flex-1 flex-col">
+    /* ROUND 27: this is a route of its own now (see lib/entry.ts, CONTENT_PATHS), so it
+   owns its whole page: the phone view keeps the app's background, and from 640px up
+   it is a centred card on the token surface. */
+    <main className="flex min-h-screen flex-col bg-wa-bg sm:items-center sm:justify-center sm:bg-surface-container-low sm:px-6 sm:py-12">
       {/* ROUND 6: the shared AppBar. This header already used the shared back
           control, but it left-aligned its title while every other screen centres
           it - the same drift, on one more screen. */}
-      <AppBar title="Terms &amp; Conditions" backHref="/onboarding" backLabel="Back to sign-up" />
+      {/* ROUND 27: the bar is phone chrome; from 640px up the card carries its own
+          way back and the page reads as a document rather than a phone screen. */}
+      <div className="sm:hidden">
+        <AppBar title="Terms &amp; Conditions" backHref="/onboarding" backLabel="Back to sign-up" />
+      </div>
 
-      <section className="flex flex-col gap-3 p-4 text-sm leading-relaxed text-wa-ink">
+      <section className="flex flex-col gap-3 p-4 text-sm leading-relaxed text-wa-ink sm:w-full sm:max-w-2xl sm:rounded-card sm:border sm:border-outline-variant sm:bg-surface sm:p-8">
         {/* ROUND 4: the name carries the wordmark treatment wherever it appears. */}
         <Wordmark as="p" size={22} />
         <p>
