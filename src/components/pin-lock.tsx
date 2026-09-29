@@ -35,7 +35,8 @@ import { useAuth } from "@/lib/useAuth";
 
 export const PIN_UNLOCKED_KEY = "phonemail.pin.unlocked";
 
-export const PIN_LENGTH = 4;
+export const PIN_MIN_LENGTH = 4;
+export const PIN_MAX_LENGTH = 6;
 
 export type PinPhase = "checking" | "locked" | "open";
 
@@ -121,7 +122,7 @@ export function PinPad({ onUnlocked }: { onUnlocked: () => void }) {
 
   const submit = useCallback(
     async (candidate: string) => {
-      if (busy || candidate.length !== PIN_LENGTH) return;
+      if (busy || candidate.length < PIN_MIN_LENGTH || candidate.length > PIN_MAX_LENGTH) return;
       setBusy(true);
       setError(null);
       try {
@@ -160,10 +161,10 @@ export function PinPad({ onUnlocked }: { onUnlocked: () => void }) {
   );
 
   function press(digit: string) {
-    if (busy || pin.length >= PIN_LENGTH) return;
+    if (busy || pin.length >= PIN_MAX_LENGTH) return;
     const next = `${pin}${digit}`;
     setPin(next);
-    if (next.length === PIN_LENGTH) {
+    if (next.length === PIN_MAX_LENGTH) {
       void submit(next);
     }
   }
@@ -188,8 +189,8 @@ export function PinPad({ onUnlocked }: { onUnlocked: () => void }) {
         </p>
       </div>
 
-      <div className="flex items-center gap-3" aria-label={`${pin.length} of ${PIN_LENGTH} digits entered`}>
-        {Array.from({ length: PIN_LENGTH }).map((_, index) => (
+      <div className="flex items-center gap-3" aria-label={`${pin.length} digits entered - a PIN is 4 to 6 digits`}>
+        {Array.from({ length: Math.max(PIN_MIN_LENGTH, Math.min(PIN_MAX_LENGTH, pin.length)) }).map((_, index) => (
           <span key={index} className={`h-4 w-4 rounded-full ${index < pin.length ? "bg-accent" : "bg-surface-container-high"}`} />
         ))}
       </div>
@@ -228,6 +229,19 @@ export function PinPad({ onUnlocked }: { onUnlocked: () => void }) {
           Del
         </button>
       </div>
+
+      {/* ROUND 28: a PIN is 4 to 6 digits, so the pad cannot verify at 4 alone -
+          that would spend a 5- or 6-digit reader's strikes on a wrong-length
+          guess. It verifies ITSELF at 6 (the maximum), and this button submits
+          the 4- and 5-digit entries. One rule, said once, doing both shapes. */}
+      <button
+        type="button"
+        className="btn-quiet min-h-0 px-8 py-2.5 text-sm"
+        disabled={busy || pin.length < PIN_MIN_LENGTH}
+        onClick={() => void submit(pin)}
+      >
+        Unlock
+      </button>
 
       {busy && <Spinner label="Checking the PIN" />}
 
@@ -360,9 +374,9 @@ export function PinResetPanel({ onReset }: { onReset?: () => void }) {
             id="pin-reset-new"
             className="field"
             inputMode="numeric"
-            placeholder="4 digits"
+            placeholder="4-6 digits"
             value={pin}
-            onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+            onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, PIN_MAX_LENGTH))}
           />
           <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="pin-reset-confirm">
             Confirm the new PIN
@@ -371,15 +385,15 @@ export function PinResetPanel({ onReset }: { onReset?: () => void }) {
             id="pin-reset-confirm"
             className="field"
             inputMode="numeric"
-            placeholder="4 digits"
+            placeholder="4-6 digits"
             value={confirm}
-            onChange={(event) => setConfirm(event.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+            onChange={(event) => setConfirm(event.target.value.replace(/\D/g, "").slice(0, PIN_MAX_LENGTH))}
           />
           <button
             type="button"
             className="btn-brand min-h-0 px-4 py-2 text-sm"
             onClick={() => void submitReset()}
-            disabled={busy || pin.length !== PIN_LENGTH}
+            disabled={busy || pin.length < PIN_MIN_LENGTH}
           >
             Reset the PIN
           </button>

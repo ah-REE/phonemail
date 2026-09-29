@@ -33,7 +33,7 @@ import { useAuth } from "@/lib/useAuth";
  * privacy route to point at (a dead link is worse than one link).
  */
 
-type Step = "welcome" | "phone" | "otp" | "success";
+type Step = "welcome" | "phone" | "otp" | "pin" | "setpin" | "success";
 
 /** Which door the person came through. OTP is primary in both. */
 type AuthMode = "signup" | "login";
@@ -162,7 +162,7 @@ function TopBar({ step, total, onBack, brand }: { step: number; total: number; o
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { status, signIn } = useAuth();
+  const { status, signIn, authorizedFetch } = useAuth();
 
   const [step, setStep] = useState<Step>("welcome");
   const [mode, setMode] = useState<AuthMode>("signup");
@@ -173,6 +173,16 @@ export default function OnboardingPage() {
   // unregistered number on the login door continues into signup instead of
   // dead-ending.
   const [registered, setRegistered] = useState<boolean | null>(null);
+  // ROUND 28: the optional PIN doors. hasPin decides whether the login side
+  // shows "Login with PIN instead"; OTP stays the default everywhere.
+  const [hasPin, setHasPin] = useState(false);
+  const [pinLogin, setPinLogin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
+  const [setPinValue, setSetPinValue] = useState("");
+  const [setPinConfirm, setSetPinConfirm] = useState("");
+  const [signupPinError, setSetPinError] = useState<string | null>(null);
+  const [signupPinBusy, setSetPinBusy] = useState(false);
 
   // The address the success screen shows once the account exists.
   const [successAddress, setSuccessAddress] = useState("");
@@ -231,20 +241,48 @@ export default function OnboardingPage() {
    * "account is ready" screen at all. A failed lookup is NOT fatal: it returns
    * null and the flow falls back to the door that was pressed.
    */
-  const lookupRegistration = useCallback(async (phone: string): Promise<boolean | null> => {
-    try {
-      const response = await fetch(
-        `/api/auth/registered?phoneNumber=${encodeURIComponent(phone)}`,
-      );
-      if (!response.ok) {
+  const lookupRegistration = useCallback(
+    async (phone: string): Promise<{ registered: boolean | null; hasPin: boolean } | null> => {
+      try {
+        const response = await fetch(
+          `/api/auth/registered?phoneNumber=${encodeURIComponent(phone)}`,
+        );
+        if (!response.ok) {
+          return null;
+        }
+        const body = (await response.json()) as { registered?: boolean; hasPin?: boolean };
+        return {
+          registered: typeof body.registered === "boolean" ? body.registered : null,
+          hasPin: Boolean(body.hasPin),
+        };
+      } catch {
         return null;
       }
-      const body = (await response.json()) as { registered?: boolean };
-      return typeof body.registered === "boolean" ? body.registered : null;
-    } catch {
-      return null;
+    },
+    [],
+  );
+
+  // ROUND 28: ask while the number is being typed (debounced), not only on
+  // submit, so "Login with PIN instead" can appear for an account that has a
+  // PIN - and stay absent for every other. OTP remains the default: this only
+  // adds a door.
+  useEffect(() => {
+    if (normalizedPhone.length !== 10) {
+      setHasPin(false);
+      return;
     }
-  }, []);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const known = await lookupRegistration(normalizedPhone);
+      if (!cancelled && known) {
+        setHasPin(known.hasPin);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [normalizedPhone, lookupRegistration]);
 
   const sendOtp = useCallback(
     async (phone: string) => {
@@ -322,8 +360,14 @@ export default function OnboardingPage() {
         // ROUND 4, TASK 1: a REGISTERED number is a LOGIN, so it goes straight to
         // the inbox - there is no new account to celebrate. Only a genuinely new
         // account sees the "your account is ready" screen.
-        if (registered) {
+        if (registered === true) {
           router.replace("/");
+          return;
+        }
+        if (registered === false) {
+          // ROUND 28: a genuinely new account gets the optional "Set a PIN"
+          // step - skippable in one quiet tap, and OTP remains the primary path.
+          setStep("setpin");
           return;
         }
         setStep("success");
@@ -336,6 +380,79 @@ export default function OnboardingPage() {
     [normalizedPhone, registered, router, signIn],
   );
 
+
+  /**
+   * ROUND 28: sign in with the PIN (the optional door, shown only for accounts
+   * that set one). Same session OTP issues; the strikes are the server's, shared
+   * with the lock - and signIn marks THIS tab unlocked, because the PIN was just
+   * proven.
+   */
+  async function submitPinLogin() {
+    setPinBusy(true);
+    setPinError(null);
+    try {
+      const response = await fetch("/api/auth/login-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: normalizedPhone, pin: pinLogin }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        token?: string;
+        user?: { id: string; phoneNumber: string; createdAt?: string };
+        error?: string;
+        attemptsLeft?: number;
+        retryAfterSeconds?: number;
+      };
+      if (!response.ok || !body.token || !body.user) {
+        setPinError(
+          `${body.error ?? "That PIN is not right."}` +
+            `${typeof body.attemptsLeft === "number" ? ` ${body.attemptsLeft} attempt(s) left.` : ""}` +
+            `${typeof body.retryAfterSeconds === "number" ? ` Try again in ${body.retryAfterSeconds}s.` : ""}`,
+        );
+        setPinLogin("");
+        return;
+      }
+      try {
+        window.sessionStorage.setItem(LAST_PHONE_KEY, normalizedPhone);
+      } catch {
+        // storage unavailable: the sign-in itself must not fail for this
+      }
+      signIn(body.token, body.user);
+      router.replace("/");
+    } catch {
+      setPinError("Network error. Please try again.");
+    } finally {
+      setPinBusy(false);
+    }
+  }
+
+  /** ROUND 28: the signup step's save - optional, skippable, and it rides the
+      session the OTP just issued (authorizedFetch reads it). */
+  async function saveSignupPin() {
+    if (setPinValue !== setPinConfirm) {
+      setSetPinError("The two PINs do not match.");
+      return;
+    }
+    setSetPinBusy(true);
+    setSetPinError(null);
+    try {
+      const response = await authorizedFetch("/api/me/pin", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: setPinValue }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        setSetPinError(body.error ?? "Could not save the PIN.");
+        return;
+      }
+      setStep("success");
+    } catch {
+      setSetPinError("Network error. Please try again.");
+    } finally {
+      setSetPinBusy(false);
+    }
+  }
 
   function handleDigitChange(index: number, value: string) {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -418,6 +535,7 @@ export default function OnboardingPage() {
                 onClick={() => {
                   setMode("signup");
                   setRegistered(null);
+                  setHasPin(false);
                   setOtpError(null);
                   setStep("phone");
                 }}
@@ -430,6 +548,7 @@ export default function OnboardingPage() {
                 onClick={() => {
                   setMode("login");
                   setRegistered(null);
+                  setHasPin(false);
                   setOtpError(null);
                   // Straight to the number, then the code: logging in asks for
                   // nothing but what the OTP already proves.
@@ -552,10 +671,11 @@ export default function OnboardingPage() {
                   // for a code, so the copy is right and a login on an unregistered
                   // number continues into account creation rather than stalling.
                   const known = await lookupRegistration(normalizedPhone);
-                  setRegistered(known);
-                  if (known === false) {
+                  setRegistered(known?.registered ?? null);
+                  setHasPin(Boolean(known?.hasPin));
+                  if (known?.registered === false) {
                     setMode("signup");
-                  } else if (known === true) {
+                  } else if (known?.registered === true) {
                     setMode("login");
                   }
                   const ok = await sendOtp(normalizedPhone);
@@ -568,6 +688,22 @@ export default function OnboardingPage() {
               >
                 {sending ? <Spinner label="Sending" /> : "Send OTP"}
               </button>
+
+              {/* ROUND 28: the optional door - only for an account that HAS a
+                  PIN, and always second to the code. */}
+              {registered === true && hasPin && (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-accent underline"
+                  onClick={() => {
+                    setPinLogin("");
+                    setPinError(null);
+                    setStep("pin");
+                  }}
+                >
+                  Login with PIN instead
+                </button>
+              )}
 
             </div>
           </>
@@ -676,6 +812,103 @@ export default function OnboardingPage() {
                   )}
                 </p>
               </div>
+            </div>
+          </>
+        )}
+
+        {step === "pin" && (
+          <>
+            <TopBar step={stepNumber} total={3} onBack={() => setStep("phone")} brand />
+
+            <div className="mb-8 px-2">
+              <h2 className="font-headline text-display-sm text-on-surface">Login with PIN</h2>
+              <p className="mt-2 text-on-surface-variant">
+                Enter the PIN for +91 {normalizedPhone}. A one-time code still works - this is just quicker.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 px-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="pin-login">
+                PIN
+              </label>
+              <input
+                id="pin-login"
+                className="field text-center text-2xl tracking-[0.4em]"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={pinLogin}
+                onChange={(event) => setPinLogin(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+              {pinError && (
+                <p className="text-sm text-wa-alert" role="alert">
+                  {pinError}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-auto flex w-full flex-col gap-3 pt-6 pb-6">
+              <button type="button" className="btn-brand w-full" disabled={pinBusy || pinLogin.length < 4} onClick={() => void submitPinLogin()}>
+                {pinBusy ? <Spinner label="Checking" /> : "Log in"}
+              </button>
+              <button type="button" className="text-center text-sm font-medium text-accent underline" onClick={() => setStep("phone")}>
+                Use a one-time code instead
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === "setpin" && (
+          <>
+            <div className="mb-8 px-2 pt-6">
+              <h2 className="font-headline text-display-sm text-on-surface">Set a PIN</h2>
+              <p className="mt-2 text-on-surface-variant">
+                Optional: unlock PhoneMail without waiting for a code each time. You can set or change this later in Settings.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 px-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="setpin-new">
+                New PIN (4-6 digits)
+              </label>
+              <input
+                id="setpin-new"
+                className="field"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={setPinValue}
+                onChange={(event) => setSetPinValue(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+              <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="setpin-confirm">
+                Confirm the PIN
+              </label>
+              <input
+                id="setpin-confirm"
+                className="field"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={6}
+                value={setPinConfirm}
+                onChange={(event) => setSetPinConfirm(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+              {signupPinError && (
+                <p className="text-sm text-wa-alert" role="alert">
+                  {signupPinError}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-auto flex w-full flex-col gap-3 pt-6 pb-6">
+              <button type="button" className="btn-brand w-full" disabled={signupPinBusy || setPinValue.length < 4} onClick={() => void saveSignupPin()}>
+                {signupPinBusy ? <Spinner label="Saving" /> : "Save PIN"}
+              </button>
+              <button type="button" className="text-center text-sm font-medium text-accent underline" onClick={() => setStep("success")}>
+                Skip for now
+              </button>
             </div>
           </>
         )}

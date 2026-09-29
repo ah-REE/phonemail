@@ -18,8 +18,13 @@ import { getRedis } from "@/lib/redis";
  * bcrypt makes pointless rather than merely slow.
  */
 
-/** Four digits: the shape of an app lock, and what the pad draws. */
-export const PIN_LENGTH = 4;
+/**
+ * Four to six digits: the shape of an app lock, and what the pads draw. The
+ * range is the round-28 rule - the signup step, the lock pad, the settings row
+ * and both server validators all read it from here.
+ */
+export const PIN_MIN_LENGTH = 4;
+export const PIN_MAX_LENGTH = 6;
 
 /** Wrong entries before the pad refuses for a while - the OTP pattern's twin. */
 export const PIN_MAX_ATTEMPTS = 5;
@@ -36,8 +41,8 @@ export function pinProblem(pin: string | undefined): string | null {
   if (!/^\d+$/.test(pin)) {
     return "The PIN must be digits only.";
   }
-  if (pin.length !== PIN_LENGTH) {
-    return `The PIN must be exactly ${PIN_LENGTH} digits.`;
+  if (pin.length < PIN_MIN_LENGTH || pin.length > PIN_MAX_LENGTH) {
+    return `The PIN must be between ${PIN_MIN_LENGTH} and ${PIN_MAX_LENGTH} digits.`;
   }
   return null;
 }

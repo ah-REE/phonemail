@@ -159,7 +159,7 @@ network-first, so the worker cannot serve private data from a cache or hide a
 build from the user. Its cache name is stamped from the image's own
 `.next/BUILD_ID`.
 
-## 13. The app PIN (round 22) - what it is, and what it is not
+## 13. The app PIN (rounds 22, 28) - what it is, and what it is not
 
 **It gates the interface, not the API.** A PIN is stored as a bcrypt hash
 (`User.pinHash`, `lib/pin.ts`) and checked by `POST /api/me/verify-pin`. A correct
@@ -173,11 +173,21 @@ does not survive someone with the token (a stolen copy of `sessionStorage`, a
 browser profile copied off the disk, or any request made outside the app), and it
 is not a second authentication factor.
 
+As a LOGIN (round 28) the same PIN is a real credential - by choice, never by
+default: `POST /api/auth/login-pin` verifies it and issues the SAME session
+verify-otp issues. The strikes bound it exactly like the unlock (five wrong
+entries, 60 seconds, per account), and OTP remains the primary path in both
+clients - the PIN door appears only for accounts that set one, and only behind
+a quiet link. That is the trade this feature makes, stated plainly: a PIN is
+weaker than a one-time code, which is why it never replaces the code.
+
 **What it does do, and where the rules live:**
 
 | Rule | Where |
 |---|---|
-| Four digits, digits only, hashed with bcrypt (10 rounds) | `lib/pin.ts` (`pinProblem`, `hashPin`) |
+| Four to six digits, digits only, hashed with bcrypt (10 rounds) | `lib/pin.ts` (`pinProblem`, `hashPin`) |
+| Since round 28 the PIN is also an OPTIONAL login: it issues the same JWT + Session row `verify-otp` issues, behind the same strikes | `POST /api/auth/login-pin` |
+| A PIN sign-in stands the tab's lock down - the PIN was just proven - through the same flag every sign-in sets | `components/pin-lock.tsx`, `useAuth().signIn` |
 | Set / change / REMOVE all need the current PIN (removal included, or the lock is decoration) | `PUT /api/me/pin` |
 | Five wrong entries refuse the PIN for 60 seconds, per ACCOUNT rather than per tab, with the reason and the wait | `POST /api/me/verify-pin`, `pin-lock:<userId>` in Redis |
 | A forgotten PIN is reset by a live one-time code for the account's own number - the same verification account deletion uses | `POST /api/me/pin/reset`, `verifyOtp` |

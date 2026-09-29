@@ -3531,6 +3531,47 @@ optional login method, and the motion pass - were **not started**. Task 1 is lan
 verified; the rest is unstarted work, not partial work. The floor rule governs: land each
 item verified, stop clean, report honestly.
 
+Round 28 - Tasks 2-4 landed; Task 5 (the motion pass) NOT started
+
+**Task 2, the desktop user detail and group info.** The phone's two "who is this?"
+surfaces are now in the desktop reading pane: the counterpart's name in the thread
+header opens a user-detail modal (name, number, address, the contact relationship
+read from /api/contacts, add/remove with the sheet's own save morph), and the group
+title opens a group-info card whose member list carries the role tags from the
+thread payload itself, every member tappable to their own detail. Chrome differs per
+client (centred token card - the composer's overlay language); the content, the data
+paths and the morph are shared with the phone sheet. `ct30` (26 assertions) drives a
+real engine at 1440 against fresh fixtures.
+
+**Task 3, the desktop composer's recipient fields.** The reported "accepts only one
+address" was reproduced FIRST and did not survive contact: typing 2 To + 1 Cc from
+the real composer delivered to all three and formed the group. What the report was
+pointing at did exist - no per-ADDRESS validation, and no signal that a second
+address had been understood - and the fix is the stronger form of the brief's own
+option: `lib/recipients.ts` now owns the one rule both clients speak (the mobile
+composer's normalisation and message), `validate()` names the offending entries, the
+placeholders say "separate with commas", and the mobile's own "Group: N recipients"
+line appears live. `ct31` (18 assertions) freezes the two round trips and the
+negative.
+
+**Task 4, PIN as an optional login method.** 4-6 digits now; `POST
+/api/auth/login-pin` verifies the PIN behind the established strikes and issues the
+same JWT + Session row verify-otp issues; both login screens gained "Login with PIN
+instead" (only for accounts with a PIN; OTP stays the default and primary path);
+signup gained the optional "Set a PIN (skip)" step on both clients; the pad
+verifies at six and offers Unlock for four/five; a PIN sign-in stands the tab's lock
+down. `ct32` (27 assertions) covers the range, the issuance (the Session row counted
+in the database), the lockout lived through redis, and the desktop card driven for
+real.
+
+**Where the round stopped, stated plainly.** Task 5 - the motion spec and the motion
+pass across both clients - was **not started**: the context budget for this session
+ran out after Task 4's landing, and the floor rule governs (land each item verified,
+stop clean, report honestly). The round-level gates Task 5 was meant to trigger with
+it - a fresh-clone evaluator simulation from ORIGIN after the final push - are
+likewise pending. Full regression at the stop point: 1070 assertions across 35
+suites, 0 red (three new suites this round: ct30, ct31, ct32).
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

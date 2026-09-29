@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { PIN_LENGTH, PinResetPanel } from "@/components/pin-lock";
+import { PIN_MAX_LENGTH, PIN_MIN_LENGTH, PinResetPanel } from "@/components/pin-lock";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -114,8 +114,8 @@ export function PinSettings() {
       </div>
       <p className="text-sm text-on-surface-variant">
         {hasPin
-          ? "The app asks for this PIN when it opens in a fresh tab or from the home screen. It locks the screen, not the account - your session is unchanged."
-          : "Add a 4-digit PIN and the app will ask for it whenever it opens in a fresh tab or from the home screen."}
+          ? "One PIN, both jobs: the app asks for it when it opens in a fresh tab or from the home screen, and you can use it to sign in from the login screen when you would rather not wait for a code. As a lock it changes nothing about your session."
+          : "Add a 4-6-digit PIN: the app will ask for it whenever it opens in a fresh tab or from the home screen, and you can use it to sign in from the login screen when you would rather not wait for a code."}
       </p>
 
       {mode === "idle" ? (
@@ -157,9 +157,9 @@ export function PinSettings() {
                 id="pin-current"
                 className="field"
                 inputMode="numeric"
-                placeholder="4 digits"
+                placeholder="4-6 digits"
                 value={currentPin}
-                onChange={(event) => setCurrentPin(event.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+                onChange={(event) => setCurrentPin(event.target.value.replace(/\D/g, "").slice(0, PIN_MAX_LENGTH))}
               />
             </>
           )}
@@ -170,9 +170,9 @@ export function PinSettings() {
             id="pin-new"
             className="field"
             inputMode="numeric"
-            placeholder="4 digits"
+            placeholder="4-6 digits"
             value={pin}
-            onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+            onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, PIN_MAX_LENGTH))}
           />
           <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="pin-confirm">
             Confirm the new PIN
@@ -181,16 +181,16 @@ export function PinSettings() {
             id="pin-confirm"
             className="field"
             inputMode="numeric"
-            placeholder="4 digits"
+            placeholder="4-6 digits"
             value={confirm}
-            onChange={(event) => setConfirm(event.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+            onChange={(event) => setConfirm(event.target.value.replace(/\D/g, "").slice(0, PIN_MAX_LENGTH))}
           />
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className="btn-brand min-h-0 px-4 py-2 text-sm"
               onClick={() => void submit()}
-              disabled={busy || pin.length !== PIN_LENGTH}
+              disabled={busy || pin.length < PIN_MIN_LENGTH}
             >
               {hasPin ? "Save the new PIN" : "Set the PIN"}
             </button>
@@ -199,7 +199,7 @@ export function PinSettings() {
                 type="button"
                 className="btn-quiet min-h-0 px-4 py-2 text-sm"
                 onClick={() => void remove()}
-                disabled={busy || currentPin.length !== PIN_LENGTH}
+                disabled={busy || currentPin.length < PIN_MIN_LENGTH}
               >
                 Remove the PIN
               </button>

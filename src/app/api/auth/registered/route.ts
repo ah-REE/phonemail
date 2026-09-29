@@ -24,10 +24,11 @@ export const dynamic = "force-dynamic";
  * the fact is asked for explicitly, once, and the answer is the truth from the
  * database rather than a guess.
  *
- * It deliberately answers with a boolean and nothing else - no id, no name, no
- * timestamps - because the only question the flow has is whether the account
- * exists. The information is the same the signup flow already reveals by
- * behaviour, and it is what makes the "no dead end" requirement possible.
+ * It deliberately answers with booleans and nothing else - no id, no name, no
+ * timestamps - because the only questions the flow has are whether the account
+ * exists and (round 28) whether it has a PIN to offer as an optional login
+ * door. Both are facts the flow already reveals by behaviour: a registered
+ * number logs in, and a PIN-bearing number can use the PIN link.
  */
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get("phoneNumber") ?? "";
@@ -45,11 +46,18 @@ export async function GET(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { phoneNumber: parsed.data },
-    select: { id: true },
+    select: { id: true, pinHash: true },
   });
 
   return NextResponse.json(
-    { phoneNumber: parsed.data, registered: Boolean(user) },
+    {
+      phoneNumber: parsed.data,
+      registered: Boolean(user),
+      // ROUND 28: the flag the login screens need to offer "Login with PIN
+      // instead" ONLY where a PIN exists. A boolean, like `registered` - and
+      // like it, a fact the flow otherwise learns by behaviour. Never the hash.
+      hasPin: Boolean(user?.pinHash),
+    },
     { status: 200 },
   );
 }
