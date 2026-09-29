@@ -11,6 +11,7 @@ import {
   saveDraft as saveDraftEverywhere,
 } from "@/lib/draftSync";
 import { validateAttachmentSet } from "@/lib/attachments";
+import { invalidRecipients, parseRecipients, RECIPIENT_FORMAT_MESSAGE } from "@/lib/recipients";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -53,10 +54,6 @@ export interface DesktopComposeRequest {
   kind?: "new" | "reply";
 }
 
-/** A comma- or space-separated field into the list of recipients it means. */
-export function parseRecipientList(value: string): string[] {
-  return [...new Set(value.split(/[,\s]+/).map((entry) => entry.trim()).filter((entry) => entry.length > 0))];
-}
 
 export function DesktopCompose({
   request,
@@ -137,8 +134,8 @@ export function DesktopCompose({
     }
     saveDraftSoon({ to: toDraft, cc: ccDraft, subject: subjectDraft, body: bodyDraft });
   }, [toDraft, ccDraft, subjectDraft, bodyDraft, locked, draftRestored, saveDraftSoon]);
-  const recipients = parseRecipientList(toDraft);
-  const cc = parseRecipientList(ccDraft);
+  const recipients = parseRecipients(toDraft);
+  const cc = parseRecipients(ccDraft);
 
   // Escape closes, the way every overlay in this app does.
   useEffect(() => {
@@ -169,6 +166,16 @@ export function DesktopCompose({
   function validate(): boolean {
     if (recipients.length === 0) {
       setError("Add at least one recipient.");
+      return false;
+    }
+    // ROUND 28: per-ADDRESS, not only per-field. The same rule and wording the
+    // mobile composer uses, and the invalid entries are named so the sender
+    // knows exactly what to fix - where the server's 400 could only speak in
+    // tokens. (Format only: an unknown-but-well-formed recipient is still the
+    // server's 404 to report.)
+    const invalid = invalidRecipients([...recipients, ...cc]);
+    if (invalid.length > 0) {
+      setError(`${RECIPIENT_FORMAT_MESSAGE} Check: ${invalid.join(", ")}`);
       return false;
     }
     if (!subjectDraft.trim()) {
@@ -290,7 +297,7 @@ export function DesktopCompose({
           <input
             id="compose-to"
             className="field mt-1"
-            placeholder="Number or alias"
+            placeholder="Number or alias - separate with commas"
             value={toDraft}
             onChange={(event) => setToDraft(event.target.value)}
             readOnly={locked}
@@ -308,12 +315,21 @@ export function DesktopCompose({
           <input
             id="compose-cc"
             className="field mt-1"
-            placeholder="Optional"
+            placeholder="Optional - separate with commas"
             value={ccDraft}
             onChange={(event) => setCcDraft(event.target.value)}
             readOnly={locked}
             aria-readonly={locked}
           />
+
+          {/* ROUND 28: the phone composer's own line - the moment more than one
+              recipient is present, the message says so, so multi-entry is never
+              invisible. Not in reply mode: there the set is the conversation's. */}
+          {!locked && recipients.length + cc.length > 1 && (
+            <p className="mt-2 text-xs text-on-surface-variant" role="status">
+              Group: {recipients.length + cc.length} recipients
+            </p>
+          )}
 
           <label className="mt-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-subject">
             Subject
