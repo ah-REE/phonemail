@@ -67,7 +67,7 @@ export const SAVE_MORPH_HOLD_MS = 600;
  * `role="status"` makes it announce itself, so the confirmation is not only a
  * visual one.
  */
-function SavedMorph() {
+export function SavedMorph() {
   return (
     <div
       className="save-morph flex min-h-0 h-12 items-center justify-center gap-2 rounded-full bg-success-soft px-5"

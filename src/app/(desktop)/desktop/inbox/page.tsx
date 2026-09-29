@@ -8,6 +8,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AttachmentCards } from "@/components/attachments";
 import { Avatar } from "@/components/avatar";
 import { DesktopCompose, type DesktopComposeRequest } from "@/components/desktop-compose";
+import { DesktopUserDetail, type DesktopUserDetailSubject } from "@/components/desktop-user-detail";
+import { GroupInfo } from "@/components/group-info";
 import { MemberTagChip } from "@/components/member-tag-chip";
 import { isEmailFolder, type EmailFolder } from "@/lib/folders";
 import type { MemberTag } from "@/lib/roles";
@@ -119,7 +121,7 @@ function EmptyState({ title, hint }: { title: string; hint: string }) {
 function InboxInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status, token, authorizedFetch } = useAuth();
+  const { status, token, user, authorizedFetch } = useAuth();
 
   const folderParam = searchParams?.get("folder") ?? "inbox";
   const folder: EmailFolder = isEmailFolder(folderParam) ? folderParam : "inbox";
@@ -135,6 +137,27 @@ function InboxInner() {
   const [notice, setNotice] = useState<string | null>(null);
   /** The composer overlay's request, or null when it is closed. */
   const [composeRequest, setComposeRequest] = useState<DesktopComposeRequest | null>(null);
+
+  /**
+   * ROUND 28: the two surfaces the phone has always had, for the desktop.
+   * These card the payload-fresh identity of the open conversation and the
+   * group's members - the same fields the mobile thread screens keep.
+   */
+  const [threadIdentity, setThreadIdentity] = useState<{
+    name: string | null;
+    accountName: string | null;
+    address: string;
+  } | null>(null);
+  const [groupDetails, setGroupDetails] = useState<{
+    members: string[];
+    memberNames: (string | null)[];
+    memberAddresses: string[];
+    memberTags: Record<string, MemberTag>;
+  } | null>(null);
+  /** Which user's detail modal is open, if any. */
+  const [detailSubject, setDetailSubject] = useState<DesktopUserDetailSubject | null>(null);
+  /** Whether the group-info card is open. */
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false);
 
   /**
    * ROUND 22: THE SEARCH BOX. The desktop list had no search at all; this adds one,
@@ -214,9 +237,22 @@ function InboxInner() {
           setError("Could not load that conversation.");
           return;
         }
-        const body = (await response.json()) as { subject?: string; messages?: Message[] };
+        const body = (await response.json()) as {
+          subject?: string;
+          messages?: Message[];
+          counterpartName?: string | null;
+          counterpartAccountName?: string | null;
+          counterpartAddress?: string;
+        };
         setMessages(body.messages ?? []);
         setThreadSubject(body.subject ?? "");
+        // ROUND 28: the counterpart's identity, kept payload-fresh for the user
+        // detail modal (the same fields the phone's thread carries).
+        setThreadIdentity({
+          name: body.counterpartName ?? null,
+          accountName: body.counterpartAccountName ?? null,
+          address: body.counterpartAddress || `${phone}@phonemail.com`,
+        });
         await authorizedFetch(`/api/conversations/${phone}/read`, { method: "POST" });
         void loadThreads();
       } finally {
@@ -238,9 +274,24 @@ function InboxInner() {
           setError("Could not load that conversation.");
           return;
         }
-        const body = (await response.json()) as { subject?: string; messages?: Message[] };
+        const body = (await response.json()) as {
+          subject?: string;
+          messages?: Message[];
+          members?: string[];
+          memberNames?: (string | null)[];
+          memberAddresses?: string[];
+          memberTags?: Record<string, MemberTag>;
+        };
         setMessages(body.messages ?? []);
         setThreadSubject(body.subject ?? "");
+        // ROUND 28: the member list and role tags, from the thread payload itself,
+        // so the group-info card cannot disagree with the thread it describes.
+        setGroupDetails({
+          members: body.members ?? [],
+          memberNames: body.memberNames ?? [],
+          memberAddresses: body.memberAddresses ?? [],
+          memberTags: body.memberTags ?? {},
+        });
         await authorizedFetch(`/api/conversations/thread/${encodeURIComponent(threadKey)}/read`, {
           method: "POST",
         });
@@ -263,6 +314,10 @@ function InboxInner() {
       setLoadingList(true);
       setSelected(null);
       setMessages([]);
+      setThreadIdentity(null);
+      setGroupDetails(null);
+      setDetailSubject(null);
+      setGroupInfoOpen(false);
       void loadThreads();
     }
   }, [status, loadThreads]);
@@ -321,6 +376,62 @@ function InboxInner() {
       lockRecipients: true,
       kind: "reply",
     });
+  }
+
+  /** ROUND 28: the counterpart's detail, from the reading pane's header. */
+  function openCounterpartDetail() {
+    if (!selected || selectedGroup) {
+      return;
+    }
+    setDetailSubject({
+      phone: selected,
+      name: threadIdentity?.name?.trim() || selectedThread?.counterpartName?.trim() || null,
+      accountName: threadIdentity?.accountName ?? null,
+      address: threadIdentity?.address || `${selected}@phonemail.com`,
+    });
+  }
+
+  /**
+   * ROUND 28: a member of the group, from the group-info card. The card closes
+   * first - the modal is the next thing, not a layer over it - exactly as the
+   * phone's group page sequences the two.
+   */
+  function openMemberDetail(member: string) {
+    const index = selectedGroup?.members.indexOf(member) ?? -1;
+    setGroupInfoOpen(false);
+    setDetailSubject({
+      phone: member,
+      name: index >= 0 ? (groupDetails?.memberNames[index]?.trim() ?? null) : null,
+      accountName: null,
+      address:
+        index >= 0
+          ? groupDetails?.memberAddresses[index] || `${member}@phonemail.com`
+          : `${member}@phonemail.com`,
+    });
+  }
+
+  /** The saved name lands on the surface that opened the modal, immediately. */
+  function handleDetailSaved(name: string | null) {
+    if (!detailSubject) {
+      return;
+    }
+    if (selectedGroup) {
+      const index = selectedGroup.members.indexOf(detailSubject.phone);
+      if (index >= 0) {
+        setGroupDetails((current) => {
+          if (!current) {
+            return current;
+          }
+          const memberNames = [...current.memberNames];
+          memberNames[index] = name;
+          return { ...current, memberNames };
+        });
+      }
+      return;
+    }
+    if (detailSubject.phone === selected) {
+      setThreadIdentity((current) => (current ? { ...current, name } : current));
+    }
   }
 
   if (status !== "authenticated") {
@@ -492,9 +603,25 @@ function InboxInner() {
             <header className="border-b border-outline-variant bg-surface-container-lowest px-8 py-4">
               <div className="mx-auto max-w-[720px]">
                 <h2 className="font-headline text-xl font-bold tracking-[-0.01em] text-on-surface">
-                  {selectedGroup
-                    ? `Group - ${selectedGroup.members.join(", ")}`
-                    : selectedThread?.counterpartName?.trim() || selected}
+                  {selectedGroup ? (
+                    <button
+                      type="button"
+                      onClick={() => setGroupInfoOpen(true)}
+                      aria-label="Group details"
+                      className="rounded-card text-left transition-colors duration-ui hover:text-accent"
+                    >
+                      {`Group - ${selectedGroup.members.join(", ")}`}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openCounterpartDetail}
+                      aria-label={`Details for ${threadIdentity?.name?.trim() || selectedThread?.counterpartName?.trim() || selected}`}
+                      className="rounded-card text-left transition-colors duration-ui hover:text-accent"
+                    >
+                      {threadIdentity?.name?.trim() || selectedThread?.counterpartName?.trim() || selected}
+                    </button>
+                  )}
                 </h2>
                 <p className="text-sm text-on-surface-variant">
                   {threadSubject || selectedThread?.subject}{" "}
@@ -578,6 +705,29 @@ function InboxInner() {
           </>
         )}
       </section>
+
+      {/* ROUND 28: the phone's two "who is this?" surfaces, wired into the
+          desktop reading pane - the group-info card and the user-detail modal. */}
+      {groupInfoOpen && selectedGroup && (
+        <GroupInfo
+          variant="card"
+          members={groupDetails?.members ?? selectedGroup.members}
+          memberNames={groupDetails?.memberNames ?? selectedGroup.memberNames ?? []}
+          memberAddresses={groupDetails?.memberAddresses ?? selectedGroup.memberAddresses}
+          memberTags={groupDetails?.memberTags ?? {}}
+          me={user?.phoneNumber ?? ""}
+          onOpenMember={openMemberDetail}
+          onClose={() => setGroupInfoOpen(false)}
+        />
+      )}
+
+      {detailSubject && (
+        <DesktopUserDetail
+          subject={detailSubject}
+          onClose={() => setDetailSubject(null)}
+          onSaved={handleDetailSaved}
+        />
+      )}
 
       {/* THE COMPOSER, an overlay - never a pane default. */}
       {composeRequest && (

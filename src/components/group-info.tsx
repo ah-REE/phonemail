@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { Avatar } from "@/components/avatar";
 import { MemberTagChip } from "@/components/member-tag-chip";
 import type { MemberTag } from "@/lib/roles";
@@ -17,6 +19,13 @@ import type { MemberTag } from "@/lib/roles";
  * mutation the data model cannot honour.
  *
  * Every member is a button, because every member is a person you can save.
+ *
+ * ROUND 28: `variant` picks the chrome only - "sheet" for the phone (the
+ * default, unchanged) and "card" for the desktop reading pane, where the
+ * desktop overlay language is a centred card on the token surface (the
+ * composer established it). The content, the member list and the tag
+ * derivation are shared, so the two clients cannot disagree about who is
+ * what.
  */
 
 export interface GroupInfoProps {
@@ -33,6 +42,9 @@ export interface GroupInfoProps {
   me: string;
   onOpenMember: (phone: string) => void;
   onClose: () => void;
+  /** ROUND 28: "sheet" (the phone's bottom sheet, the default) or "card" (the
+      desktop reading pane's centred card). Chrome only - the content is shared. */
+  variant?: "sheet" | "card";
 }
 
 export function GroupInfo({
@@ -43,10 +55,33 @@ export function GroupInfo({
   me,
   onOpenMember,
   onClose,
+  variant = "sheet",
 }: GroupInfoProps) {
+  const card = variant === "card";
+  const muted = card ? "text-on-surface-variant" : "text-chat-meta";
+
+  /* Escape closes on the desktop, the way every overlay in that client does.
+     The phone sheet stays tap-only, exactly as it was. */
+  useEffect(() => {
+    if (!card) {
+      return;
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [card, onClose]);
+
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-black/40"
+      className={
+        card
+          ? "fixed inset-0 z-50 flex items-center justify-center bg-on-surface/45 p-4"
+          : "fixed inset-0 z-40 flex items-end justify-center bg-black/40"
+      }
       role="dialog"
       aria-modal="true"
       aria-label="Group details"
@@ -58,11 +93,19 @@ export function GroupInfo({
         onClick={onClose}
       />
 
-      <div className="relative z-10 flex max-h-[80vh] w-full max-w-phone flex-col rounded-t-[28px] bg-chat-sheet px-5 pb-8 pt-3 shadow-overlay">
-        <span className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-outline-variant" aria-hidden="true" />
+      <div
+        className={
+          card
+            ? "relative z-10 flex max-h-[80vh] w-full max-w-md flex-col rounded-card border border-outline-variant bg-surface px-5 py-5 shadow-overlay"
+            : "relative z-10 flex max-h-[80vh] w-full max-w-phone flex-col rounded-t-[28px] bg-chat-sheet px-5 pb-8 pt-3 shadow-overlay"
+        }
+      >
+        {!card && (
+          <span className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-outline-variant" aria-hidden="true" />
+        )}
 
         <h2 className="font-headline text-[19px] font-bold text-on-surface">Group details</h2>
-        <p className="mt-1 text-[13px] text-chat-meta">
+        <p className={`mt-1 text-[13px] ${muted}`}>
           {members.length} {members.length === 1 ? "member" : "members"}
         </p>
 
@@ -75,7 +118,7 @@ export function GroupInfo({
               <button
                 key={member}
                 type="button"
-                className="flex min-h-[64px] w-full items-center gap-3 border-b border-outline-variant px-1 py-2 text-left active:bg-surface-container-high/40"
+                className={`flex min-h-[64px] w-full items-center gap-3 border-b border-outline-variant px-1 py-2 text-left ${card ? "transition-colors duration-ui hover:bg-surface-container-low" : "active:bg-surface-container-high/40"}`}
                 onClick={() => onOpenMember(member)}
                 aria-label={`Details for ${name}`}
               >
@@ -86,7 +129,7 @@ export function GroupInfo({
                     {isMe && <span className="shrink-0 text-xs font-medium text-chat-meta">you</span>}
                     {memberTags[member] ? <MemberTagChip tag={memberTags[member]} /> : null}
                   </span>
-                  <span className="mt-0.5 truncate text-[13px] text-chat-meta">
+                  <span className={`mt-0.5 truncate text-[13px] ${muted}`}>
                     {memberAddresses[index] || `${member}@phonemail.com`}
                   </span>
                 </span>
@@ -100,14 +143,14 @@ export function GroupInfo({
           })}
         </div>
 
-        <p className="mt-4 text-xs text-chat-meta">
+        <p className={`mt-4 text-xs ${muted}`}>
           A group here is derived from its messages, so there is nothing to rename and no membership to
           change. Write to the members and the conversation continues.
         </p>
 
         <button
           type="button"
-          className="mt-4 min-h-0 h-12 w-full shrink-0 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+          className={`mt-4 min-h-0 h-12 w-full shrink-0 rounded-full text-sm font-semibold text-on-surface ${card ? "border border-outline-variant bg-surface transition-colors duration-ui hover:bg-surface-container-low" : "bg-chat-rail"}`}
           onClick={onClose}
         >
           Close
