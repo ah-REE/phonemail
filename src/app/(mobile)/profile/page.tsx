@@ -1,5 +1,7 @@
 "use client";
 
+import { guardRedirect } from "@/lib/entry";
+
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -289,7 +291,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/onboarding");
+      guardRedirect(router);
     }
   }, [status, router]);
 
@@ -499,7 +501,7 @@ export default function ProfilePage() {
       }
       // The account is gone: clear this tab's session and start over.
       signOut();
-      router.replace("/onboarding");
+      guardRedirect(router);
     } catch {
       setDeleteError("Network error. Please try again.");
     } finally {
@@ -937,7 +939,7 @@ export default function ProfilePage() {
               className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors duration-ui hover:bg-settings-canvas"
               onClick={() => {
                 signOut();
-                router.replace("/onboarding");
+                guardRedirect(router);
               }}
             >
               <span className="flex min-w-0 items-center gap-4">

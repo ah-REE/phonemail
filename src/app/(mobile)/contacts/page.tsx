@@ -1,5 +1,7 @@
 "use client";
 
+import { guardRedirect } from "@/lib/entry";
+
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -65,7 +67,7 @@ export default function ContactsPage() {
     try {
       const response = await authorizedFetch("/api/contacts");
       if (response.status === 401) {
-        router.replace("/onboarding");
+        guardRedirect(router);
         return;
       }
       if (!response.ok) {
@@ -84,7 +86,7 @@ export default function ContactsPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/onboarding");
+      guardRedirect(router);
     }
   }, [status, router]);
 

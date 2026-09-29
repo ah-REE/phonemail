@@ -5,11 +5,22 @@ import { useState } from "react";
 import { Wordmark } from "@/components/wordmark";
 
 /**
- * PhoneMail registration portal — phone + OTP only.
+ * PhoneMail registration portal - phone + OTP only.
  *
  * Deliberately minimal: it reuses the same /api/auth endpoints as the app
  * interfaces and exists so a fresh account can be created from a browser.
- * Visual design lands later; keep this focused on the flow.
+ *
+ * ROUND 25: A WIDE VIEWPORT GETS A DESKTOP TREATMENT. This page is a route of its
+ * own - not inside the (mobile) group - so the entry handover never ran here, and a
+ * laptop visitor met a 420px column of unstyled form: the mobile portal. It is NOT
+ * redirected to the desktop client, deliberately, because registration must work for
+ * someone who has no account and no session; instead the same two-field form now
+ * sits in the design system's own centred card on the token background from 640px
+ * up. Below that it is the phone portal it has always been: full-bleed, no card.
+ *
+ * The FORM CONTROLS keep their own inline styling - the portal is the one surface
+ * that never joined the token system, which is recorded in the README's gaps - but
+ * the page around them now matches the desktop client's login card.
  */
 
 type Step = "phone" | "otp" | "done";
@@ -102,7 +113,8 @@ export default function PortalPage() {
   }
 
   return (
-    <main style={styles.main}>
+    <main className="flex min-h-screen items-center justify-center bg-surface-container-low px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex w-full max-w-md flex-col sm:rounded-card sm:border sm:border-outline-variant sm:bg-surface sm:p-8">
       {/* ROUND 4: the portal shows the same wordmark treatment as the app. */}
       <h1 style={styles.title}>
         <Wordmark as="span" size={32} />
@@ -165,18 +177,12 @@ export default function PortalPage() {
           </button>
         </div>
       )}
+      </div>
     </main>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  main: {
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    maxWidth: 420,
-    margin: "0 auto",
-    padding: "48px 20px",
-    color: "#111",
-  },
   title: { fontSize: 32, margin: "0 0 4px" },
   subtitle: { margin: "0 0 24px", color: "#555" },
   card: { display: "flex", flexDirection: "column", gap: 10, border: "1px solid #ddd", padding: 20 },

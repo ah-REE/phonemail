@@ -3416,6 +3416,53 @@ only path in the code that produces "mail present, rail absent", and it is now
 impossible by construction - but if it recurs, the browser console for that tab would
 settle it, and that is what to send.
 
+### Round 25 - the wide viewport that got the phone client
+
+**The report:** on a desktop (a wide viewport) a visitor got the MOBILE interface - the
+phone styling, the phone onboarding, and a mobile-styled /portal - instead of the
+desktop client.
+
+**Reproduced first, as a matrix.** Every entry URL x signed-out/signed-in x 1024/1440
+in a real engine, recording what rendered: exactly TWO violations - `/` signed-out at
+both widths, which ended on `/onboarding`, and `/portal`, which was mobile-styled
+because it is a route of its own and the handover never ran there. Everything else
+(`/onboarding`, `/desktop`, `/desktop/inbox`, `/mobile`, and every signed-in entry)
+already obeyed the rule.
+
+**Cause, measured rather than guessed.** Hooking the History API to record every
+navigation the router made settled it: at `/` the router made ONE navigation, to
+`/onboarding` - the handover's `router.replace` never reached the history at all.
+Issued from an effect that can run in the same commit as (or just before) router
+hydration, the replace was dropped without an error and nothing retried; the phone
+home's auth guard, firing one commit later, then won. At `/onboarding` the same
+handover landed (t+34ms) because there is no competing guard there.
+
+**The fix - one rule, enforced where it cannot be dropped.**
+- `lib/entry.ts` now exposes `wideEntryTarget()` (the single decision) alongside
+  `decideMobileEntry()`, plus `handoverTargetInThisTab()` and `guardRedirect()`;
+- the handover is a FULL navigation (`window.location.replace`), which cannot be
+  dropped before hydration and cannot be overridden by a later client redirect, and
+  sessionStorage survives it so the tab's session and phone-layout choice still do;
+- all six phone screens' "go to onboarding" guards consult the same rule, so the
+  handover and the guards cannot disagree;
+- `/portal` is NOT redirected (registration must work with no session): it gets the
+  design system's centred card from 640px up, and stays the phone portal below that.
+  Its form controls keep their inline styling - the portal is still the one surface
+  outside the token system, as the README's gaps record.
+
+**Verified.** The wide matrix after the fix: 0 violations of 24 entries (`/` now
+lands on the desktop sign-in; `/portal` renders the desktop card; an explicit
+`/mobile` still stays phone). The narrow check: / stays the phone client at 390px and
+the portal has no card below its breakpoint. Three of the six guards' `/onboarding`
+string was replaced mechanically; the first attempt put the new import above
+`"use client"` and Next refused to compile - fixed by placing it below, and ct29 now
+asserts the directive stays first.
+
+`ct29` freezes all of it (21 assertions, driving the pure rule at every width, URL
+and remembered choice, then asserting the wiring), and ct20's "the hop is client-side"
+assertion was re-pointed at the full navigation it is now, with the invariant it was
+protecting kept (the per-tab session survives).
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

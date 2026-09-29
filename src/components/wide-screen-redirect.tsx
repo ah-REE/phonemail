@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
-import { MOBILE_MODE_KEY, decideMobileEntry, readMobileModeChoice } from "@/lib/entry";
+import { MOBILE_MODE_KEY, readMobileModeChoice, wideEntryTarget } from "@/lib/entry";
 
 /**
  * DESKTOP BY DEFAULT ON A WIDE SCREEN - FOR EVERYONE, INCLUDING A VISITOR WHO IS
@@ -41,8 +40,6 @@ import { MOBILE_MODE_KEY, decideMobileEntry, readMobileModeChoice } from "@/lib/
 export { DESKTOP_FROM_PX, MOBILE_MODE_KEY, decideMobileEntry, readMobileModeChoice } from "@/lib/entry";
 
 export function WideScreenRedirect() {
-  const router = useRouter();
-
   useEffect(() => {
     const pathname = window.location.pathname;
 
@@ -62,13 +59,13 @@ export function WideScreenRedirect() {
       }
     }
 
-    const decision = decideMobileEntry({
+    const target = wideEntryTarget({
       pathname,
       width: window.innerWidth,
       choseMobile: readMobileModeChoice(storage),
     });
 
-    if (decision === "desktop") {
+    if (target) {
       // ROUND 17: the handover lands on the desktop client's INBOX, not on its
       // front door. The front door is the sign-in card (correctly so - a signed-out
       // visitor must meet the login and nothing else), which meant a reader who was
@@ -78,11 +75,16 @@ export function WideScreenRedirect() {
       // own guard sends the visitor to the login card. One destination, both cases
       // correct, and the rail is simply there when it should be.
       //
-      // A client-side replace, not a full page load: the tab's session - which lives
-      // in sessionStorage - survives the hop.
-      router.replace("/desktop/inbox");
+      // ROUND 25: A FULL NAVIGATION, deliberately. A client-side replace issued from
+      // this effect can fire before the router has hydrated, and then it is dropped
+      // without a trace - measured, at `/`, as the reason a wide signed-out visitor
+      // ended on the phone's onboarding. A document load cannot be dropped and cannot
+      // be overridden by the auth guard that fires one commit later. sessionStorage
+      // survives a same-origin navigation, so the tab's session and its phone-layout
+      // choice both survive this hop.
+      window.location.replace(target);
     }
-  }, [router]);
+  }, []);
 
   return null;
 }

@@ -43,6 +43,51 @@ export function decideMobileEntry({ pathname, width, choseMobile }: MobileEntryV
   return width >= DESKTOP_FROM_PX ? "desktop" : "stay";
 }
 
+/**
+ * WHERE A WIDE ENTRY GOES, or null to stay - the ONE rule every surface consults.
+ *
+ * Round 25 added this so the handover and the phone screens' auth guards cannot
+ * disagree: both call it, both get the same answer, and there is no second opinion
+ * about who a wide viewport belongs to.
+ */
+export function wideEntryTarget({ pathname, width, choseMobile }: MobileEntryView): string | null {
+  return decideMobileEntry({ pathname, width, choseMobile }) === "desktop" ? DESKTOP_ENTRY_PATH : null;
+}
+
+/** Where a wide entry lands: the desktop client's inbox (see wide-screen-redirect). */
+export const DESKTOP_ENTRY_PATH = "/desktop/inbox";
+
+/**
+ * The same decision, read synchronously from the browser. Returns null on the
+ * server, in a narrow viewport, on an explicit /mobile, and in a tab that chose the
+ * phone layout - so a caller can treat null as "carry on where you are".
+ */
+export function handoverTargetInThisTab(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  let storage: Storage | null = null;
+  try {
+    storage = window.sessionStorage;
+  } catch {
+    storage = null;
+  }
+  return wideEntryTarget({
+    pathname: window.location.pathname,
+    width: window.innerWidth,
+    choseMobile: readMobileModeChoice(storage),
+  });
+}
+
+/**
+ * THE PHONE SCREENS' SHARED GUARD. A screen that would send a signed-out reader to
+ * /onboarding calls this instead: a wide viewport is handed to the desktop client,
+ * everything else goes to onboarding as before.
+ */
+export function guardRedirect(router: { replace: (href: string) => void }): void {
+  router.replace(handoverTargetInThisTab() ?? "/onboarding");
+}
+
 /** Reads this tab's remembered choice, treating an unreadable store as "no". */
 export function readMobileModeChoice(storage: { getItem(key: string): string | null } | null | undefined): boolean {
   try {

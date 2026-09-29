@@ -1,5 +1,7 @@
 "use client";
 
+import { guardRedirect } from "@/lib/entry";
+
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -162,7 +164,7 @@ function ComposeForm() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/onboarding");
+      guardRedirect(router);
     }
   }, [status, router]);
 

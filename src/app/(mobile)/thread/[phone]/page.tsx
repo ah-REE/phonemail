@@ -1,5 +1,7 @@
 "use client";
 
+import { guardRedirect } from "@/lib/entry";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -115,7 +117,7 @@ export default function ThreadPage() {
       try {
         const response = await authorizedFetch(`/api/conversations/${phone}`);
         if (response.status === 401) {
-          router.replace("/onboarding");
+          guardRedirect(router);
           return;
         }
         if (!response.ok) {
@@ -164,7 +166,7 @@ export default function ThreadPage() {
   // Never redirect while the phase is unknown — see the refresh-race fix.
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/onboarding");
+      guardRedirect(router);
     }
   }, [status, router]);
 

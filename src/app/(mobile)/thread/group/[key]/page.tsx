@@ -1,5 +1,7 @@
 "use client";
 
+import { guardRedirect } from "@/lib/entry";
+
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -163,7 +165,7 @@ export default function GroupThreadPage() {
           `/api/conversations/thread/${encodeURIComponent(threadKey)}`,
         );
         if (response.status === 401) {
-          router.replace("/onboarding");
+          guardRedirect(router);
           return;
         }
         const body = (await response.json().catch(() => null)) as GroupThreadBody | null;
@@ -205,7 +207,7 @@ export default function GroupThreadPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/onboarding");
+      guardRedirect(router);
     }
   }, [status, router]);
 
