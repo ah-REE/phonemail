@@ -85,6 +85,27 @@ function readSession(): Session {
   }
 }
 
+/**
+ * ROUND 26: the same-tab broadcast. sessionStorage's own `storage` event fires
+ * only in OTHER tabs, so a tab that signs in (or out) must tell its OWN components
+ * itself - otherwise every useAuth() instance mounted before the change keeps its
+ * stale phase for the life of the tab, which is how the desktop rail went missing
+ * after a sign-in until a reload.
+ */
+const AUTH_CHANGED_EVENT = "phonemail:auth-changed";
+
+function announceAuthChange() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+  } catch {
+    // A browser that refuses events simply keeps the old behaviour: correct after
+    // the next mount, as before.
+  }
+}
+
 function clearSession() {
   if (typeof window === "undefined") {
     return;
@@ -92,6 +113,9 @@ function clearSession() {
   window.sessionStorage.removeItem(PIN_UNLOCKED_STORAGE_KEY);
   window.sessionStorage.removeItem(TOKEN_KEY);
   window.sessionStorage.removeItem(USER_KEY);
+  // ROUND 26: a session that ENDS must reach every instance too - a 401 in one
+  // screen used to leave every other mounted component believing it was signed in.
+  announceAuthChange();
 }
 
 export function useAuth(): AuthState {
@@ -105,6 +129,19 @@ export function useAuth(): AuthState {
     // Re-read after mount in case another instance wrote while we rendered.
     setSession(readSession());
     setHydrated(true);
+  }, []);
+
+  // ROUND 26: and re-read whenever ANOTHER instance in this tab changes the
+  // session - the sign-in page announcing a token, a 401 clearing it. Without this,
+  // a component mounted before the change (the desktop shell is the one that was
+  // reported) never learns about it.
+  useEffect(() => {
+    const refresh = () => {
+      setSession(readSession());
+      setHydrated(true);
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, refresh);
   }, []);
 
   const status: AuthStatus = !hydrated
@@ -121,6 +158,9 @@ export function useAuth(): AuthState {
     window.sessionStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setSession({ token: nextToken, user: nextUser });
     setHydrated(true);
+    // ROUND 26: every OTHER instance in this tab must see it too - the shell, the
+    // gate, the screens already mounted. This is the line that was missing.
+    announceAuthChange();
   }, []);
 
   const signOut = useCallback(() => {

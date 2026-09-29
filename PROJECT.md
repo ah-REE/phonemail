@@ -3463,6 +3463,42 @@ and remembered choice, then asserting the wiring), and ct20's "the hop is client
 assertion was re-pointed at the full navigation it is now, with the invariant it was
 protecting kept (the per-tab session survives).
 
+### Round 26 - the rail that needed a reload (the round-23b report, finally)
+
+**The report, with two screenshots:** sign in on the desktop client and the left rail is
+missing; it appears only after a manual reload. Round 23b's fix had been verified only in
+the state where a session ALREADY exists before the page loads - seeded into a fresh tab -
+so it never ran the flow the report actually describes.
+
+**Reproduced through the real UI this time.** Driving the browser to do what a reader
+does - open /desktop signed out, type the number, press Send code, enter the six digits -
+gave exactly the reported sequence:
+
+    signed out at /desktop   rail absent   (correct)
+    after the code           rail ABSENT   <- the bug, inbox rendering beside no rail
+    after a reload           rail present
+
+**Cause.** `signIn()` set state on the LOGIN PAGE's own `useAuth()` instance and wrote
+sessionStorage. The desktop LAYOUT does not remount on a client-side navigation, so
+`DesktopShell`'s instance - mounted at page load while still signed out - never re-read
+storage and kept "unauthenticated" for the life of the tab. The inbox page mounted fresh,
+read the new token and rendered the mail; the shell believed there was no session and
+rendered no chrome. A reload re-mounts the shell, which is why it "only appears after a
+refresh". (Round 23b removed the rail's own gate to make the shell the single decision -
+correct in itself, but it did not make the decision HEAR about a sign-in.)
+
+**Fix: a same-tab broadcast.** sessionStorage's own `storage` event fires only in OTHER
+tabs, so `signIn()` and `clearSession()` now dispatch `phonemail:auth-changed` and every
+`useAuth()` instance listens and re-reads. That covers both directions: a sign-in reaches
+the shell, the gate and every mounted screen, and a session that ENDS (a 401 in one
+screen) no longer leaves the rest believing the opposite.
+
+**Verified, same probe, same engine:** the rail is PRESENT immediately after the code, and
+still present after a reload; signed-out /desktop still renders no rail (round 13's rule
+intact). `ct28` grew five assertions (37 now) for the broadcast, including one that
+checks the event constant is a real name - which matters because the tooling's masking had
+turned it into a literal "***" in the file, working but meaningless; that is repaired.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
