@@ -3742,6 +3742,15 @@ ct33 grew to 62 with a group-only drive (fixture, trash it, the button must appe
 emptying works) and a source pin that the condition counts both lists. Full
 regression: 1144 assertions across 37 suites, 0 red.
 
+**Follow-up 5 (the owner: the phone's Empty trash design and placement were bad):**
+the phone button used to float right-aligned on its own padded row, styled like the
+per-message pills - it read as a stray component. It is now a full-width list-header
+action row: flush with the message rows under the AppBar, a trash glyph, the
+destructive ink, a 48px tap target and a press tint. ct33 (67) pins the treatment
+and drives the phone: fixture to trash, the full-width row measured (width, colour,
+glyph), one tap empties, the empty state shows. Full regression: 1149 assertions
+across 37 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

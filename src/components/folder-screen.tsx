@@ -136,14 +136,39 @@ export function FolderScreen({
         </div>
       )}
 
-      {/* ROUND 29 follow-up 4 (the owner's request): the trash screen carries
-          its own Empty trash - one POST, per-viewer removal, reload. */}
+      {/* ROUND 29 follow-up 4 (the owner's request): the trash screen carries its
+          own Empty trash - one POST, per-viewer removal, reload.
+
+          ROUND 29 follow-up 5 (the owner: the phone button's design and placement
+          were bad): it used to float right-aligned on its own padded row, styled
+          like the per-message pills, so it read as a stray. It is now a full-width
+          list-header action: flush with the rows, a trash glyph, the destructive
+          ink and a 48px tap target - chrome, not a component. */}
       {folder === "trash" && messages.length > 0 && (
-        <div className="flex justify-end px-4 pt-3">
-          <button type="button" className="btn-quiet" onClick={() => void emptyTrash()}>
-            Empty trash
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => void emptyTrash()}
+          className="flex min-h-tap w-full shrink-0 items-center gap-3 border-b border-wa-line bg-surface px-4 py-3 text-left text-base font-semibold text-wa-alert transition-colors duration-fast active:bg-danger-soft"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="shrink-0"
+          >
+            <path d="M4 6.5h16" />
+            <path d="M9.5 6.5V5A1.5 1.5 0 0 1 11 3.5h2A1.5 1.5 0 0 1 14.5 5v1.5" />
+            <path d="M6.5 6.5 7.4 18.8A2 2 0 0 0 9.4 20.7h5.2a2 2 0 0 0 2-1.9L17.5 6.5" />
+            <path d="M10.2 10.5v5.8M13.8 10.5v5.8" />
+          </svg>
+          Empty trash
+        </button>
       )}
 
       <ul className="flex-1 overflow-y-auto">
