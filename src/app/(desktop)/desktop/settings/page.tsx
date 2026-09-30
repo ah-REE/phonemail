@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -24,8 +25,8 @@ import { useAuth } from "@/lib/useAuth";
  * delivery path reads (see lib/notify.ts), so it is a switch again.
  *
  * Rows, top to bottom: profile (name), aliases (add and remove), language,
- * SMS on new mail, font size, signed-in devices (with per-device logout), and
- * account deletion behind a one-time code.
+ * SMS on new mail, font size, signed-in devices (a row into its own page, round
+ * 29 follow-up 3), and account deletion behind a one-time code.
  */
 
 interface Alias {
@@ -34,13 +35,6 @@ interface Alias {
   address: string;
 }
 
-interface Device {
-  id: string;
-  device: string;
-  current: boolean;
-  createdAt: string;
-  lastActive: string;
-}
 
 function phoneOf(address: string): string {
   return address.replace(/@.*$/, "");
@@ -66,9 +60,6 @@ export default function DesktopSettingsPage() {
 
   const [fontSize, setFontSize] = useState<FontSizeId>("normal");
 
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [devicesNotice, setDevicesNotice] = useState<string | null>(null);
-  const [devicesBusy, setDevicesBusy] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteOtp, setDeleteOtp] = useState("");
@@ -77,10 +68,9 @@ export default function DesktopSettingsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [me, aliasList, sessionList] = await Promise.all([
+      const [me, aliasList] = await Promise.all([
         authorizedFetch("/api/me"),
         authorizedFetch("/api/aliases"),
-        authorizedFetch("/api/sessions"),
       ]);
       if (me.ok) {
         const body = (await me.json()) as {
@@ -94,10 +84,7 @@ export default function DesktopSettingsPage() {
         const body = (await aliasList.json()) as { aliases?: Alias[] };
         setAliases(body.aliases ?? []);
       }
-      if (sessionList.ok) {
-        const body = (await sessionList.json()) as { sessions?: Device[] };
-        setDevices(body.sessions ?? []);
-      }
+
     } catch {
       // Each row reports its own failure; a dead read must not blank the screen.
     }
@@ -216,23 +203,6 @@ export default function DesktopSettingsPage() {
     }
   }
 
-  async function logOutDevice(id: string) {
-    setDevicesBusy(true);
-    setDevicesNotice(null);
-    try {
-      const response = await authorizedFetch(`/api/sessions/${id}`, { method: "DELETE" });
-      if (!response.ok) {
-        setDevicesNotice("Could not sign that device out.");
-        return;
-      }
-      setDevicesNotice("That device has been signed out.");
-      await load();
-    } catch {
-      setDevicesNotice("Network error. Please try again.");
-    } finally {
-      setDevicesBusy(false);
-    }
-  }
 
   /** Step one of deleting: the server texts a one-time code to this number. */
   async function beginDelete() {
@@ -439,39 +409,20 @@ export default function DesktopSettingsPage() {
           </select>
         </section>
 
-        {/* Devices */}
+        {/* Devices - the list moved to its own page (round 29 follow-up 3); this
+            row is the way in. */}
         <section className="surface mt-4 p-5">
-          <p className="font-semibold text-on-surface">Signed-in devices</p>
-          <p className="mt-0.5 text-sm text-on-surface-variant">
-            Every sign-in is a device. Logging one out ends only that device&apos;s token.
-          </p>
-          <ul className="mt-3 flex flex-col gap-2">
-            {devices.length === 0 && <li className="text-sm text-on-surface-variant">No devices listed.</li>}
-            {devices.map((device) => (
-              <li key={device.id} className="flex items-center justify-between gap-3 border-b border-outline-variant pb-2">
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-on-surface">{device.device}</span>
-                  <span className="block text-xs text-on-surface-variant">
-                    Signed in {new Date(device.createdAt).toLocaleDateString()} - {device.lastActive}
-                  </span>
-                </span>
-                {device.current ? (
-                  <span className="shrink-0 text-xs font-semibold text-accent">This device</span>
-                ) : (
-                  <button
-                    type="button"
-                    className="min-h-0 shrink-0 text-sm font-semibold text-wa-alert disabled:opacity-50"
-                    onClick={() => void logOutDevice(device.id)}
-                    disabled={devicesBusy}
-                    aria-label={`Log out ${device.device}`}
-                  >
-                    Log out
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          {devicesNotice && <p className="mt-2 text-sm text-accent">{devicesNotice}</p>}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-on-surface">Signed-in devices</p>
+              <p className="mt-0.5 text-sm text-on-surface-variant">
+                Every sign-in is a device. See them, and sign them out, on their own page.
+              </p>
+            </div>
+            <Link href="/desktop/devices" className="btn-quiet min-h-0 shrink-0 px-4 py-2 text-sm">
+              Manage devices
+            </Link>
+          </div>
         </section>
 
         {/* Delete account */}

@@ -3693,6 +3693,23 @@ now runs under the override's env (verified: the gate login present and devHint
 gone), and the restore order is fixed for good - move the override back FIRST,
 then recreate.
 
+**Follow-up 3 (the owner's request - signed-in devices on their own page):** the
+device list left Settings/Profile and lives on `/desktop/devices` and
+`/mobile/devices`, linked from the rows it left behind. Interactive device icons:
+each session is drawn as a tile (desktop) or an icon-led row (phone) whose glyph
+comes from a new pure `describeDeviceKind` in lib/device - phone, tablet or
+desktop - and the API carries the `kind` per session. On the desktop a click
+selects a tile (aria-pressed) and opens the detail strip, where a device is signed
+out (the current device explains itself instead - ending the session you are
+reading from is the login door's job, not a stray click); on the phone the rows
+keep their existing one-tap logout, now lead with the glyph, and the current
+device still signs out to the door. `ct34` (9 assertions) covers the pages, the
+kind mapping's awkward strings, the API field and the tile interaction in a real
+engine; ct21's settings-endpoints pin was re-pointed to the two pages it now
+spans, and its notification-throttle probe now arms the window deterministically
+instead of reading suite-order luck (one mid-run flake, diagnosed, made
+impossible). Full regression: 1124 assertions across 37 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

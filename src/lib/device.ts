@@ -33,6 +33,29 @@ const PLATFORMS: [RegExp, string][] = [
   [/Linux/i, "Linux"],
 ];
 
+/** The three shapes a device row can draw: phone, tablet, desktop. */
+export type DeviceKind = "phone" | "tablet" | "desktop";
+
+/**
+ * The device's SHAPE, for the icon beside the label (round 29 follow-up 3: the
+ * devices page draws one glyph per session). Deliberately coarse - an iPad is a
+ * tablet, an Android without "Mobile" in its UA is a tablet, everything else
+ * pointing at a real desk is a desktop. Pure, so the awkward strings are testable.
+ */
+export function describeDeviceKind(userAgent: string | null | undefined): DeviceKind {
+  const ua = (userAgent ?? "").trim();
+  if (ua.length === 0) {
+    return "desktop";
+  }
+  if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) {
+    return "tablet";
+  }
+  if (/iPhone|iPod|Mobile|Android/i.test(ua)) {
+    return "phone";
+  }
+  return "desktop";
+}
+
 export function describeUserAgent(userAgent: string | null | undefined): string {
   const ua = (userAgent ?? "").trim();
   if (ua.length === 0) {

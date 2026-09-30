@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
-import { describeRecency, describeUserAgent } from "@/lib/device";
+import { describeDeviceKind, describeRecency, describeUserAgent } from "@/lib/device";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -36,6 +36,8 @@ export async function GET(request: Request) {
       sessions: sessions.map((session) => ({
         id: session.id,
         device: describeUserAgent(session.userAgent),
+        // ROUND 29 follow-up 3: the shape the devices page's tile draws.
+        kind: describeDeviceKind(session.userAgent),
         current: session.id === user.sid,
         createdAt: session.createdAt,
         lastActiveAt: session.lastActiveAt,
