@@ -3858,6 +3858,44 @@ JS guards, pinned in source.)
 
 Full regression: 1286 assertions across 39 suites, 0 red.
 
+**Round 32 - the pre-submission bugs: three fixes, verified (the owner's brief).**
+(1) SENT MAIL COLOR ON DESKTOP: the reading pane's cards gave sent mail no
+distinction; mine now wears the outgoing token (`bg-chat-out` - the phone's own
+bubble colour, adapted to the card; received mail unchanged). Asserted by class
+on a sent vs received card AND by computed background in a driven browser. The
+mobile client is untouched. (2) LOG OUT DEVICES ON DESKTOP: the settings row and
+the page existed, but the page deliberately omitted logging out the CURRENT
+device - the owner's phone lets you do it, so the desktop now matches: every
+tile carries label + sign-in date + last-active + the This-device mark, the
+strip signs out ANY device via the same `DELETE /api/sessions/:id`, and logging
+out this device clears the client session and returns to the door. Driven: a
+second session was minted (fixed dev OTP; UA-stamped), logged out FROM THE
+DESKTOP UI, its token 401ed on the next request; the current session logged out
+too and the browser landed back on /desktop with storage cleared. (3) NO
+IMPLEMENTATION-DETAIL NOTIFICATIONS: the tree-wide scan found five spots - the
+desktop composer's notice ("Handed to the mail service for X." -> "Sent to
+X."), the tick's tooltip ("Sent - the mail service accepted this message" ->
+"Sent"), the API's send-failure error ("Could not hand the message to the mail
+service..." -> "Could not send..."), the API's 202 message field ("Message
+submitted to the mail service." -> "Message accepted.") and the comments in
+mobile compose / drafts / desktop compose that named the machinery (cleaned;
+comments are not user-facing, but a tree-wide scan should not need exemptions).
+ct37 (new, 22 assertions) is the gate: the tint classes + computed colours, the
+device logout chain (UI click -> row gone -> API -> 401 -> current session
+alive), the current-device logout (storage cleared, /desktop door), and the
+scan - zero forbidden phrases in every `src/**/*.tsx`, with the API's
+user-facing strings pinned outcomes-only. One documented suite re-point:
+chat_ref's tick pin follows the tooltip's new wording; ct31's notice capture
+follows "Sent to ...". Two fixture hardenings the owner's live click forced
+(and both are the better fixtures for it): ct21 pins the mobile account's
+registeredVia - a re-registration through the desktop door flips that gate
+INPUT, and gate-regression.mjs set exactly this precedent - and the names
+suite stashes and restores any contact the owner saved for its counterpart,
+because contact precedence is product behavior and owner data is never
+destroyed by a suite (the stashed contact was re-created after a run that
+predated the hardening). Full regression: 1308 assertions across 40 suites,
+0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

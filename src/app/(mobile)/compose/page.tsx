@@ -31,9 +31,9 @@ import { useAuth } from "@/lib/useAuth";
  *  - opened from a thread as a reply (?to=…&replyTo=…), the To field is LOCKED
  *    to the counterpart and the subject is prefilled, because reply-once is
  *    enforced server-side against that message
- *  - a 202 means the mail service accepted it; the row appears when the SMTP
- *    round trip completes, so we navigate back to the thread rather than
- *    pretending the message already exists
+ *  - a 202 means the send was accepted; the row appears when delivery writes
+ *    it, so we navigate back to the thread rather than pretending the message
+ *    already exists
  */
 
 /**
@@ -518,13 +518,13 @@ function ComposeForm() {
         return;
       }
 
-      // The message reached the mail service, so the draft has done its job.
+      // The message was accepted, so the draft has done its job.
       void clearDraftEverywhere(authorizedFetch);
       setUploadPhase("idle");
       const addresses = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
       // Sending is silent on purpose: the message simply appears in the thread
-      // once the SMTP round trip has written the row. Saying "handed to the mail
-      // service" narrates an implementation detail the sender does not need.
+      // once delivery has written the row. Narrating the machinery - queues,
+      // submissions, relays - is an implementation detail the sender never needs.
       void addresses;
       // Back to the thread so the new message appears when delivery completes.
       // A group send opens the derived group thread - the server hands us the key.

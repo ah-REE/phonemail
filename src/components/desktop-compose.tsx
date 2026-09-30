@@ -347,10 +347,11 @@ export function DesktopCompose({
         return;
       }
 
-      // The draft has done its job the moment the mail service takes the message.
+      // The draft has done its job the moment the send is accepted.
       void clearDraftEverywhere(authorizedFetch);
       const sentTo = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to ?? recipients.join(", ");
-      onSent?.(`Handed to the mail service for ${sentTo}.`);
+      // ROUND 32: outcomes only - the sender is never told about the machinery.
+      onSent?.(`Sent to ${sentTo}.`);
       beginClose();
     } catch {
       setError("Network error. Please try again.");

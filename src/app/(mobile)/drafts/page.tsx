@@ -12,8 +12,8 @@ import { useAuth } from "@/lib/useAuth";
  *
  * An unsent compose has no recipient yet, and an Email row needs both users, so
  * a draft cannot be a row: it is kept in this browser's local storage instead.
- * The compose screen saves it as you type and clears it when the message is
- * actually handed to the mail service. See lib/folders.ts for the reasoning.
+ * The compose screen saves it as you type and clears it when the send is
+ * actually accepted. See lib/folders.ts for the reasoning.
  */
 
 export default function DraftsPage() {

@@ -203,7 +203,7 @@ export function MessageCard({
             {tick ? (
               <span
                 className="text-msg-accent"
-                title="Sent - the mail service accepted this message"
+                title="Sent"
                 aria-label="Sent"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

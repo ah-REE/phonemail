@@ -14,11 +14,11 @@ import { useAuth } from "@/lib/useAuth";
  * The list used to sit inside Settings; the owner asked for it on a page of its
  * own, drawn with interactive device icons. Each session is a TILE: a glyph for
  * the device's shape (phone, tablet, desktop - from lib/device's kind), the
- * readable label, when it was last active, and the "This device" mark where it
- * applies. Clicking a tile selects it and opens the detail strip below; the strip
- * is where a device is signed out. The current device is never signed out from
- * here - the strip says so instead, because ending the session you are reading
- * from is the login door's job, not a stray click on a tile's.
+ * readable label, when it signed in, when it was last active, and the "This
+ * device" mark where it applies. Clicking a tile selects it and opens the detail
+ * strip below; the strip is where a device is signed out - EVERY device,
+ * including this one (round 32: parity with the phone, whose rows log out the
+ * current device by ending the client session and returning to the door).
  *
  * Same endpoints as every client (`/api/sessions`, `DELETE /api/sessions/:id`);
  * only the chrome differs.
@@ -35,7 +35,7 @@ interface Device {
 
 export default function DesktopDevicesPage() {
   const router = useRouter();
-  const { status, authorizedFetch } = useAuth();
+  const { status, authorizedFetch, signOut } = useAuth();
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,6 +78,14 @@ export default function DesktopDevicesPage() {
     setError(null);
     try {
       const response = await authorizedFetch(`/api/sessions/${device.id}`, { method: "DELETE" });
+      // ROUND 32: parity with the phone - THIS device can be signed out from the
+      // list too. Its row just died with the session, so the client clears its own
+      // session and returns to the desktop door (the phone's own semantics).
+      if (device.current || response.status === 401) {
+        signOut();
+        router.replace("/desktop");
+        return;
+      }
       if (!response.ok) {
         setError("Could not sign that device out.");
         return;
@@ -139,7 +147,9 @@ export default function DesktopDevicesPage() {
             >
               <DeviceGlyph kind={device.kind} />
               <span className="w-full truncate text-sm font-semibold text-on-surface">{device.device}</span>
-              <span className="text-xs text-neutral-muted">{device.lastActive}</span>
+              <span className="text-xs text-neutral-muted">
+                Signed in {new Date(device.createdAt).toLocaleDateString()} - {device.lastActive}
+              </span>
               {device.current && (
                 <span className="rounded-full border border-neutral-hair bg-paper px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
                   This device
@@ -162,23 +172,22 @@ export default function DesktopDevicesPage() {
                   Signed in {new Date(selected.createdAt).toLocaleString()} - {selected.lastActive}
                 </p>
               </div>
-              {selected.current ? (
+              {selected.current && (
                 <span className="shrink-0 text-xs font-semibold text-accent">This device</span>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-quiet min-h-0 shrink-0 px-4 py-2 text-sm"
-                  onClick={() => void logOutDevice(selected)}
-                  disabled={busy}
-                >
-                  {busy ? <Spinner label="Signing out" /> : "Log out this device"}
-                </button>
               )}
+              <button
+                type="button"
+                className="btn-quiet min-h-0 shrink-0 px-4 py-2 text-sm"
+                onClick={() => void logOutDevice(selected)}
+                disabled={busy}
+              >
+                {busy ? <Spinner label="Signing out" /> : "Log out this device"}
+              </button>
             </div>
             {selected.current && (
               <p className="mt-3 text-xs text-neutral-muted">
-                The device you are using right now - this page is being read from it. Signing it out is the
-                login door&apos;s job, not a tile&apos;s.
+                The device you are using right now. Logging it out ends this session and returns you to the
+                sign-in door - the same thing the phone does.
               </p>
             )}
           </div>

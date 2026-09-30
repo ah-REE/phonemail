@@ -911,7 +911,10 @@ function InboxInner() {
                       onDone={onCollapseDone}
                     >
                     <article
-                      className="mb-4 rounded-lg border border-neutral-hair bg-surface"
+                      /* ROUND 32 (the owner): my own mail is visually MINE on the
+                         desktop too - the same outgoing token the phone's bubble
+                         wears, adapted to the card. Received mail is unchanged. */
+                      className={`mb-4 rounded-lg border border-neutral-hair ${message.mine ? "bg-chat-out" : "bg-surface"}`}
                     >
                       {/* ROUND 28.5: the design's two-row card header - the name with its role chip, then the address this mail arrived through and the time. */}
                       <div className="border-b border-neutral-hair px-6 pb-4 pt-5">

@@ -434,7 +434,7 @@ export async function POST(request: Request) {
         .catch(() => undefined);
     }
     return NextResponse.json(
-      { error: "Could not hand the message to the mail service. Please try again." },
+      { error: "Could not send the message. Please try again." },
       { status: 502 },
     );
   }
@@ -461,7 +461,7 @@ export async function POST(request: Request) {
       subject,
       replyToId: claimedReplyTo,
       attachments: attachmentPayload.length,
-      message: "Message submitted to the mail service.",
+      message: "Message accepted.",
     },
     { status: 202 },
   );
