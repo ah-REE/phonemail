@@ -6,7 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AttachmentCards } from "@/components/attachments";
-import { Avatar } from "@/components/avatar";
+
 import { DesktopCompose, type DesktopComposeRequest } from "@/components/desktop-compose";
 import { DesktopUserDetail, type DesktopUserDetailSubject } from "@/components/desktop-user-detail";
 import { GroupInfo } from "@/components/group-info";
@@ -106,13 +106,13 @@ function phoneOf(address: string): string {
 function EmptyState({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant">
+      <span className="flex h-16 w-16 items-center justify-center rounded-full border border-neutral-hair bg-surface text-accent">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M3 7.5l9 6 9-6" />
           <path d="M4.5 5.5h15A1.5 1.5 0 0 1 21 7v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17V7a1.5 1.5 0 0 1 1.5-1.5z" />
         </svg>
       </span>
-      <p className="font-headline text-base font-bold text-on-surface">{title}</p>
+      <p className="font-headline text-lg font-bold text-on-surface">{title}</p>
       <p className="max-w-sm text-sm text-on-surface-variant">{hint}</p>
     </div>
   );
@@ -445,7 +445,7 @@ function InboxInner() {
       {/* THE LIST: ~380px, one 1px divider, rows at the system's own height. */}
       {/* ROUND 14: the reference measures the list at ~360px, and shows NO rule under
           its header - the header is separated by the rows' own dividers instead. */}
-      <section className="flex w-[360px] shrink-0 flex-col overflow-hidden border-r border-outline-variant">
+      <section className="flex w-[360px] shrink-0 flex-col overflow-hidden border-r border-neutral-hair">
         <div className="flex items-center gap-3 px-5 py-4">
           <h1 className="font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
             {FOLDER_TITLES[folder]}
@@ -465,7 +465,14 @@ function InboxInner() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <button type="button" className="btn-brand min-h-0 px-4 py-2 text-sm" onClick={openNewCompose}>
+          <button
+            type="button"
+            className="inline-flex min-h-0 items-center gap-1.5 rounded-pill bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors duration-ui hover:brightness-105"
+            onClick={openNewCompose}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Compose
           </button>
         </div>
@@ -526,18 +533,18 @@ function InboxInner() {
                     type="button"
                     onClick={() => void openGroup(group.threadKey)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b border-outline-variant px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
-                      active ? "bg-accent-soft" : ""
+                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                      active ? "border-l-4 border-accent bg-accent-tint pl-4" : "border-neutral-hair"
                     }`}
                   >
                     <span className="flex items-baseline gap-2">
                       <span className={`truncate text-[15px] ${group.unread > 0 ? "font-bold" : "font-semibold"} text-on-surface`}>
                         Group - {names}
                       </span>
-                      <span className="ml-auto shrink-0 text-xs text-on-surface-variant">{formatWhen(group.lastAt)}</span>
+                      <span className={`ml-auto shrink-0 text-xs ${active ? "text-accent" : "text-neutral-muted"}`}>{formatWhen(group.lastAt)}</span>
                     </span>
                     <span className="truncate text-sm font-medium text-on-surface">{group.subject}</span>
-                    <span className="truncate text-sm text-on-surface-variant">
+                    <span className="truncate text-sm text-neutral-muted">
                       {group.members.length} members - {group.preview}
                     </span>
                   </button>
@@ -552,18 +559,18 @@ function InboxInner() {
                     type="button"
                     onClick={() => void openThread(thread.counterpart)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b border-outline-variant px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
-                      active ? "bg-accent-soft" : ""
+                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                      active ? "border-l-4 border-accent bg-accent-tint pl-4" : "border-neutral-hair"
                     }`}
                   >
                     <span className="flex items-baseline gap-2">
                       <span className={`truncate text-[15px] ${thread.unread > 0 ? "font-bold" : "font-semibold"} text-on-surface`}>
                         {thread.counterpartName?.trim() || thread.counterpart}
                       </span>
-                      <span className="ml-auto shrink-0 text-xs text-on-surface-variant">{formatWhen(thread.lastAt)}</span>
+                      <span className={`ml-auto shrink-0 text-xs ${active ? "text-accent" : "text-neutral-muted"}`}>{formatWhen(thread.lastAt)}</span>
                     </span>
                     <span className="truncate text-sm font-medium text-on-surface">{thread.subject}</span>
-                    <span className="truncate text-sm text-on-surface-variant">{thread.preview}</span>
+                    <span className="truncate text-sm text-neutral-muted">{thread.preview}</span>
                   </button>
                 </li>
               );
@@ -575,7 +582,7 @@ function InboxInner() {
 
       {/* THE READING PANE: flexible, with the content capped at a readable width.
           Its default is the empty state - never a form. */}
-      <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-container-low">
+      <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-paper">
         {notice && (
           <p className="border-b border-outline-variant bg-surface-container-lowest px-6 py-2 text-sm text-accent" role="status">
             {notice}
@@ -600,7 +607,7 @@ function InboxInner() {
 
         {selected && (
           <>
-            <header className="border-b border-outline-variant bg-surface-container-lowest px-8 py-4">
+            <header className="border-b border-neutral-hair bg-surface px-8 py-4">
               <div className="mx-auto max-w-[720px]">
                 <h2 className="font-headline text-xl font-bold tracking-[-0.01em] text-on-surface">
                   {selectedGroup ? (
@@ -640,43 +647,34 @@ function InboxInner() {
                   messages.map((message) => (
                     <article
                       key={message.submissionId ?? message.id}
-                      className="mb-4 rounded-card border border-outline-variant bg-surface-container-lowest shadow-card"
+                      className="mb-4 rounded-lg border border-neutral-hair bg-surface"
                     >
-                      {/* The reference's header line: a small avatar, the sender's name in
-                          bold, their address in grey beside it, and the date on the right -
-                          with no "From:"/"To:" labels and NO repeated subject, because the
-                          pane's own header already names the conversation. The member role
-                          chip rides with the name, as it does on the phone. */}
-                      <div className="flex items-center gap-3 border-b border-outline-variant px-5 py-3">
-                        <span className="shrink-0">
-                          <Avatar size={36} />
-                        </span>
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate text-sm font-bold text-on-surface">
+                      {/* ROUND 28.5: the design's two-row card header - the name with its role chip, then the address this mail arrived through and the time. */}
+                      <div className="border-b border-neutral-hair px-6 pb-4 pt-5">
+                        <div className="flex items-center gap-3">
+                          <span className="truncate text-[15px] font-bold text-on-surface">
                             {message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
                           </span>
-                          {message.fromTag ? <MemberTagChip tag={message.fromTag} /> : null}
-                          <span className="min-w-0 truncate text-sm text-outline">&lt;{message.from}&gt;</span>
-                        </span>
-                        <span className="ml-auto shrink-0 text-xs text-outline" title={formatFull(message.createdAt)}>
-                          {formatFull(message.createdAt)}
-                        </span>
+                          {message.fromTag ? <MemberTagChip tag={message.fromTag} tone="frame" /> : null}
+                        </div>
+                        <div className="mt-1 flex items-baseline gap-3">
+                          <span className="min-w-0 truncate text-xs text-neutral-body">via {message.from}</span>
+                          <span className="ml-auto shrink-0 text-xs text-neutral-muted" title={formatFull(message.createdAt)}>
+                            {formatFull(message.createdAt)}
+                          </span>
+                        </div>
                       </div>
-
-                      <p className="px-5 pt-3 text-xs text-on-surface-variant">
-                        to {message.to} ▾ · from {message.from}
-                      </p>
 
                       {/* BUG 1 FIX: the subject belongs to the MAIL, not only to the
                           conversation header. Every card names what it is about, so a
                           stacked thread can be read card by card without referring back
                           to the top of the pane. */}
-                      <h3 className="px-5 pt-2 font-headline text-[17px] font-bold leading-snug text-on-surface">
+                      <h3 className="px-6 pt-4 font-headline text-[18px] font-bold leading-snug text-on-surface">
                         {message.subject}
                       </h3>
 
-                      <div className="px-5 pb-4 pt-1">
-                        <p className="whitespace-pre-wrap text-[15px] leading-7 text-on-surface">
+                      <div className="px-6 pb-6 pt-1">
+                        <p className="whitespace-pre-wrap text-[15px] leading-7 text-on-surface-variant">
                           {message.body}
                         </p>
 
@@ -685,7 +683,7 @@ function InboxInner() {
                         <div className="mt-4 flex items-center gap-3">
                           <button
                             type="button"
-                            className="inline-flex min-h-0 items-center gap-2 rounded-full border border-outline-variant bg-surface px-4 py-2 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-surface-container-low"
+                            className="inline-flex min-h-0 items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:bg-accent-tint"
                             onClick={() => openReplyTo(message)}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

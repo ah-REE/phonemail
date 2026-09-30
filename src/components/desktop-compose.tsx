@@ -32,6 +32,13 @@ import { useAuth } from "@/lib/useAuth";
  * Only the PRESENTATION is desktop, which is the whole point: what differs between
  * the two clients should be the chrome, never the behaviour.
  *
+ * ROUND 28.5 (the Figma pass): the card wears the design's chrome - the dark
+ * header band with its circled cancel, the labelled attachment controls, the
+ * flat accent Send - and the To/Cc fields are CHIP fields: each finished
+ * address is a chip with its remove control, the trailing text stays in the
+ * input, and the send-time validation is unchanged (the same one shared rule,
+ * the same message).
+ *
  * Reply mode: the To and Cc fields are locked (the conversation decided them), the
  * original subject and the quoted opening are carried in, and the header says
  * "Reply" rather than "New message".
@@ -66,8 +73,12 @@ export function DesktopCompose({
 }) {
   const { authorizedFetch, authorizedUpload } = useAuth();
 
-  const [toDraft, setToDraft] = useState(request.to.join(", "));
-  const [ccDraft, setCcDraft] = useState((request.cc ?? []).join(", "));
+  // ROUND 28.5: the design's chip fields - committed addresses and the input's
+  // trailing text are kept apart, and the pair IS the field's value.
+  const [toChips, setToChips] = useState<string[]>(() => parseRecipients(request.to.join(", ")));
+  const [toDraft, setToDraft] = useState("");
+  const [ccChips, setCcChips] = useState<string[]>(() => parseRecipients((request.cc ?? []).join(", ")));
+  const [ccDraft, setCcDraft] = useState("");
   const [subjectDraft, setSubjectDraft] = useState(request.subject ?? "");
   const [bodyDraft, setBodyDraft] = useState(request.body ?? "");
 
@@ -103,10 +114,10 @@ export function DesktopCompose({
         return;
       }
       if (found.draft.to) {
-        setToDraft(found.draft.to);
+        setToChips(parseRecipients(found.draft.to));
       }
       if (found.draft.cc) {
-        setCcDraft(found.draft.cc);
+        setCcChips(parseRecipients(found.draft.cc));
       }
       if (found.draft.subject) {
         setSubjectDraft(found.draft.subject);
@@ -121,6 +132,11 @@ export function DesktopCompose({
     };
   }, [locked, draftRestored, authorizedFetch]);
 
+  // What the draft saves and what the send reads: the chips plus whatever the
+  // input still holds. One shape, so a half-typed address is never lost.
+  const toDraftValue = [...toChips, ...parseRecipients(toDraft)].join(", ");
+  const ccDraftValue = [...ccChips, ...parseRecipients(ccDraft)].join(", ");
+
   const saveDraftSoon = useMemo(
     () => debounce((payload: { to: string; cc: string; subject: string; body: string }) => {
       void saveDraftEverywhere(authorizedFetch, payload);
@@ -132,10 +148,10 @@ export function DesktopCompose({
     if (locked || !draftRestored) {
       return;
     }
-    saveDraftSoon({ to: toDraft, cc: ccDraft, subject: subjectDraft, body: bodyDraft });
-  }, [toDraft, ccDraft, subjectDraft, bodyDraft, locked, draftRestored, saveDraftSoon]);
-  const recipients = parseRecipients(toDraft);
-  const cc = parseRecipients(ccDraft);
+    saveDraftSoon({ to: toDraftValue, cc: ccDraftValue, subject: subjectDraft, body: bodyDraft });
+  }, [toDraftValue, ccDraftValue, subjectDraft, bodyDraft, locked, draftRestored, saveDraftSoon]);
+  const recipients = [...new Set([...toChips, ...parseRecipients(toDraft)])];
+  const cc = [...new Set([...ccChips, ...parseRecipients(ccDraft)])];
 
   // Escape closes, the way every overlay in this app does.
   useEffect(() => {
@@ -161,6 +177,50 @@ export function DesktopCompose({
     }
     setFiles(next);
     setPhase("idle");
+  }
+
+  /**
+   * ROUND 28.5: a delimiter - comma or space - turns the finished fragments in
+   * the input into chips; the trailing fragment stays in the input. The chip set
+   * and the input text are the ONE value: send reads both, the draft saves both.
+   */
+  function commitRecipients(value: string, which: "to" | "cc") {
+    const ends = /[,\s]$/.test(value);
+    const parts = value.split(/[,\s]+/);
+    const tail = ends ? "" : (parts.pop() ?? "");
+    const incoming = parts.map((part) => part.trim()).filter((part) => part.length > 0);
+    if (which === "to") {
+      if (incoming.length > 0) {
+        setToChips((current) => [...new Set([...current, ...incoming])]);
+      }
+      setToDraft(tail);
+    } else {
+      if (incoming.length > 0) {
+        setCcChips((current) => [...new Set([...current, ...incoming])]);
+      }
+      setCcDraft(tail);
+    }
+  }
+
+  /** Commit everything held in the input (Enter, or a send). */
+  function commitAll(which: "to" | "cc") {
+    commitRecipients((which === "to" ? toDraft : ccDraft) + " ", which);
+  }
+
+  /** Enter commits the entry (it must not submit the form mid-address);
+      Backspace on an empty input takes the last chip back. */
+  function onChipsKeyDown(event: React.KeyboardEvent<HTMLInputElement>, which: "to" | "cc") {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitAll(which);
+      return;
+    }
+    if (event.key === "Backspace" && which === "to" && toDraft === "" && toChips.length > 0) {
+      setToChips((current) => current.slice(0, -1));
+    }
+    if (event.key === "Backspace" && which === "cc" && ccDraft === "" && ccChips.length > 0) {
+      setCcChips((current) => current.slice(0, -1));
+    }
   }
 
   function validate(): boolean {
@@ -271,22 +331,26 @@ export function DesktopCompose({
       aria-label={locked ? "Reply" : "New message"}
     >
       <form
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-card border border-outline-variant bg-surface shadow-overlay"
+        className="flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-neutral-hair bg-surface shadow-overlay"
         onSubmit={send}
       >
-        {/* Header: the title and the Cancel action, the way the phone composer's
-            app bar carries them. */}
-        <div className="flex items-center gap-3 border-b border-outline-variant px-5 py-3">
-          <h2 className="font-headline text-base font-bold text-on-surface">
+        {/* ROUND 28.5: the design's dark header band - the title in white and the
+            circled cancel, on the same ink the rail wears. */}
+        <div className="flex items-center gap-3 bg-on-surface px-5 py-3 text-white">
+          <h2 className="font-headline text-base font-bold">
             {locked ? "Reply" : "New message"}
           </h2>
           <button
             type="button"
-            className="btn-quiet ml-auto min-h-0 px-4 py-1.5 text-sm"
+            className="ml-auto inline-flex min-h-0 items-center gap-1.5 text-sm font-medium text-rail-muted transition-colors duration-ui hover:text-white disabled:opacity-50"
             onClick={onClose}
             disabled={busy}
           >
             Cancel
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M9 9l6 6M15 9l-6 6" />
+            </svg>
           </button>
         </div>
 
@@ -294,15 +358,35 @@ export function DesktopCompose({
           <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-to">
             To
           </label>
-          <input
-            id="compose-to"
-            className="field mt-1"
-            placeholder="Number or alias - separate with commas"
-            value={toDraft}
-            onChange={(event) => setToDraft(event.target.value)}
-            readOnly={locked}
-            aria-readonly={locked}
-          />
+          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 transition-colors duration-ui focus-within:border-accent ${locked ? "bg-paper" : ""}`}>
+            {toChips.map((chip) => (
+              <span key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-hair bg-paper px-2.5 py-1 text-xs font-medium text-on-surface">
+                <span className="max-w-[220px] truncate">{chip}</span>
+                {!locked && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${chip} from To`}
+                    className="text-neutral-muted transition-colors duration-ui hover:text-on-surface"
+                    onClick={() => setToChips((current) => current.filter((entry) => entry !== chip))}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                )}
+              </span>
+            ))}
+            <input
+              id="compose-to"
+              className="min-w-[140px] flex-1 border-none bg-transparent text-base text-on-surface outline-none placeholder:text-outline"
+              placeholder={toChips.length === 0 ? "Number or alias - separate with commas" : ""}
+              value={toDraft}
+              onChange={(event) => commitRecipients(event.target.value, "to")}
+              onKeyDown={(event) => onChipsKeyDown(event, "to")}
+              readOnly={locked}
+              aria-readonly={locked}
+            />
+          </div>
           {locked && (
             <p className="mt-1 text-xs text-on-surface-variant">
               Recipients are locked for this conversation - To and Cc both.
@@ -312,31 +396,42 @@ export function DesktopCompose({
           <label className="mt-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-cc">
             Cc
           </label>
-          <input
-            id="compose-cc"
-            className="field mt-1"
-            placeholder="Optional - separate with commas"
-            value={ccDraft}
-            onChange={(event) => setCcDraft(event.target.value)}
-            readOnly={locked}
-            aria-readonly={locked}
-          />
-
-          {/* ROUND 28: the phone composer's own line - the moment more than one
-              recipient is present, the message says so, so multi-entry is never
-              invisible. Not in reply mode: there the set is the conversation's. */}
-          {!locked && recipients.length + cc.length > 1 && (
-            <p className="mt-2 text-xs text-on-surface-variant" role="status">
-              Group: {recipients.length + cc.length} recipients
-            </p>
-          )}
+          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 transition-colors duration-ui focus-within:border-accent ${locked ? "bg-paper" : ""}`}>
+            {ccChips.map((chip) => (
+              <span key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-hair bg-paper px-2.5 py-1 text-xs font-medium text-on-surface">
+                <span className="max-w-[220px] truncate">{chip}</span>
+                {!locked && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${chip} from Cc`}
+                    className="text-neutral-muted transition-colors duration-ui hover:text-on-surface"
+                    onClick={() => setCcChips((current) => current.filter((entry) => entry !== chip))}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                )}
+              </span>
+            ))}
+            <input
+              id="compose-cc"
+              className="min-w-[140px] flex-1 border-none bg-transparent text-base text-on-surface outline-none placeholder:text-outline"
+              placeholder={ccChips.length === 0 ? "Optional - separate with commas" : ""}
+              value={ccDraft}
+              onChange={(event) => commitRecipients(event.target.value, "cc")}
+              onKeyDown={(event) => onChipsKeyDown(event, "cc")}
+              readOnly={locked}
+              aria-readonly={locked}
+            />
+          </div>
 
           <label className="mt-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-subject">
             Subject
           </label>
           <input
             id="compose-subject"
-            className="field mt-1"
+            className="mt-1 w-full rounded-md border border-neutral-hair bg-surface px-3 py-2.5 text-base text-on-surface outline-none transition-colors duration-ui placeholder:text-outline focus:border-accent"
             placeholder="Subject"
             value={subjectDraft}
             onChange={(event) => setSubjectDraft(event.target.value)}
@@ -347,8 +442,8 @@ export function DesktopCompose({
           </label>
           <textarea
             id="compose-body"
-            className="field mt-1 min-h-40 py-3"
-            placeholder="Write your message"
+            className="mt-1 min-h-40 w-full rounded-md border border-neutral-hair bg-surface px-3 py-3 text-base text-on-surface outline-none transition-colors duration-ui placeholder:text-outline focus:border-accent"
+            placeholder="Type your message details here. Use the attachment controls below to add assets."
             value={bodyDraft}
             onChange={(event) => setBodyDraft(event.target.value)}
           />
@@ -382,8 +477,8 @@ export function DesktopCompose({
         </div>
 
         {/* Footer: the three affordances and Send - the phone's three intentions,
-            drawn for a mouse. */}
-        <div className="flex items-center gap-2 border-t border-outline-variant px-5 py-3">
+            drawn for a mouse, in the design's labelled outline style. */}
+        <div className="flex items-center gap-2 border-t border-neutral-hair px-5 py-3">
           <input
             ref={documentInputRef}
             type="file"
@@ -421,30 +516,40 @@ export function DesktopCompose({
             }}
           />
           {[
-            { ref: documentInputRef, label: "Attach documents", title: "Attach documents", path: "M8 3h5l5 5v13H6V3h2z" },
-            { ref: imageInputRef, label: "Attach images", title: "Attach images", path: "M4 5h16v14H4zM4 15l5-4 4 3 3-3 4 4" },
-            { ref: cameraInputRef, label: "Take a photo", title: "Take a photo", path: "M4 7h3l2-2h6l2 2h3v12H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" },
+            { ref: documentInputRef, text: "Document", label: "Attach documents", title: "Attach documents", path: "M8 3h5l5 5v13H6V3h2z" },
+            { ref: imageInputRef, text: "Image", label: "Attach images", title: "Attach images", path: "M4 5h16v14H4zM4 15l5-4 4 3 3-3 4 4" },
+            { ref: cameraInputRef, text: "Camera", label: "Take a photo", title: "Take a photo", path: "M4 7h3l2-2h6l2 2h3v12H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" },
           ].map((affordance) => (
             <button
               key={affordance.label}
               type="button"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low disabled:opacity-50"
+              className="inline-flex min-h-0 shrink-0 items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 text-[13px] font-medium text-neutral-body transition-colors duration-ui hover:bg-paper disabled:opacity-50"
               onClick={() => affordance.ref.current?.click()}
               disabled={busy || files.length >= 3}
               aria-label={affordance.label}
               title={affordance.title}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d={affordance.path} />
               </svg>
+              {affordance.text}
             </button>
           ))}
 
-          <span className="ml-auto text-xs text-on-surface-variant">
+          <span className="ml-auto text-xs text-neutral-muted">
             {files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"}` : "No files"}
           </span>
-          <button type="submit" className="btn-brand min-h-0 px-6 py-2" disabled={busy}>
+          <button
+            type="submit"
+            className="inline-flex min-h-0 items-center gap-2 rounded-pill bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-all duration-fast ease-out-quint hover:brightness-105 active:scale-[0.985] disabled:opacity-60"
+            disabled={busy}
+          >
             {busy ? (phase === "uploading" ? `Sending ${progress}%` : "Sending...") : "Send"}
+            {!busy && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 12l16-7-6 16-2.2-6.6L4 12z" />
+              </svg>
+            )}
           </button>
         </div>
       </form>

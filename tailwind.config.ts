@@ -33,7 +33,7 @@ const config: Config = {
         /* ---------- the system, out of the logo ---------- */
         paper: { DEFAULT: "#f8fafc", sunken: "#eef2f7" },
         navy: { DEFAULT: "#1e3a8a", deep: "#16296b", soft: "#3358c0" },
-        accent: { DEFAULT: "#256cf3", soft: "#dbeafe", ink: "#ffffff" },
+        accent: { DEFAULT: "#256cf3", soft: "#dbeafe", tint: "#eff6ff", ink: "#ffffff" },
         brand: { DEFAULT: "#3b82f6", violet: "#7c3aed", cyan: "#bde3ff", sky: "#60a5fa" },
         /* One of the illustration's own colours, and kept for that reason - but
            nothing in the interface uses it: the owner asked for no green in the
@@ -106,6 +106,11 @@ const config: Config = {
           haze3: "#7ba5f0",
         },
         success: { DEFAULT: "#22c55e", soft: "#dcfce7" },
+        /* ROUND 28.5 (the Figma pass): the frames' own chrome. `rail` is the
+           dark navigation the three frames draw; `neutral` is its text scale
+           and hairline, used by the list rows and the message cards. */
+        rail: { DEFAULT: "#0f172a", ink: "#ffffff", muted: "#94a3b8" },
+        neutral: { body: "#475569", muted: "#94a3b8", hair: "#e2e8f0" },
         warning: { DEFAULT: "#f79009", soft: "#fdeed7" },
         danger: { DEFAULT: "#e5484d", soft: "#ffe6e6" },
 

@@ -3572,6 +3572,40 @@ it - a fresh-clone evaluator simulation from ORIGIN after the final push - are
 likewise pending. Full regression at the stop point: 1070 assertions across 35
 suites, 0 red (three new suites this round: ct30, ct31, ct32).
 
+Round 28.5 - the Figma pass (three desktop frames)
+
+The owner supplied a Figma file (three 1440x1024 desktop frames - empty state,
+thread selected, compose modal) and asked for the designs to be applied. Landed in
+the app's own token system, chrome for chrome: the rail wears the frames' dark
+navigation (a new `rail` token group - #0f172a with the slate muted step;
+rounded-lg 40px rows; the frames' profile row - avatar, name, address - in place of
+the old "Profile" label; the name is the display name from /api/me, the number is
+the fallback), the Compose action becomes the frames' flat accent pill with its
+plus, the list rows take the frames' selected treatment (accent tint + a 4px left
+accent bar inside the row + the time in accent; the meta line in the new `neutral`
+muted step), the reading pane gets the frames' hairline chrome (white cards with no
+avatar: the name row carries the role chip in the new "frame" tone - solid navy for
+the sender, paper for receiver/cc - and the row below carries "via <address>" and
+the time; a white hairline empty-state badge with the accent envelope), and the
+composer takes the frames' shape: the dark header band with its circled cancel,
+CHIP fields for To and Cc (a delimiter commits the finished fragment, the trailing
+text stays in the input, Backspace on empty takes the last chip back, Enter commits
+instead of submitting, and the chips + input are ONE value so send and the draft
+both read it), the labelled Document/Image/Camera outline controls, the flat accent
+Send, and the frames' placeholder. Behaviour is unchanged - same endpoints, same
+shared per-address validation, same reply locking.
+
+Where the mockup and the system disagreed, the system won and it is recorded here:
+the frames' smaller type steps were NOT adopted (the elder-friendly floor stands),
+the reading-pane header stays (it hosts the round-28 user-detail / group-info
+affordances and the conversation's subject), and the list's search box stays (a
+feature the frames do not model). Suites: ct20/ct21/ct22 re-pointed to the frames'
+truth (chrome tokens, the card header, the Compose action, the dividers, the
+selected rows), ct28's rail invariant re-pointed from "no useAuth import" to "no
+render decision" (the rail reads the session for its profile row only), ct31
+re-pointed from text fields to the chips; a fresh full regression after the
+re-points: 1070 assertions across 35 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
