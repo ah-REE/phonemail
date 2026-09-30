@@ -552,7 +552,11 @@ function InboxInner() {
                 aria-label={`Connection: ${realtimeStatus}`}
               />
             )}
-            {folder === "trash" && !loadingList && threads.length > 0 && (
+            {/* ROUND 29 follow-up 4b (the owner's report): a trash holding only
+                a GROUP thread must still offer Empty trash - the first cut counted
+                pairwise threads only, so exactly that case hid the button. The
+                empty state below always counted both; this now matches it. */}
+            {folder === "trash" && !loadingList && threads.length + groups.length > 0 && (
               <button
                 type="button"
                 className="ml-auto inline-flex min-h-0 shrink-0 items-center whitespace-nowrap rounded-lg border border-neutral-hair bg-surface px-4 py-2 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper"

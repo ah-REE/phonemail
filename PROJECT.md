@@ -3730,6 +3730,18 @@ Spam 403 / sender Trash removal, the empty-trash API incl. anonymous 401, and a 
 Empty-trash click on the desktop trash screen); ct34 grew to 11. Full regression:
 1128 assertions across 37 suites, 0 red.
 
+**Follow-up 4b (the owner's report: "there is no option" on the Trash screen):** a
+trash holding ONLY a group thread offered no Empty trash button. The button's
+visibility condition counted pairwise threads (`threads.length > 0`) while the empty
+state beside it always counted both lists; the owner's trash was group-only, so the
+button hid exactly when it was needed. Reproduced on a fresh client against the
+deployed build (trash listed the group row, button absent; the conversations API for
+that folder returned threads: 0, groupThreads: 1), fixed to count both, and verified
+by the counterfactual: the same fresh client with the same data now shows the button.
+ct33 grew to 62 with a group-only drive (fixture, trash it, the button must appear,
+emptying works) and a source pin that the condition counts both lists. Full
+regression: 1144 assertions across 37 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
