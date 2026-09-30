@@ -196,6 +196,7 @@ a documented deviation, or cut with a reason.
 | Group replies are visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | **Done** — the creator broadcasts; every other member replies from a mail, the reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
 | Forward an email to new recipients (round 29, the new verb) | `POST /api/emails` `forwardOfId`, both composers | **Done** - forwarding re-sends an existing mail to NEW recipients: To and Cc are FREE (the opposite lock from reply), the subject derives `Fwd: <original>` (unless edited), and the body opens with a forwarded header block over the original content. The caller must be a party to the source (403 otherwise); the server COPIES the source row's attachment bytes into every new fan-out row - a large file moves without a byte through the client - and the composer's remove list (`forwardOmitAttachmentIds`) drops individual files from the copy. `ct33` freezes the sha256-identical copy, the 403, the omit list and the group rules |
 | The message action row on the desktop (round 29) | the desktop cards' chevron reveal | **Done** - the phone's chevron row, drawn for the desktop: Move to Spam, Move to Trash, Favorite and Forward (Reply stays the card's own button), 56px targets, the phone's exact `PATCH /api/emails/[id]` endpoints, on received mail as the phone also scopes it |
+| Sender credibility + spam reports (round 30, the new safety surface) | `SpamReport` model, `/api/users/[phone]/credibility`, `/api/users/[phone]/report`, both user-detail surfaces | **Done** - account age, the honest send:receive pair and the DISTINCT-reporter count render in every user sheet on both clients ("Member since Sep 2026 · less than a month", "Sent N · Received M", and "Reported by N users" only when N > 0). REPORT SPAM runs a three-state flow (idle, a confirm that says what a report is, then "Reported ✓") and files a SIGNAL that blocks and deletes nothing - the delivery gate is a separate consumer. One report per reporter per account (a UNIQUE pair; a repeat is a no-op), at most 10 distinct reports per reporter per hour (Redis counter, refused with `retryAfterSeconds`), self-reports refused with a 400. `ct35` drives all of it live |
 | Summary: automatic phone & OTP detection (password if OTP is unavailable) | see the two rows above | **Partial, platform-limited**, as above |
 | Summary: emails organised as chats | — | **Done** |
 | Summary: manage alias IDs in settings | `/profile`, `/api/aliases` | **Done** — an account holds one alias, and it must mix letters and digits, so an alias cannot be a second phone number and cannot be all digits |
@@ -210,6 +211,38 @@ a documented deviation, or cut with a reason.
 **The two deviations that were closed**, for the record: the **Language** row and
 the **Folders** rows were both restored to Settings (they had briefly been
 removed), so the mapping no longer carries a deviation for either.
+
+### Sender credibility: what the numbers mean, and what a report is (round 30)
+
+Every user-detail surface - the phone's sheet and the desktop's detail modal - shows a
+TRUST block for the account it describes:
+
+- **Member since <Mon YYYY> · <age>** - the account's own `createdAt`, read as months
+  ("Mar 2026 · 8 months"; anything under a month reads "less than a month").
+- **Sent N · Received M** - live row counts of what the account has sent and received;
+  both are shown, so the ratio is an honest pair rather than a mystery number. (A
+  group message counts once per fan-out row, exactly like the delivery itself.)
+- **Reported by N users** - shown ONLY when at least one report exists, never as
+  "Reported by 0". N counts DISTINCT reporters: one person reporting twice moves it
+  once.
+
+**What a report IS.** REPORT SPAM (three states: idle, a confirm, then "Reported ✓")
+files a signal. It blocks nothing and deletes nothing by itself - it is the sensor;
+what consumes it is a separate delivery gate. One report per reporter per account is
+a UNIQUE index, so a repeat is a no-op; a reporter may file at most 10 distinct
+reports per hour (Redis counter; a refusal carries `retryAfterSeconds`); a self-report
+is refused and the action is hidden on your own sheet. There is no un-report endpoint
+yet - reports persist.
+
+**The privacy stance, stated.** The signals are readable by EVERY signed-in user -
+any authenticated caller can read any account's credibility - because their whole
+purpose is to help a stranger judge a first message; a signal only its recipient
+could see would be useless. What is never visible is WHO reported: the count is an
+aggregate of distinct reporters, and the single per-viewer bit is `viewerReported`,
+the caller's own report state (which is what lets a reopened sheet settle on
+"Reported ✓"). The credibility read is uncached and its latency is measured by
+`ct35` on every run (single-digit-to-low-teens milliseconds on the loaded dev
+database).
 
 ### Remaining gaps, each with its recommendation
 

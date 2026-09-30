@@ -77,6 +77,12 @@ model User {
   /// The owner's address book. Names here OVERRIDE a raw number in the list and
   /// the thread headers, which is why the name lives on this row and not on User.
   contacts       Contact[]
+
+  /// ROUND 30 (sender credibility): what this account has reported, and what
+  /// has been reported against it. Removed explicitly in FK order by
+  /// /api/me/delete, like every other relation of this table.
+  spamReportsFiled   SpamReport[] @relation("SpamReportsFiled")
+  spamReportsAgainst SpamReport[] @relation("SpamReportsAgainst")
 }
 
 model Contact {
@@ -272,4 +278,28 @@ model Draft {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// ROUND 30 (sender credibility): one row per report - "this reporter says
+/// this account sends spam". The UNIQUE pair IS the idempotency rule: a
+/// second attempt is a no-op, never a double count, so an account's
+/// report count is DISTINCT reporters by construction. A report is a
+/// SIGNAL: it blocks nothing and deletes nothing by itself, and no reader
+/// ever sees who filed one.
+model SpamReport {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  createdAt      DateTime @default(now())
+
+  /// No onDelete rules, matching Email's relations: /api/me/delete removes
+  /// the rows explicitly, in FK order, and reports the count - the schema
+  /// would rather refuse a stray delete than take rows silently with it.
+  reporter     User @relation("SpamReportsFiled", fields: [reporterId], references: [id])
+  reportedUser User @relation("SpamReportsAgainst", fields: [reportedUserId], references: [id])
+
+  /// One report per reporter per reported account.
+  @@unique([reporterId, reportedUserId])
+  /// Serves the reported account's count: WHERE reportedUserId = ?.
+  @@index([reportedUserId])
 }

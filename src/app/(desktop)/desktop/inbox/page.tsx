@@ -764,9 +764,26 @@ function InboxInner() {
                       {/* ROUND 28.5: the design's two-row card header - the name with its role chip, then the address this mail arrived through and the time. */}
                       <div className="border-b border-neutral-hair px-6 pb-4 pt-5">
                         <div className="flex items-center gap-3">
-                          <span className="truncate text-[15px] font-bold text-on-surface">
-                            {message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
-                          </span>
+                          {/* ROUND 30: the sender's name opens their detail modal -
+                              the desktop mail card's own "who is this?" door. */}
+                          {message.mine ? (
+                            <span className="truncate text-[15px] font-bold text-on-surface">You</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="truncate text-left text-[15px] font-bold text-on-surface transition-colors duration-ui hover:text-accent"
+                              onClick={() =>
+                                setDetailSubject({
+                                  phone: phoneOf(message.from),
+                                  name: message.fromName?.trim() || null,
+                                  accountName: null,
+                                  address: message.from,
+                                })
+                              }
+                            >
+                              {message.fromName?.trim() || phoneOf(message.from)}
+                            </button>
+                          )}
                           {message.fromTag ? <MemberTagChip tag={message.fromTag} tone="frame" /> : null}
                         </div>
                         <div className="mt-1 flex items-baseline gap-3">

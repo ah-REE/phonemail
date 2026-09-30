@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/avatar";
 import { Spinner } from "@/components/spinner";
+import { describeAccountAge } from "@/lib/credibility";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -41,6 +42,15 @@ interface SavedContact {
   displayName: string | null;
   accountName: string | null;
   accountPhone: string | null;
+}
+
+/** ROUND 30: /api/users/[phone]/credibility, as the sheet consumes it. */
+interface Credibility {
+  memberSince: string;
+  sentCount: number;
+  receivedCount: number;
+  reportCount: number;
+  viewerReported: boolean;
 }
 
 function phoneOf(address: string): string {
@@ -115,7 +125,7 @@ export function UserSheet({
    */
   onDeleteChat?: () => Promise<void> | void;
 }) {
-  const { authorizedFetch } = useAuth();
+  const { authorizedFetch, user } = useAuth();
 
   const [contacts, setContacts] = useState<SavedContact[] | null>(null);
   const [nameDraft, setNameDraft] = useState(subject.name?.trim() ?? "");
@@ -123,6 +133,9 @@ export function UserSheet({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /** ROUND 30: the trust signals + the report flow's phase. */
+  const [credibility, setCredibility] = useState<Credibility | null>(null);
+  const [reportPhase, setReportPhase] = useState<"idle" | "confirming" | "reported">("idle");
   /**
    * ROUND 9: the animated save confirmation. "saving" is the network phase,
    * "saved" is the morph on screen - the block becomes the green disc, holds,
@@ -180,6 +193,29 @@ export function UserSheet({
   useEffect(() => {
     void loadContacts();
   }, [loadContacts]);
+
+  const loadCredibility = useCallback(async () => {
+    try {
+      const response = await authorizedFetch(`/api/users/${subject.phone}/credibility`);
+      if (!response.ok) {
+        setCredibility(null);
+        return;
+      }
+      const body = (await response.json()) as Credibility;
+      setCredibility(body);
+      if (body.viewerReported) {
+        setReportPhase("reported");
+      }
+    } catch {
+      // A failed read hides the section; the report action still works and
+      // the server stays the source of truth.
+      setCredibility(null);
+    }
+  }, [authorizedFetch, subject.phone]);
+
+  useEffect(() => {
+    void loadCredibility();
+  }, [loadCredibility]);
 
   const saved = (contacts ?? []).find((contact) => phoneOf(contact.address) === subject.phone) ?? null;
 
@@ -244,6 +280,39 @@ export function UserSheet({
     }
   }
 
+  /**
+   * ROUND 30: file the report. A report is a signal - nothing is blocked or
+   * deleted - so the settled state simply says so. A repeat is a no-op server
+   * side (the pair is unique), which is why the phase is safe to re-enter.
+   */
+  async function submitReport() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await authorizedFetch(`/api/users/${subject.phone}/report`, { method: "POST" });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? "Could not send that report.");
+        return;
+      }
+      const body = (await response.json().catch(() => ({}))) as { duplicate?: boolean };
+      setReportPhase("reported");
+      setCredibility((current) =>
+        current
+          ? { ...current, viewerReported: true, reportCount: current.reportCount + (body.duplicate ? 0 : 1) }
+          : current,
+      );
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** ROUND 30: your own sheet shows the stats without the report action. */
+  const isSelf = Boolean(user && user.phoneNumber === subject.phone);
+  const accountAge = credibility ? describeAccountAge(credibility.memberSince) : null;
+
   const shownName = saved?.displayName?.trim() || subject.name?.trim() || subject.phone;
 
   return (
@@ -288,6 +357,25 @@ export function UserSheet({
             </div>
           )}
         </dl>
+
+        {/* ROUND 30: the trust signals - account age, the send:receive pair,
+            and (only when it exists) the report count. */}
+        {credibility && accountAge && (
+          <section className="mt-5 rounded-2xl border border-outline-variant bg-chat-field/60 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-chat-meta">Trust</p>
+            <p className="mt-2 text-sm text-on-surface">
+              Member since {accountAge.since} · {accountAge.ago}
+            </p>
+            <p className="mt-1 text-sm text-on-surface">
+              Sent {credibility.sentCount} · Received {credibility.receivedCount}
+            </p>
+            {credibility.reportCount > 0 && (
+              <p className="mt-1 text-sm font-semibold text-wa-alert">
+                Reported by {credibility.reportCount} {credibility.reportCount === 1 ? "user" : "users"}
+              </p>
+            )}
+          </section>
+        )}
 
         <div className="mt-6">
           {saved ? (
@@ -361,6 +449,53 @@ export function UserSheet({
             </p>
           )}
         </div>
+
+        {/* ROUND 30: REPORT SPAM - the same two-step shape as Delete chat, and
+            the settled state stays on screen. The confirm says what a report IS
+            (a flag, not a block). Hidden on your own sheet: one does not report
+            oneself, and the API refuses it anyway. */}
+        {!isSelf && (
+          <div className="mt-6">
+            {reportPhase === "reported" ? (
+              <div
+                className="flex min-h-0 h-12 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
+                role="status"
+              >
+                Reported ✓
+              </div>
+            ) : reportPhase === "confirming" ? (
+              <div className="flex flex-col gap-2 rounded-2xl border border-wa-alert/40 bg-wa-alert/[0.04] p-3">
+                <p className="text-sm text-on-surface">Report this sender? Their future messages may be flagged</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    disabled={busy}
+                    onClick={() => void submitReport()}
+                  >
+                    {busy ? <Spinner label="Reporting" /> : "Report"}
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+                    disabled={busy}
+                    onClick={() => setReportPhase("idle")}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
+                onClick={() => setReportPhase("confirming")}
+              >
+                Report spam
+              </button>
+            )}
+          </div>
+        )}
 
         {/* DELETE CHAT: two steps, because it is destructive and one tap is not a
             decision. The wording says exactly what happens - their copy is not touched

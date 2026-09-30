@@ -3769,6 +3769,31 @@ label, row buttons, Move to inbox, back in the conversation; plus the desktop Tr
 listing and the empty/restore edge cases). Full regression: 1177 assertions across 37
 suites, 0 red.
 
+**Round 30 (sender credibility, the owner's fresh-session brief): account age in
+months, the send:receive pair, and a DISTINCT-reporter count render in every
+user-detail surface on both clients, with a REPORT SPAM action whose three states
+(idle -> confirm -> "Reported ✓") file a signal that blocks nothing.** A new
+SpamReport table (migration 20260930160000) carries one report per reporter per
+reported account - the UNIQUE pair IS the idempotency rule, so a repeat is a no-op
+and the count is distinct reporters by construction. GET
+/api/users/[phone]/credibility returns { memberSince, sentCount, receivedCount,
+reportCount, viewerReported } live from indexed columns (measured ~10ms average on
+the loaded dev database, printed by ct35 every run - no cache needed); any
+signed-in caller may read it, by design, and the README states the stance. POST
+/api/users/[phone]/report files the signal: repeats are 200 no-ops, self-reports
+are 400, and the quota is 10 distinct reports per reporter per hour on the
+established Redis counter shape (lib/spam-reports; refusals carry
+retryAfterSeconds + reason; a repeat files nothing and is never refused). Both
+sheets gain the TRUST block and the report flow; your own sheet shows the stats
+without the action; a desktop mail card's sender name opens the detail modal; and
+while /api/me/delete was extended for the new rows, its removed-count labels were
+found shifted by the sessions slot since round 9 (all small numbers, only their
+types ever asserted) - they now line up, and reports joins them. ct35 (42
+assertions) drives everything live: the exact seeded deltas in both directions,
+idempotency, viewer state, the armed-then-cleared rate refusal with its
+counterfactual, both browser flows on real engines, and the latency printout.
+Full regression: 1219 assertions across 38 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

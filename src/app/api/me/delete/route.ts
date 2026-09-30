@@ -84,7 +84,11 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const [emails, aliases, contacts] = await prisma.$transaction([
+  // ROUND 30: the labels now line up positionally with the deletes they report -
+  // the sessions slot is SKIPPED rather than consumed by the first label (round
+  // 9's destructure had been reporting the session count as the email count), and
+  // reports joins the counts.
+  const [, emails, aliases, contacts, reports] = await prisma.$transaction([
     // Day 9: SESSIONS FIRST. Every device is logged out before the data cascade -
     // the schema would take them with the user row anyway, but deleting them first is
     // what makes "deleting the account ends every session" true as an ORDER rather
@@ -93,6 +97,8 @@ export async function DELETE(request: Request) {
     prisma.email.deleteMany({ where: { OR: [{ fromUserId: account.id }, { toUserId: account.id }] } }),
     prisma.alias.deleteMany({ where: { userId: account.id } }),
     prisma.contact.deleteMany({ where: { userId: account.id } }),
+    // ROUND 30: the account's reports, both directions - filed and received.
+    prisma.spamReport.deleteMany({ where: { OR: [{ reporterId: account.id }, { reportedUserId: account.id }] } }),
     prisma.user.delete({ where: { id: account.id } }),
   ]);
 
@@ -103,6 +109,7 @@ export async function DELETE(request: Request) {
         emails: emails.count,
         aliases: aliases.count,
         contacts: contacts.count,
+        reports: reports.count,
       },
     },
     { status: 200 },

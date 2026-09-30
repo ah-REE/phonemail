@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Spinner } from "@/components/spinner";
 import { SAVE_MORPH_HOLD_MS, SavedMorph } from "@/components/user-sheet";
+import { describeAccountAge } from "@/lib/credibility";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -46,6 +47,15 @@ interface SavedContact {
   accountPhone: string | null;
 }
 
+/** ROUND 30: /api/users/[phone]/credibility, as the modal consumes it. */
+interface Credibility {
+  memberSince: string;
+  sentCount: number;
+  receivedCount: number;
+  reportCount: number;
+  viewerReported: boolean;
+}
+
 function phoneOf(address: string): string {
   return address.replace(/@.*$/, "");
 }
@@ -64,13 +74,16 @@ export function DesktopUserDetail({
    */
   onSaved?: (name: string | null) => void;
 }) {
-  const { authorizedFetch } = useAuth();
+  const { authorizedFetch, user } = useAuth();
 
   const [contacts, setContacts] = useState<SavedContact[] | null>(null);
   const [nameDraft, setNameDraft] = useState(subject.name?.trim() ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** ROUND 30: the trust signals + the report flow's phase. */
+  const [credibility, setCredibility] = useState<Credibility | null>(null);
+  const [reportPhase, setReportPhase] = useState<"idle" | "confirming" | "reported">("idle");
   /**
    * The save confirmation, the sheet's way: "saving" is the network phase,
    * "saved" is the morph on screen - the block becomes the green disc, holds,
@@ -120,6 +133,29 @@ export function DesktopUserDetail({
   useEffect(() => {
     void loadContacts();
   }, [loadContacts]);
+
+  const loadCredibility = useCallback(async () => {
+    try {
+      const response = await authorizedFetch(`/api/users/${subject.phone}/credibility`);
+      if (!response.ok) {
+        setCredibility(null);
+        return;
+      }
+      const body = (await response.json()) as Credibility;
+      setCredibility(body);
+      if (body.viewerReported) {
+        setReportPhase("reported");
+      }
+    } catch {
+      // A failed read hides the section; the report action still works and
+      // the server stays the source of truth.
+      setCredibility(null);
+    }
+  }, [authorizedFetch, subject.phone]);
+
+  useEffect(() => {
+    void loadCredibility();
+  }, [loadCredibility]);
 
   const saved = (contacts ?? []).find((contact) => phoneOf(contact.address) === subject.phone) ?? null;
 
@@ -195,6 +231,38 @@ export function DesktopUserDetail({
     }
   }
 
+  /**
+   * ROUND 30: file the report - the sheet's contract exactly (signal only, the
+   * server keeps the pair unique), drawn for the desktop.
+   */
+  async function submitReport() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await authorizedFetch(`/api/users/${subject.phone}/report`, { method: "POST" });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? "Could not send that report.");
+        return;
+      }
+      const body = (await response.json().catch(() => ({}))) as { duplicate?: boolean };
+      setReportPhase("reported");
+      setCredibility((current) =>
+        current
+          ? { ...current, viewerReported: true, reportCount: current.reportCount + (body.duplicate ? 0 : 1) }
+          : current,
+      );
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** ROUND 30: your own sheet shows the stats without the report action. */
+  const isSelf = Boolean(user && user.phoneNumber === subject.phone);
+  const accountAge = credibility ? describeAccountAge(credibility.memberSince) : null;
+
   const shownName = saved?.displayName?.trim() || subject.name?.trim() || subject.phone;
 
   return (
@@ -242,6 +310,25 @@ export function DesktopUserDetail({
             </div>
           )}
         </dl>
+
+        {/* ROUND 30: the trust signals, the sheet's section drawn on the
+            desktop's card language. */}
+        {credibility && accountAge && (
+          <section className="mt-5 rounded-card border border-outline-variant bg-surface-container-low px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Trust</p>
+            <p className="mt-2 text-sm text-on-surface">
+              Member since {accountAge.since} · {accountAge.ago}
+            </p>
+            <p className="mt-1 text-sm text-on-surface">
+              Sent {credibility.sentCount} · Received {credibility.receivedCount}
+            </p>
+            {credibility.reportCount > 0 && (
+              <p className="mt-1 text-sm font-semibold text-wa-alert">
+                Reported by {credibility.reportCount} {credibility.reportCount === 1 ? "user" : "users"}
+              </p>
+            )}
+          </section>
+        )}
 
         <div className="mt-6">
           {saved ? (
@@ -315,6 +402,51 @@ export function DesktopUserDetail({
             </p>
           )}
         </div>
+
+        {/* ROUND 30: REPORT SPAM - two steps and a settled state, the sheet's
+            exact flow in the desktop's card language. Hidden on your own sheet. */}
+        {!isSelf && (
+          <div className="mt-4">
+            {reportPhase === "reported" ? (
+              <div
+                className="flex min-h-0 h-10 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
+                role="status"
+              >
+                Reported ✓
+              </div>
+            ) : reportPhase === "confirming" ? (
+              <div className="flex flex-col gap-2 rounded-card border border-wa-alert/40 bg-wa-alert/[0.04] p-3">
+                <p className="text-sm text-on-surface">Report this sender? Their future messages may be flagged</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-h-0 h-10 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    disabled={busy}
+                    onClick={() => void submitReport()}
+                  >
+                    {busy ? <Spinner label="Reporting" /> : "Report"}
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-0 h-10 flex-1 rounded-full bg-surface-container text-sm font-semibold text-on-surface"
+                    disabled={busy}
+                    onClick={() => setReportPhase("idle")}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="min-h-0 h-10 w-full rounded-full bg-surface-container-low text-sm font-semibold text-wa-alert hover:bg-surface-container"
+                onClick={() => setReportPhase("confirming")}
+              >
+                Report spam
+              </button>
+            )}
+          </div>
+        )}
 
         <button type="button" className="btn-quiet mt-6 min-h-0 w-full py-2.5 text-sm" onClick={onClose}>
           Close
