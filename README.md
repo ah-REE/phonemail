@@ -26,13 +26,16 @@ API.
 Exactly two commands:
 
 ```bash
-git clone <repo-url>
+git clone <repo-url> && cd phonemail
 docker compose up -d
 ```
 
-Then open <http://localhost:3000>.
+The very first boot BUILDS the images (several minutes); later boots take
+seconds. Wait until `docker compose ps` shows all four services healthy, then
+open <http://localhost:3000>.
 
-**On a laptop you land on the desktop client.** The root `/` hands a viewport of
+**A wide browser shows the desktop client's login; a narrow window - or `/mobile`
+- shows the phone client.** Concretely: the root `/` hands a viewport of
 768px or wider to `/desktop` once per tab; the phone layout answers `/mobile`
 explicitly, and choosing it keeps you there (the choice lives in the tab's
 sessionStorage, so the in-app links back to `/` do not bounce you out). On a narrow
@@ -67,6 +70,15 @@ two stacks at once, change the host side of that one line.
 **A fresh clone runs in dev-OTP mode out of the box.** The committed
 `docker-compose.yml` ships *placeholder* SMS credentials, and the app treats
 those as "not configured" on purpose:
+
+**Your first account, step by step.** No `.env`, no setup, no secrets:
+
+1. Open <http://localhost:3000>. A wide browser shows the desktop client's
+   login; a narrow window (or `/mobile`) shows the phone client.
+2. Enter **ANY 10-digit Indian number** and press Create account.
+3. The code screen tells you the code: it is always **123456**, and every send
+   response carries a **`devHint`** field saying so - with the committed
+   placeholders **no SMS is attempted**.
 
 - **The OTP request policy is tiered.** The first **two** requests for a number are
   immediate (the rapid pair - somebody who mistyped wants the code now), from the
@@ -139,7 +151,8 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
 9. **The chat's own grammar.** Consecutive messages from one sender group into a
    run; a calendar change draws a **date pill** ("Today", "Yesterday",
    "27 Sep"); a long mail collapses behind *Read full message*; the chevron under
-   a mail opens Move to Spam / Move to Trash / Favorite / Reply. Unread state is
+   a mail opens Move to Spam / Move to Trash / Favorite / Reply / Forward
+   (on your own mail: Move to Trash / Favorite / Forward). Unread state is
    the chat list's own badge - the cards carry no marker.
 10. **A file.** In the compose screen THREE affordances sit where the single
    paperclip used to be: a **document** icon (file picker filtered to documents), an
@@ -152,6 +165,9 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
    leaves them with a retry, and the message arrives with a download card inside its
    bubble in the same language. The home screen's **Attachments** chip filters to the
    conversations that carry one.
+11. **Search.** Home's search bar runs from three characters: hits in subject and
+   body come back as THREADS with a snippet and a match count, and a complete
+   number offers to start that chat.
 
 ## 5. Feature-to-spec mapping
 
@@ -341,7 +357,7 @@ service hands the MIME parts on, and the inbound webhook - still the only writer
 an `Email` row - stores the files with it. Downloads are JWT-gated and party-only:
 401 without a token, 403 for anyone but the message's sender and recipient.
 
-**Migrations are committed** (`prisma/migrations/`, 18 of them) and applied by the
+**Migrations are committed** (`prisma/migrations/`, 20 of them) and applied by the
 app container's entrypoint, so a fresh clone reaches a working schema with no
 manual step.
 
@@ -410,7 +426,7 @@ Written down rather than hidden:
 Every number below came from a run in this repository; nothing here rests on a
 claim made anywhere else.
 
-- **999 assertions across 32 suites, green on the loaded database**, in dev mode
+- **1308 assertions across 40 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional
@@ -462,6 +478,18 @@ claim made anywhere else.
   combinations, 0 findings) and so cannot run in a regression that must work with no
   browser.
 
+  And the rounds that followed, each with its own suite: **37** for the phase gate
+  (round 23), **25** for the front-door rule (round 25), **26 / 18 / 27** for the
+  desktop sheets, the multi-recipient composer and PIN sign-in (round 28), **106**
+  for the message actions (round 29: Forward's byte-identical copy, the per-viewer
+  sender trash, the group bubble's action tab), **11** for the devices page, **42**
+  for sender credibility (round 30: exact seeded deltas, idempotency, the armed
+  rate refusal, both sheets driven), **56** for the action motion pass (round 31:
+  the computed height collapses on both clients, both undo round-trips, the star
+  and its chip, both composers' exits, the report morph, delete chat's row
+  collapse) and **22** for the pre-submission fixes (round 32: the desktop sent
+  tint, the desktop device logout chain, the tree-wide outcomes-only scan).
+
   `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
   `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
   design, a copy rule and the shape of the markup, which live in the source and the
@@ -501,16 +529,16 @@ answer to "why did no text arrive?" is always in `docker compose logs smtp`.
 
 - **Fresh-clone evaluator simulations, repeatedly through the build** - most
   recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all FIFTEEN migrations applying on a clean volume (the
+  then `docker compose up -d`, all TWENTY migrations applying on a clean volume (the
   Session table included), all four services healthy, `/`, `/mobile`, `/desktop`,
   `/desktop/inbox`, `/desktop/settings`, `/compose` and `/favicon.ico` all answering
-  200, and **all twenty-three suites run against that clone**, with one documented skip
-  (a socket assertion that needs a socket client from `node_modules`, which a fresh
+  200, and the newest suites run against that clone with `COMPOSE_DIR=<clone>` -
+  most recently **ct36, ct35, ct33, ct34 and ct24, all green** - plus the round's
+  own surface checks. Earlier simulations ran larger suite sets (the full
+  twenty-three, then the twenty-seven of their day); the one documented skip is a
+  socket assertion that needs a socket client from `node_modules`, which a fresh
   clone only has inside its container - the same assertion runs and passes on the
-  loaded database). That includes the attachment suites, the reply-privacy invariant
-  suite, the IVR tree and the round-11 suite, so file sending, CC, delete chat, the
-  voice tree, the tiered OTP policy and per-device revocation all work on a clone as
-  well as here. The suites that inspect the database directly were run with
+  loaded database. The suites that inspect the database directly were run with
   `COMPOSE_DIR=<clone>` so they read the stack actually under test.
 - **The service-worker counterfactual.** The stale-shell fix is not asserted by
   reading code: the served `/sw.js` is fetched over HTTP, executed in a Node
@@ -617,7 +645,7 @@ src/app/portal/        registration-only web portal
 src/app/api/           every endpoint (auth, emails, conversations, aliases, contacts, mail/inbound, ivr, health)
 src/components/        shared UI (message card, app bar, back button, wordmark, user sheet, avatar)
 src/lib/               domain logic (alias, threadKey, timeline, folders, inbound, notify, otp, socket, phone)
-prisma/                schema + 13 committed migrations
+prisma/                schema + 20 committed migrations
 smtp/                  the self-hosted SMTP service and its README
 design/                the Stitch exports the visual language was built from
 docs/                  SPEC.md (the organiser's task), SECURITY.md and E2E-FUTURE.md
