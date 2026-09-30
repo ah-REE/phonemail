@@ -197,3 +197,98 @@
     transform: none;
   }
 }
+
+/* =====================================================================
+ * ROUND 31 - THE ACTION MOTION PASS (both clients).
+ *
+ * The rules, in one place:
+ *  - transform + opacity only; the ONE layout animation is .collapse-anim's
+ *    height (the card/bubble/row wrapper), used by <Collapsing>.
+ *  - every animation rides the two established easings (out-quint for arrivals,
+ *    soft-spring only for the star); nothing here exceeds ~300ms.
+ *  - prefers-reduced-motion is handled by the global rule above for everything
+ *    CSS-driven, and by lib/motion.ts's JS guard for flow timing (collapse
+ *    commits, sheet/compose exits, the list settle).
+ * ===================================================================== */
+
+@layer components {
+  /* The press language: 0.96 in 120ms, release eases back. Buttons, rows,
+     bubbles, cards, rail items - one class, one feel. */
+  .press {
+    @apply transition-transform duration-press ease-out-quint active:scale-[0.96];
+  }
+
+  /* The single permitted layout animation: the height collapse on the
+     card/bubble/row wrapper alone. <Collapsing> drives the inline height. */
+  .collapse-anim {
+    overflow: hidden;
+    transition:
+      height 240ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* THE STAR POP - the app's only bounce (soft-spring), 200ms. */
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.star-pop { animation: star-pop 200ms cubic-bezier(0.34, 1.24, 0.64, 1) both; }
+
+/* The favorite chip crossfade (in AND out), 180ms. */
+@keyframes chip-fade {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+.chip-enter { animation: chip-fade 180ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.chip-exit { animation: chip-fade 180ms cubic-bezier(0.22, 1, 0.36, 1) reverse both; }
+
+/* The report morph: the confirm settles into "Reported", 180ms. */
+@keyframes report-morph {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+.report-morph { animation: report-morph 180ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Compose entries and exits. Mobile: slide up + fade (380ms in, 220ms out).
+   Desktop: the card scales from 0.96 (220ms both ways). */
+@keyframes compose-enter {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+.compose-enter { animation: compose-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.compose-exit { animation: compose-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) reverse both; }
+
+@keyframes compose-card-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.compose-card-enter { animation: compose-card-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.compose-card-exit { animation: compose-card-in 220ms cubic-bezier(0.22, 1, 0.36, 1) reverse both; }
+
+/* Sheet exits: the phone's bottom sheet slides down + fades; the desktop
+   modal scales to 0.98 + fades; both 240ms/220ms on the arrival curve.
+   The backdrop fades with them. */
+@keyframes sheet-down {
+  to { opacity: 0; transform: translateY(100%); }
+}
+.sheet-exit { animation: sheet-down 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes overlay-fade {
+  to { opacity: 0; }
+}
+.overlay-exit { animation: overlay-fade 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes modal-out {
+  to { opacity: 0; transform: scale(0.98); }
+}
+.modal-exit { animation: modal-out 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The undo toast: rises 12px + fades in, 220ms. It is functional, so it is
+   NOT removed under reduced motion - only its entrance shortens. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.toast-in { animation: toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }

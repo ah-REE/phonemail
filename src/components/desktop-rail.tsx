@@ -96,7 +96,7 @@ export function DesktopRail() {
             key={folder}
             href={`/desktop/inbox?folder=${folder}`}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-colors duration-ui ${
+            className={`press flex min-h-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-colors duration-ui ${
               active
                 ? "bg-white/10 font-semibold text-rail-ink"
                 : "font-medium text-rail-muted hover:bg-white/5 hover:text-rail-ink"
@@ -114,7 +114,7 @@ export function DesktopRail() {
         <Link
           href="/desktop/profile"
           aria-current={pathname?.startsWith("/desktop/profile") ? "page" : undefined}
-          className="flex min-h-0 items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-ui hover:bg-white/5"
+          className="press flex min-h-0 items-center gap-3 rounded-lg px-3 py-2 transition-colors duration-ui hover:bg-white/5"
         >
           <Avatar size={32} />
           <span className="flex min-w-0 flex-1 flex-col">
@@ -125,7 +125,7 @@ export function DesktopRail() {
         <Link
           href="/desktop/settings"
           aria-current={pathname?.startsWith("/desktop/settings") ? "page" : undefined}
-          className="flex min-h-0 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-rail-muted transition-colors duration-ui hover:bg-white/5 hover:text-rail-ink"
+          className="press flex min-h-0 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-rail-muted transition-colors duration-ui hover:bg-white/5 hover:text-rail-ink"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3" />

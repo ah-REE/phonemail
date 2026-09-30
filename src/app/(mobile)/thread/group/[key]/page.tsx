@@ -11,6 +11,9 @@ import { AttachmentCards } from "@/components/attachments";
 import { Avatar } from "@/components/avatar";
 import { BackButton } from "@/components/back-button";
 import { GroupInfo } from "@/components/group-info";
+import { ActionToast } from "@/components/action-toast";
+import { Collapsing } from "@/components/collapsing";
+import { AnimatedFavoriteChip, FavoriteStar } from "@/components/favorite-star";
 import { MessageCard } from "@/components/message-card";
 import type { MemberTag } from "@/lib/roles";
 import { EMAIL_TAGS } from "@/lib/tags";
@@ -135,6 +138,25 @@ export default function GroupThreadPage() {
    * like desktop"): which bubble's action panel is open - the same chevron
    * the 1:1 thread and the desktop cards carry.
    */
+
+  /** ROUND 31: the id whose favorite chip just activated - its star pops once. */
+  const [starPop, setStarPop] = useState<string | null>(null);
+  /** ROUND 31: the move-collapse machine - one bubble at a time. */
+  const [collapse, setCollapse] = useState<{ id: string; phase: "closing" | "expanding" } | null>(null);
+  const [undo, setUndo] = useState<{
+    id: string;
+    label: string;
+    snapshot: GroupMessage;
+    index: number;
+  } | null>(null);
+  const moveRef = useRef<{
+    id: string;
+    folder: "spam" | "trash";
+    snapshot: GroupMessage;
+    index: number;
+    patch: "pending" | "ok" | "failed";
+    collapsed: boolean;
+  } | null>(null);
   const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -237,23 +259,118 @@ export default function GroupThreadPage() {
    * own row), then a quiet refetch. Spam and Trash are the recipient's filing,
    * so the panel only offers them where they apply.
    */
-  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+  /**
+   * ROUND 31: moving a message is a motion flow now - the bubble collapses
+   * (240ms), THEN the row leaves the list, and the undo toast holds the door
+   * open for five seconds. The PATCH and the collapse race; whichever finishes
+   * last commits. A failed PATCH re-expands instead, so the message never
+   * silently disappears when the server refused.
+   */
+  function moveMessage(messageId: string, folder: "spam" | "trash") {
     setTagOpenId(null);
     setError(null);
-    const response = await authorizedFetch(`/api/emails/${messageId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder }),
-    });
-    if (!response.ok) {
-      setError("Could not move that message.");
+    const index = messages.findIndex((message) => message.id === messageId);
+    const snapshot = messages[index];
+    if (!snapshot || moveRef.current) {
       return;
     }
-    void load(false);
+    moveRef.current = { id: messageId, folder, snapshot, index, patch: "pending", collapsed: false };
+    setCollapse({ id: messageId, phase: "closing" });
+    void (async () => {
+      const response = await authorizedFetch(`/api/emails/${messageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder }),
+      });
+      const move = moveRef.current;
+      if (!move || move.id !== messageId) {
+        return;
+      }
+      if (!response.ok) {
+        move.patch = "failed";
+        setError("Could not move that message.");
+        if (move.collapsed) {
+          moveRef.current = null;
+          setCollapse({ id: messageId, phase: "expanding" });
+        }
+        return;
+      }
+      move.patch = "ok";
+      if (move.collapsed) {
+        commitMove();
+      }
+    })();
   }
+
+  /** Both halves done (collapse + PATCH): the row leaves and the toast opens. */
+  function commitMove() {
+    const move = moveRef.current;
+    if (!move) {
+      return;
+    }
+    moveRef.current = null;
+    setMessages((current) => current.filter((message) => message.id !== move.id));
+    setCollapse(null);
+    setUndo({
+      id: move.id,
+      label: move.folder === "trash" ? "Moved to Trash" : "Moved to Spam",
+      snapshot: move.snapshot,
+      index: move.index,
+    });
+  }
+
+  function onCollapseDone(phase: "closing" | "expanding") {
+    if (phase === "expanding") {
+      setCollapse(null);
+      return;
+    }
+    const move = moveRef.current;
+    if (!move) {
+      setCollapse(null);
+      return;
+    }
+    move.collapsed = true;
+    if (move.patch === "ok") {
+      commitMove();
+    } else if (move.patch === "failed") {
+      moveRef.current = null;
+      setCollapse({ id: move.id, phase: "expanding" });
+    }
+    // "pending": the PATCH's own completion handler commits.
+  }
+
+  /** ROUND 31: undo = the folder goes back and the bubble re-expands in place. */
+  async function undoMove() {
+    const entry = undo;
+    if (!entry) {
+      return;
+    }
+    setUndo(null);
+    setMessages((current) => {
+      const next = [...current];
+      next.splice(Math.min(entry.index, next.length), 0, entry.snapshot as GroupMessage);
+      return next;
+    });
+    setCollapse({ id: entry.id, phase: "expanding" });
+    const response = await authorizedFetch(`/api/emails/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder: "inbox" }),
+    });
+    if (!response.ok) {
+      setError("Could not restore that message.");
+      void load(false);
+    }
+  }
+
 
   async function setTag(messageId: string, tag: string | null) {
     setTagOpenId(null);
+    if (tag === "favorite") {
+      // ROUND 31: the chip mounts because of THIS action, so its star pops.
+      setStarPop(messageId);
+      window.setTimeout(() => setStarPop((current) => (current === messageId ? null : current)), 360);
+    }
     setMessages((current) =>
       current.map((message) => (message.id === messageId ? { ...message, tag } : message)),
     );
@@ -366,7 +483,12 @@ export default function GroupThreadPage() {
           const newSubject = startsNewSubject(messages[index - 1]?.subject, message.subject);
 
           return (
-            <div key={message.submissionId ?? message.id}>
+            <Collapsing
+              key={message.submissionId ?? message.id}
+              data-message-id={message.id}
+              phase={collapse && collapse.id === message.id ? collapse.phase : "idle"}
+              onDone={onCollapseDone}
+            >
               {newDay && (
                 <div className="my-4 flex justify-center">
                   <span className="rounded-full bg-surface-container-high px-3 py-1 text-[11px] uppercase tracking-wider text-on-surface-variant">
@@ -392,6 +514,7 @@ export default function GroupThreadPage() {
               name={message.mine ? "You" : message.fromName?.trim() || phoneOf(message.from)}
               senderTag={message.fromTag ?? null}
               secondary={message.mine ? message.to : message.from}
+              tags={<AnimatedFavoriteChip show={message.tag === "favorite"} pop={starPop === message.id} />}
               when={formatWhen(message.createdAt)}
               body={expanded || !long ? message.body : `${message.body.slice(0, LONG_MESSAGE_CHARS)}…`}
               tick={message.mine}
@@ -419,7 +542,7 @@ export default function GroupThreadPage() {
                     {!message.mine && (
                       <button
                         type="button"
-                        className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                        className="press flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                         onClick={() => void moveMessage(message.id, "spam")}
                       >
                         Move to Spam
@@ -427,7 +550,7 @@ export default function GroupThreadPage() {
                     )}
                     <button
                       type="button"
-                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                      className="press flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                       onClick={() => void moveMessage(message.id, "trash")}
                     >
                       Move to Trash
@@ -435,24 +558,27 @@ export default function GroupThreadPage() {
                     <button
                       type="button"
                       aria-pressed={message.tag === "favorite"}
-                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                      className="press flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                       onClick={() =>
                         void setTag(message.id, message.tag === "favorite" ? null : "favorite")
                       }
                     >
-                      {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                      <span className="flex items-center gap-1.5">
+                        <FavoriteStar active={message.tag === "favorite"} />
+                        {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                      </span>
                     </button>
                     {canReply && !answered && (
                       <Link
                         href={groupReplyHref(message)}
-                        className="flex min-h-tap items-center rounded-full bg-msg-action px-4 text-sm font-semibold text-msg-accent"
+                        className="press flex min-h-tap items-center rounded-full bg-msg-action px-4 text-sm font-semibold text-msg-accent"
                       >
                         Reply
                       </Link>
                     )}
                     <Link
                       href={`/compose?forwardOf=${encodeURIComponent(message.id)}`}
-                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                      className="press flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                     >
                       Forward
                     </Link>
@@ -464,7 +590,7 @@ export default function GroupThreadPage() {
                         <button
                           key={tag}
                           type="button"
-                          className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                          className="press min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
                           onClick={() => void setTag(message.id, tag)}
                         >
                           {tag}
@@ -472,7 +598,7 @@ export default function GroupThreadPage() {
                       ))}
                       <button
                         type="button"
-                        className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                        className="press min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
                         onClick={() => void setTag(message.id, null)}
                       >
                         clear
@@ -501,7 +627,7 @@ export default function GroupThreadPage() {
                 ) : null
               }
             />
-            </div>
+            </Collapsing>
           );
         })}
 
@@ -559,6 +685,18 @@ export default function GroupThreadPage() {
             setMemberSheet(member);
           }}
           onClose={() => setInfoOpen(false)}
+        />
+      )}
+
+      {undo && (
+        <ActionToast
+          variant="mobile"
+          label={undo.label}
+          onUndo={() => void undoMove()}
+          onExpire={() => {
+            setUndo(null);
+            void load(false);
+          }}
         />
       )}
 

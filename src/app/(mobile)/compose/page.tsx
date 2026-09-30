@@ -18,6 +18,7 @@ import {
   loadDraft,
   saveDraft as saveDraftEverywhere,
 } from "@/lib/draftSync";
+import { MOTION, prefersReducedMotion } from "@/lib/motion";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -155,6 +156,9 @@ function ComposeForm() {
   // body region, in the same language the thread uses for a delivered file.
   const [files, setFiles] = useState<File[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  /** ROUND 31: the exit runs before the navigation, so Cancel reads as reverse. */
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "failed">("idle");
   const [progress, setProgress] = useState(0);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
@@ -551,8 +555,27 @@ function ComposeForm() {
     );
   }
 
+  function beginExit() {
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(() => router.push("/"), prefersReducedMotion() ? 0 : MOTION.composeExit);
+  }
+
   return (
-    <main className="flex flex-1 flex-col">
+    <main
+      className={`flex flex-1 flex-col ${closing ? "compose-exit" : "compose-enter"}`}
+      onClickCapture={(event) => {
+        const anchor = (event.target as HTMLElement).closest?.('a[href="/"]');
+        if (anchor && !closing) {
+          event.preventDefault();
+          event.stopPropagation();
+          beginExit();
+        }
+      }}
+    >
       <AppBar title={isForward ? "Forward" : isReply ? "Reply" : "Compose"} backHref="/" />
 
             <form className="flex flex-1 flex-col" onSubmit={handleSend} noValidate>

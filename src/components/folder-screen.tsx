@@ -156,7 +156,7 @@ export function FolderScreen({
         <button
           type="button"
           onClick={() => void emptyTrash()}
-          className="flex min-h-tap w-full shrink-0 items-center gap-3 border-b border-wa-line bg-surface px-4 py-3 text-left text-base font-semibold text-wa-alert transition-colors duration-fast active:bg-danger-soft"
+          className="press flex min-h-tap w-full shrink-0 items-center gap-3 border-b border-wa-line bg-surface px-4 py-3 text-left text-base font-semibold text-wa-alert transition-colors duration-fast active:bg-danger-soft"
         >
           <svg
             width="20"
@@ -195,7 +195,7 @@ export function FolderScreen({
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
-                className="btn-quiet"
+                className="btn-quiet press"
                 onClick={() => void move(message.id, "inbox")}
               >
                 Move to inbox
@@ -205,7 +205,7 @@ export function FolderScreen({
                 (folder === "spam" ? (
                   <button
                     type="button"
-                    className="btn-quiet"
+                    className="btn-quiet press"
                     onClick={() => void move(message.id, "trash")}
                   >
                     Move to trash
@@ -213,7 +213,7 @@ export function FolderScreen({
                 ) : (
                   <button
                     type="button"
-                    className="btn-quiet"
+                    className="btn-quiet press"
                     onClick={() => void move(message.id, "spam")}
                   >
                     Move to spam

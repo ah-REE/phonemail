@@ -12,6 +12,7 @@ import {
 } from "@/lib/draftSync";
 import { formatBytes, validateAttachmentSet } from "@/lib/attachments";
 import { invalidRecipients, parseRecipients, RECIPIENT_FORMAT_MESSAGE } from "@/lib/recipients";
+import { MOTION, prefersReducedMotion } from "@/lib/motion";
 import { useAuth } from "@/lib/useAuth";
 
 /**
@@ -102,6 +103,9 @@ export function DesktopCompose({
   const [attachError, setAttachError] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
+  /** ROUND 31: the card exits on the reverse curve before it is unmounted. */
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const documentInputRef = useRef<HTMLInputElement | null>(null);
@@ -167,11 +171,24 @@ export function DesktopCompose({
   const recipients = [...new Set([...toChips, ...parseRecipients(toDraft)])];
   const cc = [...new Set([...ccChips, ...parseRecipients(ccDraft)])];
 
+  /**
+   * ROUND 31: every close walks through here - the card scales back out on the
+   * reverse of its entrance (220ms) and only then tells its owner it is gone.
+   */
+  function beginClose() {
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(() => onClose(), prefersReducedMotion() ? 0 : MOTION.composeExit);
+  }
+
   // Escape closes, the way every overlay in this app does.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        beginClose();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -334,7 +351,7 @@ export function DesktopCompose({
       void clearDraftEverywhere(authorizedFetch);
       const sentTo = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to ?? recipients.join(", ");
       onSent?.(`Handed to the mail service for ${sentTo}.`);
-      onClose();
+      beginClose();
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -349,13 +366,13 @@ export function DesktopCompose({
   // a dimmed page.
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-on-surface/45 p-4 sm:items-center sm:p-8"
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-on-surface/45 p-4 sm:items-center sm:p-8 ${closing ? "overlay-exit" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={locked ? "Reply" : "New message"}
     >
       <form
-        className="flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-neutral-hair bg-surface shadow-overlay"
+        className={`compose-card-enter ${closing ? "compose-card-exit" : ""} flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-xl border border-neutral-hair bg-surface shadow-overlay`}
         onSubmit={send}
       >
         {/* ROUND 28.5: the design's dark header band - the title in white and the
@@ -366,8 +383,8 @@ export function DesktopCompose({
           </h2>
           <button
             type="button"
-            className="ml-auto inline-flex min-h-0 items-center gap-1.5 text-sm font-medium text-rail-muted transition-colors duration-ui hover:text-white disabled:opacity-50"
-            onClick={onClose}
+            className="press ml-auto inline-flex min-h-0 items-center gap-1.5 text-sm font-medium text-rail-muted transition-colors duration-ui hover:text-white disabled:opacity-50"
+            onClick={beginClose}
             disabled={busy}
           >
             Cancel
@@ -601,7 +618,7 @@ export function DesktopCompose({
           </span>
           <button
             type="submit"
-            className="inline-flex min-h-0 items-center gap-2 rounded-pill bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-all duration-fast ease-out-quint hover:brightness-105 active:scale-[0.985] disabled:opacity-60"
+            className="press inline-flex min-h-0 items-center gap-2 rounded-pill bg-accent px-6 py-2.5 text-sm font-semibold text-white transition-all duration-fast ease-out-quint hover:brightness-105 active:scale-[0.985] disabled:opacity-60"
             disabled={busy}
           >
             {busy ? (phase === "uploading" ? `Sending ${progress}%` : "Sending...") : "Send"}

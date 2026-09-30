@@ -192,7 +192,7 @@ const config: Config = {
         overlay: "0 24px 60px -24px rgba(15,23,42,0.34)",
         "inset-line": "inset 0 1px 0 rgba(255,255,255,0.6)",
       },
-      transitionDuration: { ui: "220ms", fast: "140ms", slow: "380ms" },
+      transitionDuration: { ui: "220ms", fast: "140ms", slow: "380ms", press: "120ms", collapse: "240ms", pop: "200ms", morph: "180ms" },
       /* Two easings, as the brief requires. */
       transitionTimingFunction: {
         "out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",

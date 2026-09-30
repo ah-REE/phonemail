@@ -3,14 +3,16 @@
 import { guardRedirect } from "@/lib/entry";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { ChatListSkeleton } from "@/components/skeleton";
 import { Avatar } from "@/components/avatar";
 import { BottomBar } from "@/components/bottom-bar";
 import { Wordmark } from "@/components/wordmark";
+import { Collapsing } from "@/components/collapsing";
 import { useAuth } from "@/lib/useAuth";
+import { useFlipList } from "@/lib/use-flip";
 import { useRealtime } from "@/lib/useRealtime";
 
 /**
@@ -92,6 +94,26 @@ export default function HomePage() {
   const [threads, setThreads] = useState<ConversationThread[]>([]);
   const [groupThreads, setGroupThreads] = useState<ConversationGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  /** ROUND 31: the first data load staggers the first rows in; the row of a chat
+      deleted across the window collapses out of the list as it arrives. */
+  const [entering, setEntering] = useState(false);
+  const enteredOnce = useRef(false);
+  const [leaving, setLeaving] = useState<{ phone: string; name: string | null } | null>(null);
+  const flipRef = useFlipList<HTMLDivElement>([threads, groupThreads]);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("pm:leaving-thread");
+      if (raw) {
+        sessionStorage.removeItem("pm:leaving-thread");
+        const parsed = JSON.parse(raw) as { phone?: string; name?: string | null };
+        if (parsed.phone) {
+          setLeaving({ phone: parsed.phone, name: parsed.name ?? null });
+        }
+      }
+    } catch {
+      // Blocked storage only costs the list its leaving-row animation.
+    }
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "attachments">("all");
@@ -114,6 +136,11 @@ export default function HomePage() {
       };
       setThreads(body.threads ?? []);
       setGroupThreads(body.groupThreads ?? []);
+      if (!enteredOnce.current) {
+        enteredOnce.current = true;
+        setEntering(true);
+        window.setTimeout(() => setEntering(false), 900);
+      }
       setError(null);
     } catch {
       setError("Network error.");
@@ -359,7 +386,7 @@ export default function HomePage() {
             <button
               key={chip.key}
               type="button"
-              className={`shrink-0 rounded-full px-3.5 py-1 text-[13px] font-semibold transition-colors duration-ui ${
+              className={`press shrink-0 rounded-full px-3.5 py-1 text-[13px] font-semibold transition-colors duration-ui ${
                 filter === chip.key
                   ? "bg-accent text-white"
                   : "bg-surface-container text-on-surface"
@@ -466,12 +493,31 @@ export default function HomePage() {
 
         {/* 4. Conversation rows. The bottom padding clears the bottom bar AND
             the compose button that floats above it. */}
-        <div className="flex w-full flex-col pb-44">
-          {visibleGroups.map((group) => (
+        <div ref={flipRef} className="flex w-full flex-col pb-44">
+          {leaving && (
+            <Collapsing
+              data-leaving-row={leaving.phone}
+              phase="closing"
+              onDone={() => setLeaving(null)}
+            >
+              <div className="flex h-[76px] w-full items-center border-b border-surface-container-high px-4">
+                <Avatar size={48} />
+                <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">
+                  <span className="truncate text-base font-bold">
+                    {leaving.name?.trim() || leaving.phone}
+                  </span>
+                  <span className="mt-1 truncate text-sm text-on-surface-variant">Conversation deleted</span>
+                </span>
+              </div>
+            </Collapsing>
+          )}
+
+          {visibleGroups.map((group, index) => (
             <Link
               key={group.threadKey}
+              data-flip-key={`group:${group.threadKey}`}
               href={`/thread/group/${encodeURIComponent(group.threadKey)}`}
-              className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
+              className={`${entering && index < 3 ? `enter ${index === 0 ? "enter-1" : index === 1 ? "enter-2" : "enter-3"} ` : ""}press flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40`}
             >
               <span className="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <span className="absolute left-0 top-0 h-9 w-9 rounded-full bg-avatar-sky" aria-hidden="true" />
@@ -502,11 +548,12 @@ export default function HomePage() {
             </Link>
           ))}
 
-          {visible.map((thread) => (
+          {visible.map((thread, index) => (
             <Link
               key={thread.counterpartAddress}
+              data-flip-key={`pair:${thread.counterpart}`}
               href={`/thread/${thread.counterpart}`}
-              className="flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40"
+              className={`${entering && index < 3 ? `enter ${index === 0 ? "enter-1" : index === 1 ? "enter-2" : "enter-3"} ` : ""}press flex h-[76px] w-full cursor-pointer items-center border-b border-surface-container-high px-4 active:bg-surface-container-high/40`}
             >
               <Avatar size={48} />
               <span className="ml-3 flex min-w-0 flex-1 flex-col justify-center">

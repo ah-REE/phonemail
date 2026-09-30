@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/avatar";
+import { MOTION, prefersReducedMotion } from "@/lib/motion";
 import { Spinner } from "@/components/spinner";
 import { describeAccountAge } from "@/lib/credibility";
 import { useAuth } from "@/lib/useAuth";
@@ -143,6 +144,9 @@ export function UserSheet({
    * spinner and the confirmation are different things to look at.
    */
   const [savePhase, setSavePhase] = useState<"idle" | "saving" | "saved">("idle");
+  /** ROUND 31: the sheet's exit is animated; this is the flag it plays under. */
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
   const closeTimer = useRef<number | null>(null);
 
   // A sheet dismissed from the outside while the morph is holding must not leave
@@ -161,6 +165,21 @@ export function UserSheet({
    * SEE that it saved. Reduced-motion readers get the same outcome without the
    * wait, because for them the animation is not the feedback.
    */
+  /**
+   * ROUND 31: every close walks through here - the sheet exits ON the curve
+   * (240ms slide-down + fade) and only then tells its owner it is gone.
+   * Reduced-motion readers close instantly; for them the animation is not the
+   * feedback.
+   */
+  function beginClose() {
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(() => onClose(), prefersReducedMotion() ? 0 : MOTION.sheetExitMobile);
+  }
+
   function scheduleCloseAfterMorph() {
     const reduceMotion =
       typeof window !== "undefined" &&
@@ -168,7 +187,7 @@ export function UserSheet({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     closeTimer.current = window.setTimeout(
       () => {
-        onClose();
+        beginClose();
       },
       reduceMotion ? 0 : SAVE_MORPH_HOLD_MS,
     );
@@ -302,6 +321,9 @@ export function UserSheet({
           ? { ...current, viewerReported: true, reportCount: current.reportCount + (body.duplicate ? 0 : 1) }
           : current,
       );
+      // ROUND 31: the morph is seen, held, and then the sheet exits on the
+      // curve - the save flow's own rhythm.
+      scheduleCloseAfterMorph();
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -316,15 +338,15 @@ export function UserSheet({
   const shownName = saved?.displayName?.trim() || subject.name?.trim() || subject.phone;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" role="dialog" aria-modal="true" aria-label={`Details for ${shownName}`}>
+    <div className={`fixed inset-0 z-40 flex items-end justify-center bg-black/40 ${closing ? "overlay-exit" : ""}`} role="dialog" aria-modal="true" aria-label={`Details for ${shownName}`}>
       <button
         type="button"
         aria-label="Close details"
         className="absolute inset-0 h-full w-full cursor-default"
-        onClick={onClose}
+        onClick={beginClose}
       />
 
-      <div className="relative z-10 flex w-full max-w-phone flex-col rounded-t-[28px] bg-chat-sheet px-5 pb-8 pt-3 shadow-overlay">
+      <div className={`relative z-10 flex w-full max-w-phone flex-col rounded-t-[28px] bg-chat-sheet px-5 pb-8 pt-3 shadow-overlay ${closing ? "sheet-exit" : ""}`}>
         <span className="mx-auto mb-4 h-1 w-10 shrink-0 rounded-full bg-outline-variant" aria-hidden="true" />
 
         <div className="flex items-center gap-4">
@@ -396,7 +418,7 @@ export function UserSheet({
                 />
                 <button
                   type="button"
-                  className="shrink-0 rounded-full bg-accent-soft px-5 text-sm font-semibold text-accent disabled:opacity-50"
+                  className="press shrink-0 rounded-full bg-accent-soft px-5 text-sm font-semibold text-accent disabled:opacity-50"
                   onClick={() => void addContact()}
                   disabled={busy || savePhase === "saved"}
                 >
@@ -406,7 +428,7 @@ export function UserSheet({
               {savePhase === "saved" && <SavedMorph />}
               <button
                 type="button"
-                className="self-start text-sm font-semibold text-wa-alert disabled:opacity-50"
+                className="press self-start text-sm font-semibold text-wa-alert disabled:opacity-50"
                 onClick={() => void removeContact(saved.id)}
                 disabled={busy || savePhase === "saved"}
               >
@@ -428,7 +450,7 @@ export function UserSheet({
                 />
                 <button
                   type="button"
-                  className="flex min-h-0 h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
+                  className="press flex min-h-0 h-12 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-white disabled:opacity-60"
                   onClick={() => void addContact()}
                   disabled={busy || savePhase === "saved"}
                 >
@@ -458,7 +480,7 @@ export function UserSheet({
           <div className="mt-6">
             {reportPhase === "reported" ? (
               <div
-                className="flex min-h-0 h-12 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
+                className="report-morph flex min-h-0 h-12 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
                 role="status"
               >
                 Reported ✓
@@ -469,7 +491,7 @@ export function UserSheet({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    className="press flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
                     disabled={busy}
                     onClick={() => void submitReport()}
                   >
@@ -477,7 +499,7 @@ export function UserSheet({
                   </button>
                   <button
                     type="button"
-                    className="min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+                    className="press min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
                     disabled={busy}
                     onClick={() => setReportPhase("idle")}
                   >
@@ -488,7 +510,7 @@ export function UserSheet({
             ) : (
               <button
                 type="button"
-                className="min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
+                className="press min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
                 onClick={() => setReportPhase("confirming")}
               >
                 Report spam
@@ -511,18 +533,27 @@ export function UserSheet({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    className="press flex min-h-0 h-11 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
                     disabled={busy}
                     onClick={() => {
                       setBusy(true);
-                      void onDeleteChat();
+                      setError(null);
+                      Promise.resolve(onDeleteChat?.())
+                        .then(() => {
+                          setBusy(false);
+                          beginClose();
+                        })
+                        .catch(() => {
+                          setBusy(false);
+                          setError("Could not delete that chat.");
+                        });
                     }}
                   >
                     {busy ? <Spinner label="Deleting" /> : "Delete chat"}
                   </button>
                   <button
                     type="button"
-                    className="min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+                    className="press min-h-0 h-11 flex-1 rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
                     disabled={busy}
                     onClick={() => setConfirmingDelete(false)}
                   >
@@ -533,7 +564,7 @@ export function UserSheet({
             ) : (
               <button
                 type="button"
-                className="min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
+                className="press min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-wa-alert"
                 onClick={() => setConfirmingDelete(true)}
               >
                 Delete chat
@@ -544,8 +575,8 @@ export function UserSheet({
 
         <button
           type="button"
-          className="mt-6 min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
-          onClick={onClose}
+          className="press mt-6 min-h-0 h-12 w-full rounded-full bg-chat-rail text-sm font-semibold text-on-surface"
+          onClick={beginClose}
         >
           Close
         </button>

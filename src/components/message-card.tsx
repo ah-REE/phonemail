@@ -142,7 +142,7 @@ export function MessageCard({
         <div
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          className={`${radius} ${shell} relative px-3 pb-1 pt-2 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-ui active:scale-[0.995]`}
+          className={`${radius} ${shell} relative px-3 pb-1 pt-2 shadow-[0_1px_1px_rgba(15,23,42,0.04)] transition-transform duration-press ease-out-quint active:scale-[0.96]`}
         >
 
           {/* 1. what it answers, first and tappable */}

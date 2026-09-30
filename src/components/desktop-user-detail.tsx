@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/avatar";
+import { MOTION, prefersReducedMotion } from "@/lib/motion";
 import { Spinner } from "@/components/spinner";
 import { SAVE_MORPH_HOLD_MS, SavedMorph } from "@/components/user-sheet";
 import { describeAccountAge } from "@/lib/credibility";
@@ -64,9 +65,15 @@ export function DesktopUserDetail({
   subject,
   onClose,
   onSaved,
+  onChatDeleted,
 }: {
   subject: DesktopUserDetailSubject;
   onClose: () => void;
+  /**
+   * ROUND 31: called after this chat's DELETE succeeds, before the modal exits -
+   * the reading pane and the middle column act on it (row collapse, empty pane).
+   */
+  onChatDeleted?: () => void;
   /**
    * Called with the name that now applies the moment a save succeeds, so the
    * screen underneath can show it without a reload - the sheet's own contract,
@@ -90,6 +97,10 @@ export function DesktopUserDetail({
    * then the modal closes itself.
    */
   const [savePhase, setSavePhase] = useState<"idle" | "saving" | "saved">("idle");
+  /** ROUND 31: the modal's exit is animated; this is the flag it plays under. */
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
   // A modal dismissed while the morph is holding must not leave a timer pointing
@@ -107,7 +118,7 @@ export function DesktopUserDetail({
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        beginClose();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -163,6 +174,19 @@ export function DesktopUserDetail({
    * Holds the confirmation, then closes. Reduced-motion readers get the same
    * outcome without the wait, because for them the animation is not the feedback.
    */
+  /**
+   * ROUND 31: every close walks through here - the modal exits ON the curve
+   * (scale 0.98 + fade, 220ms) and only then tells its owner it is gone.
+   */
+  function beginClose() {
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(() => onClose(), prefersReducedMotion() ? 0 : MOTION.sheetExitDesktop);
+  }
+
   function scheduleCloseAfterMorph() {
     const reduceMotion =
       typeof window !== "undefined" &&
@@ -170,7 +194,7 @@ export function DesktopUserDetail({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     closeTimer.current = window.setTimeout(
       () => {
-        onClose();
+        beginClose();
       },
       reduceMotion ? 0 : SAVE_MORPH_HOLD_MS,
     );
@@ -252,6 +276,8 @@ export function DesktopUserDetail({
           ? { ...current, viewerReported: true, reportCount: current.reportCount + (body.duplicate ? 0 : 1) }
           : current,
       );
+      // ROUND 31: the morph is seen, held, and then the modal exits on the curve.
+      scheduleCloseAfterMorph();
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -267,7 +293,7 @@ export function DesktopUserDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-on-surface/45 p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-on-surface/45 p-4 ${closing ? "overlay-exit" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={`Details for ${shownName}`}
@@ -276,10 +302,10 @@ export function DesktopUserDetail({
         type="button"
         aria-label="Close details"
         className="absolute inset-0 h-full w-full cursor-default"
-        onClick={onClose}
+        onClick={beginClose}
       />
 
-      <div className="relative z-10 flex w-full max-w-md flex-col rounded-card border border-outline-variant bg-surface px-6 py-5 shadow-overlay">
+      <div className={`relative z-10 flex w-full max-w-md flex-col rounded-card border border-outline-variant bg-surface px-6 py-5 shadow-overlay ${closing ? "modal-exit" : ""}`}>
         <div className="flex items-center gap-4">
           <Avatar size={56} />
           <div className="min-w-0 flex-1">
@@ -342,14 +368,14 @@ export function DesktopUserDetail({
                 </label>
                 <input
                   id="desktop-detail-contact-name"
-                  className="field min-h-0 flex-1 py-2.5"
+                  className="press field min-h-0 flex-1 py-2.5"
                   placeholder="Name this contact"
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value)}
                 />
                 <button
                   type="button"
-                  className="btn-quiet min-h-0 shrink-0 px-5 py-2 text-sm"
+                  className="btn-quiet press min-h-0 shrink-0 px-5 py-2 text-sm"
                   onClick={() => void addContact()}
                   disabled={busy || savePhase === "saved"}
                 >
@@ -359,7 +385,7 @@ export function DesktopUserDetail({
               {savePhase === "saved" && <SavedMorph />}
               <button
                 type="button"
-                className="self-start text-sm font-semibold text-wa-alert disabled:opacity-50"
+                className="press self-start text-sm font-semibold text-wa-alert disabled:opacity-50"
                 onClick={() => void removeContact(saved.id)}
                 disabled={busy || savePhase === "saved"}
               >
@@ -374,14 +400,14 @@ export function DesktopUserDetail({
               <div className="flex gap-2">
                 <input
                   id="desktop-detail-contact-name"
-                  className="field min-h-0 flex-1 py-2.5"
+                  className="press field min-h-0 flex-1 py-2.5"
                   placeholder="Name this contact"
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value)}
                 />
                 <button
                   type="button"
-                  className="btn-brand min-h-0 shrink-0 px-5 py-2 text-sm"
+                  className="btn-brand press min-h-0 shrink-0 px-5 py-2 text-sm"
                   onClick={() => void addContact()}
                   disabled={busy || savePhase === "saved"}
                 >
@@ -409,7 +435,7 @@ export function DesktopUserDetail({
           <div className="mt-4">
             {reportPhase === "reported" ? (
               <div
-                className="flex min-h-0 h-10 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
+                className="report-morph flex min-h-0 h-10 w-full items-center justify-center gap-2 rounded-full bg-success-soft text-sm font-bold text-success"
                 role="status"
               >
                 Reported ✓
@@ -420,7 +446,7 @@ export function DesktopUserDetail({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="flex min-h-0 h-10 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    className="press flex min-h-0 h-10 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
                     disabled={busy}
                     onClick={() => void submitReport()}
                   >
@@ -428,7 +454,7 @@ export function DesktopUserDetail({
                   </button>
                   <button
                     type="button"
-                    className="min-h-0 h-10 flex-1 rounded-full bg-surface-container text-sm font-semibold text-on-surface"
+                    className="press min-h-0 h-10 flex-1 rounded-full bg-surface-container text-sm font-semibold text-on-surface"
                     disabled={busy}
                     onClick={() => setReportPhase("idle")}
                   >
@@ -439,7 +465,7 @@ export function DesktopUserDetail({
             ) : (
               <button
                 type="button"
-                className="min-h-0 h-10 w-full rounded-full bg-surface-container-low text-sm font-semibold text-wa-alert hover:bg-surface-container"
+                className="press min-h-0 h-10 w-full rounded-full bg-surface-container-low text-sm font-semibold text-wa-alert hover:bg-surface-container"
                 onClick={() => setReportPhase("confirming")}
               >
                 Report spam
@@ -448,7 +474,69 @@ export function DesktopUserDetail({
           </div>
         )}
 
-        <button type="button" className="btn-quiet mt-6 min-h-0 w-full py-2.5 text-sm" onClick={onClose}>
+        {/* ROUND 31: DELETE CHAT lands on the desktop with this session (the
+            parity rule) - the phone sheet's destructive pair, same wording, and
+            the same promise: only YOUR side of the conversation disappears. */}
+        {!isSelf && (
+          <div className="mt-4">
+            {confirmingDelete ? (
+              <div className="flex flex-col gap-2 rounded-card border border-wa-alert/40 bg-wa-alert/[0.04] p-3">
+                <p className="text-sm text-on-surface">
+                  Delete this chat for you? Only your side of the conversation disappears - their
+                  copy stays exactly as it is, and a new mail starts it again.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="press flex min-h-0 h-10 flex-1 items-center justify-center rounded-full bg-wa-alert text-sm font-bold text-white disabled:opacity-60"
+                    disabled={busy}
+                    onClick={() => {
+                      setBusy(true);
+                      setError(null);
+                      void (async () => {
+                        try {
+                          const response = await authorizedFetch(
+                            `/api/conversations/${encodeURIComponent(subject.phone)}`,
+                            { method: "DELETE" },
+                          );
+                          if (!response.ok) {
+                            throw new Error("refused");
+                          }
+                          setBusy(false);
+                          onChatDeleted?.();
+                          beginClose();
+                        } catch {
+                          setBusy(false);
+                          setError("Could not delete that chat.");
+                        }
+                      })();
+                    }}
+                  >
+                    {busy ? <Spinner label="Deleting" /> : "Delete chat"}
+                  </button>
+                  <button
+                    type="button"
+                    className="press min-h-0 h-10 flex-1 rounded-full bg-surface-container text-sm font-semibold text-on-surface"
+                    disabled={busy}
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="press min-h-0 h-10 w-full rounded-full bg-surface-container-low text-sm font-semibold text-wa-alert hover:bg-surface-container"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete chat
+              </button>
+            )}
+          </div>
+        )}
+
+        <button type="button" className="btn-quiet mt-6 min-h-0 w-full py-2.5 text-sm" onClick={beginClose}>
           Close
         </button>
       </div>

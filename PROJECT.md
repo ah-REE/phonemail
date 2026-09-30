@@ -3809,6 +3809,55 @@ first cut ran in the wrong session - B's, left over from the desktop block, whic
 the run itself caught; the fixed drive flips back to A the way the phone section
 does.) Full regression: 1230 assertions across 38 suites, 0 red.
 
+**Round 31 - the action motion pass, both clients (the owner's brief).** The
+motion system is written down now, not improvised per surface: four new duration
+tokens (press 120 / collapse 240 / pop 200 / morph 180) join the two established
+easings - `out-quint` for arrivals, `soft-spring` for the app's ONLY bounce, the
+star - and every pattern lands on BOTH clients (a one-client pattern is a defect
+of the round). The spec, as built: press = 0.96 in 120ms on buttons, rows,
+bubbles, cards and rail items; Move to Spam/Trash collapses the bubble/card with
+a REAL height transition (240ms, the one permitted layout animation) and raises
+an UNDO toast (5s dwell; phone: a dark pill above the New-mail bar, desktop:
+bottom-right); undo restores the folder with the unread state untouched -
+asserted at the API on both clients' surfaces; the favorite star pops 1->1.25->1
+(200ms) as its chip crossfades (the pop rides a transient flag from the action,
+because the chip is what mounts); Reply/Forward enter (phone: slide up + fade
+380ms; desktop: card scales from 0.96) and exit in reverse; sheets exit on the
+curve (phone slide-down 240ms, desktop modal 220ms) - after the report morph
+(180ms) both sheets hold, then close themselves; Delete chat LANDS ON DESKTOP
+with this round (the parity rule), and the deleted thread's row collapses on the
+desktop middle column and the phone home list (a sessionStorage leaving-row
+bridge across the navigation); lists settle with a transform-only FLIP (never a
+re-mount flash) and mounting rows keep the enter-N stagger. Discipline:
+transform + opacity only, one layout animation (the wrapper height),
+prefers-reduced-motion gating everywhere (the global CSS rule for CSS motion,
+lib/motion.ts for flow timing; the undo toast stays - it is functional).
+BLOCK: there is no block surface on either client - stated in the matrix, not
+assumed; when it lands, it takes the morph + row-collapse treatment.
+
+**The both-clients matrix (from ct36, the session's own gate - 56 assertions):**
+press: message-card bubble (source pin + computed) / action buttons + rows +
+cards + rail (source pins both clients); collapse: phone bubble wrapper and
+desktop card wrapper BOTH carry a computed real height transition (property
+height, duration 0.24s) and the closing phase is driven live; undo toast: label
+asserted on both clients' surfaces, and the undo round-trip driven TWICE - phone
+bubble and desktop card - with folder AND isRead identical at the API after the
+restore; star: `.star-pop` observed live + the chip crossfading, both clients;
+compose entry: mobile `.compose-enter`/`.compose-exit` + route change driven,
+desktop `.compose-card-enter`/`.compose-card-exit` via Escape driven; sheet
+exit: phone `.sheet-exit` driven, desktop `.modal-exit` driven; report morph:
+`.report-morph` observed + the sheet auto-closing on the curve (driven on both
+clients - desktop in this suite, phone re-proved here as well); delete chat:
+desktop modal flow + middle-column row collapse + empty pane driven, phone's
+leaving row on the home list driven, both ends re-creating the thread at the
+API; settle: FLIP hook + flip keys + stagger classes pinned on both lists;
+anti-bounce pin: soft-spring exists ONLY in the star and globals. (The drive
+emulates prefers-reduced-motion no-preference so the motion is observable, the
+way a normal system shows it - the reduced-motion path is the CSS rule + the
+JS guards, pinned in source.)
+
+Full regression: 1286 assertions across 39 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

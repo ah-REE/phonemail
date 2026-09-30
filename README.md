@@ -244,6 +244,15 @@ the caller's own report state (which is what lets a reopened sheet settle on
 `ct35` on every run (single-digit-to-low-teens milliseconds on the loaded dev
 database).
 
+### The feedback language (round 31)
+
+**One motion system, both clients.** A press is 0.96 in 120ms; a Move to
+Spam/Trash collapses its card or bubble (240ms, height + fade) and offers a 5s
+UNDO toast; the favorite star is the app's only bounce (1 -> 1.25 -> 1);
+composers slide or scale in and exit in reverse; sheets and modals exit on the
+arrival curve; lists settle with a transform-only FLIP. Everything is
+prefers-reduced-motion-gated - same outcomes, instant - except the undo toast,
+which is functional and stays.
 ### Remaining gaps, each with its recommendation
 
 Re-checked line by line against `docs/SPEC.md` on 2026-09-28. "Unverified" means

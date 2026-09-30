@@ -2,10 +2,13 @@
 
 import { ChatListSkeleton, ThreadSkeleton } from "@/components/skeleton";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { ActionToast } from "@/components/action-toast";
 import { AttachmentCards } from "@/components/attachments";
+import { Collapsing } from "@/components/collapsing";
+import { AnimatedFavoriteChip, FavoriteStar } from "@/components/favorite-star";
 
 import { DesktopCompose, type DesktopComposeRequest } from "@/components/desktop-compose";
 import { DesktopUserDetail, type DesktopUserDetailSubject } from "@/components/desktop-user-detail";
@@ -14,6 +17,7 @@ import { MemberTagChip } from "@/components/member-tag-chip";
 import { isEmailFolder, type EmailFolder } from "@/lib/folders";
 import type { MemberTag } from "@/lib/roles";
 import { useAuth } from "@/lib/useAuth";
+import { useFlipList } from "@/lib/use-flip";
 import { useRealtime } from "@/lib/useRealtime";
 
 /**
@@ -160,6 +164,31 @@ function InboxInner() {
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   /** ROUND 29: which card's action row is revealed, if any. */
   const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
+  /** ROUND 31: the move-collapse machine (reading pane) + its undo toast. */
+  const [collapse, setCollapse] = useState<{ id: string; phase: "closing" | "expanding" } | null>(null);
+  const [undo, setUndo] = useState<{
+    id: string;
+    label: string;
+    snapshot: Message;
+    index: number;
+  } | null>(null);
+  const moveRef = useRef<{
+    id: string;
+    folder: "spam" | "trash";
+    snapshot: Message;
+    index: number;
+    patch: "pending" | "ok" | "failed";
+    collapsed: boolean;
+  } | null>(null);
+  /** ROUND 31: the pair row that is collapsing after a delete-chat. */
+  const [leavingThread, setLeavingThread] = useState<string | null>(null);
+  /** ROUND 31: the middle column settles with a FLIP when rows move. */
+  const flipRef = useFlipList<HTMLUListElement>([threads, groups]);
+  /** ROUND 31: the first data load staggers the first rows in. */
+  const [entering, setEntering] = useState(false);
+  const enteredOnce = useRef(false);
+  /** ROUND 31: the id whose favorite chip just activated - its star pops once. */
+  const [starPop, setStarPop] = useState<string | null>(null);
 
   /**
    * ROUND 22: THE SEARCH BOX. The desktop list had no search at all; this adds one,
@@ -221,6 +250,11 @@ function InboxInner() {
       const body = (await response.json()) as { threads?: Thread[]; groupThreads?: GroupThread[] };
       setThreads(body.threads ?? []);
       setGroups(body.groupThreads ?? []);
+      if (!enteredOnce.current) {
+        enteredOnce.current = true;
+        setEntering(true);
+        window.setTimeout(() => setEntering(false), 900);
+      }
       setError(null);
     } catch {
       setError("Network error.");
@@ -387,21 +421,114 @@ function InboxInner() {
    * with Trash on your own mail being the sender's per-viewer removal
    * (follow-up 4).
    */
-  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+  function moveMessage(messageId: string, folder: "spam" | "trash") {
     setActionsOpenId(null);
-    const response = await authorizedFetch(`/api/emails/${messageId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder }),
-    });
-    if (!response.ok) {
-      setError("Could not move that message.");
+    setError(null);
+    const index = messages.findIndex((message) => message.id === messageId);
+    const snapshot = messages[index];
+    if (!snapshot || moveRef.current) {
       return;
     }
-    setError(null);
-    void loadThreads();
-    if (selected) {
-      void openThread(selected);
+    moveRef.current = { id: messageId, folder, snapshot, index, patch: "pending", collapsed: false };
+    setCollapse({ id: messageId, phase: "closing" });
+    void (async () => {
+      const response = await authorizedFetch(`/api/emails/${messageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder }),
+      });
+      const move = moveRef.current;
+      if (!move || move.id !== messageId) {
+        return;
+      }
+      if (!response.ok) {
+        move.patch = "failed";
+        setError("Could not move that message.");
+        if (move.collapsed) {
+          moveRef.current = null;
+          setCollapse({ id: messageId, phase: "expanding" });
+        }
+        return;
+      }
+      move.patch = "ok";
+      if (move.collapsed) {
+        commitMove();
+      }
+    })();
+  }
+
+  /** Both halves done (collapse + PATCH): the card leaves and the toast opens. */
+  function commitMove() {
+    const move = moveRef.current;
+    if (!move) {
+      return;
+    }
+    moveRef.current = null;
+    setMessages((current) => current.filter((message) => message.id !== move.id));
+    setCollapse(null);
+    setUndo({
+      id: move.id,
+      label: move.folder === "trash" ? "Moved to Trash" : "Moved to Spam",
+      snapshot: move.snapshot,
+      index: move.index,
+    });
+  }
+
+  function onCollapseDone(phase: "closing" | "expanding") {
+    if (phase === "expanding") {
+      setCollapse(null);
+      return;
+    }
+    const move = moveRef.current;
+    if (!move) {
+      setCollapse(null);
+      return;
+    }
+    move.collapsed = true;
+    if (move.patch === "ok") {
+      commitMove();
+    } else if (move.patch === "failed") {
+      moveRef.current = null;
+      setCollapse({ id: move.id, phase: "expanding" });
+    }
+    // "pending": the PATCH's own completion handler commits.
+  }
+
+  /** ROUND 31: undo = the folder goes back and the card re-expands in place. */
+  async function undoMove() {
+    const entry = undo;
+    if (!entry) {
+      return;
+    }
+    setUndo(null);
+    setMessages((current) => {
+      const next = [...current];
+      next.splice(Math.min(entry.index, next.length), 0, entry.snapshot);
+      return next;
+    });
+    setCollapse({ id: entry.id, phase: "expanding" });
+    const response = await authorizedFetch(`/api/emails/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder: "inbox" }),
+    });
+    if (!response.ok) {
+      setError("Could not restore that message.");
+      if (selected) {
+        void openThread(selected);
+      }
+    }
+  }
+
+  /** ROUND 31: the deleted chat's row finished collapsing - drop it for real. */
+  function onThreadLeaveDone(phone: string) {
+    setLeavingThread((current) => (current === phone ? null : current));
+    setThreads((current) => current.filter((thread) => thread.counterpart !== phone));
+    if (selected === phone) {
+      setSelected(null);
+      setMessages([]);
+      setThreadSubject("");
+      setActionsOpenId(null);
     }
   }
 
@@ -428,6 +555,11 @@ function InboxInner() {
   /** The favorite toggle, optimistic the way the phone's is. */
   async function setMessageTag(messageId: string, tag: string | null) {
     setActionsOpenId(null);
+    if (tag === "favorite") {
+      // ROUND 31: the chip mounts because of THIS action, so its star pops.
+      setStarPop(messageId);
+      window.setTimeout(() => setStarPop((current) => (current === messageId ? null : current)), 360);
+    }
     setMessages((current) =>
       current.map((message) => (message.id === messageId ? { ...message, tag } : message)),
     );
@@ -609,7 +741,7 @@ function InboxInner() {
                     onClick={() =>
                       result.kind === "group" ? void openGroup(result.key) : void openThread(result.key)
                     }
-                    className="flex min-h-[64px] w-full flex-col justify-center gap-0.5 border-b border-outline-variant px-5 py-2 text-left transition-colors duration-ui hover:bg-surface-container-low"
+                    className="press flex min-h-[64px] w-full flex-col justify-center gap-0.5 border-b border-outline-variant px-5 py-2 text-left transition-colors duration-ui hover:bg-surface-container-low"
                   >
                     <span className="flex items-baseline gap-2">
                       <span className="truncate text-sm font-semibold text-on-surface">
@@ -633,19 +765,24 @@ function InboxInner() {
           )}
 
           {!searching_ && (
-          <ul>
+          <ul ref={flipRef}>
             {groups.map((group) => {
               const active = selected === group.threadKey;
+              const enteringRow = entering && groups.indexOf(group) < 3;
               const names = group.members
                 .map((member, index) => group.memberNames?.[index]?.trim() || member)
                 .join(", ");
               return (
-                <li key={group.threadKey}>
+                <li
+                  key={group.threadKey}
+                  data-flip-key={`group:${group.threadKey}`}
+                  className={enteringRow ? `enter ${groups.indexOf(group) === 0 ? "enter-1" : groups.indexOf(group) === 1 ? "enter-2" : "enter-3"}` : ""}
+                >
                   <button
                     type="button"
                     onClick={() => void openGroup(group.threadKey)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                    className={`press flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
                       active ? "border-l-4 border-accent bg-accent-tint pl-4" : "border-neutral-hair"
                     }`}
                   >
@@ -665,13 +802,22 @@ function InboxInner() {
             })}
             {threads.map((thread) => {
               const active = selected === thread.counterpart;
+              const enteringRow = entering && threads.indexOf(thread) < 3;
               return (
-                <li key={thread.counterpartAddress}>
+                <li
+                  key={thread.counterpartAddress}
+                  data-flip-key={`pair:${thread.counterpart}`}
+                  className={enteringRow ? `enter ${threads.indexOf(thread) === 0 ? "enter-1" : threads.indexOf(thread) === 1 ? "enter-2" : "enter-3"}` : ""}
+                >
+                  <Collapsing
+                    phase={leavingThread === thread.counterpart ? "closing" : "idle"}
+                    onDone={() => onThreadLeaveDone(thread.counterpart)}
+                  >
                   <button
                     type="button"
                     onClick={() => void openThread(thread.counterpart)}
                     aria-current={active ? "true" : undefined}
-                    className={`flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
+                    className={`press flex min-h-[72px] w-full flex-col justify-center gap-0.5 border-b px-5 py-3 text-left transition-colors duration-ui hover:bg-surface-container-low ${
                       active ? "border-l-4 border-accent bg-accent-tint pl-4" : "border-neutral-hair"
                     }`}
                   >
@@ -684,6 +830,7 @@ function InboxInner() {
                     <span className="truncate text-sm font-medium text-on-surface">{thread.subject}</span>
                     <span className="truncate text-sm text-neutral-muted">{thread.preview}</span>
                   </button>
+                  </Collapsing>
                 </li>
               );
             })}
@@ -757,8 +904,13 @@ function InboxInner() {
               <div className="mx-auto max-w-[720px]">
                 {!loadingThread &&
                   messages.map((message) => (
-                    <article
+                    <Collapsing
                       key={message.submissionId ?? message.id}
+                      data-message-id={message.id}
+                      phase={collapse && collapse.id === message.id ? collapse.phase : "idle"}
+                      onDone={onCollapseDone}
+                    >
+                    <article
                       className="mb-4 rounded-lg border border-neutral-hair bg-surface"
                     >
                       {/* ROUND 28.5: the design's two-row card header - the name with its role chip, then the address this mail arrived through and the time. */}
@@ -812,7 +964,7 @@ function InboxInner() {
                         <div className="mt-4 flex items-center gap-3">
                           <button
                             type="button"
-                            className="inline-flex min-h-0 items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:bg-accent-tint"
+                            className="press inline-flex min-h-0 items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:bg-accent-tint"
                             onClick={() => openReplyTo(message)}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -822,7 +974,11 @@ function InboxInner() {
                             Reply
                           </button>
                           {message.repliedAt && <span className="text-xs text-on-surface-variant">Replied</span>}
-                          {message.tag && <span className="text-xs text-on-surface-variant">{message.tag}</span>}
+                          {message.tag === "favorite" ? (
+                            <AnimatedFavoriteChip show pop={starPop === message.id} />
+                          ) : message.tag ? (
+                            <span className="text-xs text-on-surface-variant">{message.tag}</span>
+                          ) : null}
                           {/* ROUND 29: the phone's action row, revealed by the same
                               chevron (the pattern choice, documented: it is the phone's
                               own, so the two clients teach one gesture). EVERY card
@@ -830,7 +986,7 @@ function InboxInner() {
                               are yours (Trash, Favorite, Forward). */}
                           <button
                             type="button"
-                              className="ml-auto inline-flex min-h-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low"
+                              className="press ml-auto inline-flex min-h-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low"
                               aria-expanded={actionsOpenId === message.id}
                               aria-label={`More actions for ${message.subject}`}
                               onClick={() =>
@@ -854,33 +1010,40 @@ function InboxInner() {
                                 card. */}
                             {message.mine ? (
                               <>
-                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
+                                <button type="button" className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
                                   Move to Trash
                                 </button>
-                                <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
-                                  {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                <button type="button" aria-pressed={message.tag === "favorite"} className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
+                                  <span className="flex items-center gap-1.5">
+                                    <FavoriteStar active={message.tag === "favorite"} />
+                                    {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                  </span>
                                 </button>
                               </>
                             ) : (
                               <>
-                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
+                                <button type="button" className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
                                   Move to Spam
                                 </button>
-                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
+                                <button type="button" className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
                                   Move to Trash
                                 </button>
-                                <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
-                                  {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                <button type="button" aria-pressed={message.tag === "favorite"} className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
+                                  <span className="flex items-center gap-1.5">
+                                    <FavoriteStar active={message.tag === "favorite"} />
+                                    {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                  </span>
                                 </button>
                               </>
                             )}
-                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => openForward(message)}>
+                            <button type="button" className="press flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => openForward(message)}>
                               Forward
                             </button>
                           </div>
                         )}
                       </div>
                     </article>
+                    </Collapsing>
                   ))}
               </div>
             </div>
@@ -903,11 +1066,32 @@ function InboxInner() {
         />
       )}
 
+      {undo && (
+        <ActionToast
+          variant="desktop"
+          label={undo.label}
+          onUndo={() => void undoMove()}
+          onExpire={() => {
+            setUndo(null);
+            if (selected) {
+              void openThread(selected);
+            }
+            void loadThreads();
+          }}
+        />
+      )}
+
       {detailSubject && (
         <DesktopUserDetail
           subject={detailSubject}
           onClose={() => setDetailSubject(null)}
           onSaved={handleDetailSaved}
+          onChatDeleted={() => {
+            const phone = detailSubject?.phone;
+            if (phone) {
+              setLeavingThread(phone);
+            }
+          }}
         />
       )}
 
