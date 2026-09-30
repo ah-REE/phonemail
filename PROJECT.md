@@ -3666,6 +3666,16 @@ ct32 (27), ct31 (18), ct30 (26), ct28 (37), ct27 (45), ct24 (17) - with the secu
 envelope intact (postgres egress blocked, nosniff + frame-deny on every surface) and
 the main stack restored to REAL mode afterwards.
 
+**Follow-up (same day, the owner's screenshot):** "where is the actions?" - the
+screenshot showed a thread whose visible cards were ALL the owner's own sent mail,
+and the chevron had been scoped to received cards only, so no action affordance was
+anywhere to be seen. The chevron now sits on EVERY card: on your own mail the row
+opens with Forward alone - the one action that is yours to take - while Move to
+Spam, Move to Trash and Favorite stay recipient-owned, exactly as the phone scopes
+them. ct33 grew three assertions (37 now) driving the owner's exact scenario in the
+real engine - B's own sent thread, its chevron, the Forward-only row, the absence
+of recipient-only actions - and the follow-up re-ran the full regression green.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
