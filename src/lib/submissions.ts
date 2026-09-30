@@ -36,6 +36,15 @@ export interface PendingSubmission {
    * hop, but a header cannot reach the row - the note is what survives.
    */
   roles?: Record<string, "to" | "cc"> | null;
+  /**
+   * ROUND 29: a FORWARD carries the source row it copies. The send path checks
+   * the caller is a party; the inbound path copies that row's attachment bytes
+   * into every new fan-out row, so a large file moves without a byte through
+   * the client. `forwardOmitAttachmentIds` is the client's remove list: ids
+   * named here are NOT copied.
+   */
+  forwardOfId?: string | null;
+  forwardOmitAttachmentIds?: string[] | null;
 }
 
 /**
@@ -90,6 +99,10 @@ export async function takeSubmission(key: string): Promise<PendingSubmission> {
       threadKey: typeof parsed.threadKey === "string" ? parsed.threadKey : null,
       replyToId: typeof parsed.replyToId === "string" ? parsed.replyToId : null,
       roles: readRoles(parsed.roles),
+      forwardOfId: typeof parsed.forwardOfId === "string" ? parsed.forwardOfId : null,
+      forwardOmitAttachmentIds: Array.isArray(parsed.forwardOmitAttachmentIds)
+        ? parsed.forwardOmitAttachmentIds.filter((id): id is string => typeof id === "string")
+        : null,
     };
   } catch (error) {
     console.error("[submissions] could not read the metadata", error);

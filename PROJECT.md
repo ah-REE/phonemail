@@ -3606,6 +3606,59 @@ render decision" (the rail reads the session for its profile row only), ct31
 re-pointed from text fields to the chips; a fresh full regression after the
 re-points: 1070 assertions across 35 suites, 0 red.
 
+Round 29 - the message actions: desktop parity + Forward + the sweep
+
+**Task 1 - the action row on desktop.** The phone's four-action chevron row now
+exists on the desktop mail cards: Move to Spam, Move to Trash, Favorite and
+Forward, revealed by the same chevron gesture (the documented pattern choice - the
+phone's own, so the two clients teach one motion), drawn as 56px quiet outline
+targets in the design tokens, on received mail only (the phone hides it on sent
+bubbles the same way). Reply stays the card's own visible button. Every action
+hits the same endpoint the phone hits - `PATCH /api/emails/[id]` with
+`{folder}` or `{tag}` - recipient-owned as always; moving refreshes both the list
+and the open thread, and the favorite is optimistic like the phone's.
+
+**Task 2 - Forward, both clients.** The new verb: re-send an existing mail to NEW
+recipients, with the OPPOSITE lock from reply - To and Cc are free. The subject
+derives as `Fwd: <original>` (unless edited) and the body opens with a forwarded
+header block over the original content. On the server, `POST /api/emails` accepts
+`forwardOfId`: the caller must be a party to the source row (403 otherwise, 404
+for a vanished source), the copy count joins the new files under the same
+three-file cap, and the source id rides the submission note. The BYTES move in
+the inbound path, which copies the source row's attachments into every new
+fan-out row - one set per row, exactly like sent files, so a large file moves
+without a byte through the client - honoring the composer's remove list
+(`forwardOmitAttachmentIds`). The clients: the mobile bubble's action row gained
+Forward (a `/compose?forwardOf=` link), and both composers entered forward mode -
+a fetched source on the phone, the in-memory message on the desktop - with the
+source's attachments shown in a "Forwarded attachments" block that can remove
+individual files from the copy. Removing one only omits it from the copy list:
+the bytes never existed on the client.
+
+**Task 3 - the sweep.** `ct33` (34 assertions) drives the whole action vocabulary
+through the real endpoints: reply-once (409 on the repeat), the folder moves and
+their views, favorite + the chip data, the other tags, mark-read, the non-owner
+403, delete-chat, search, and the full Forward chain - the byte-identical copy
+(sha256), the 403 for a non-party, the omit list, and the group key on a
+multi-recipient forward - plus a real-engine drive of the desktop card: the
+chevron, the four actions, and Forward opening the composer with the forwarded
+file shown, To free, and the `Fwd:` subject.
+
+**One full-regression red, what it was, and what was done about it.** Full runs
+kept showing `groupchat` red once - "unread after A -> B+C: B = 1 [unread=0]" -
+reproducing deterministically while it held, while controlled reproductions of
+the exact sequence (and the suite solo) passed. The cause class was found
+empirically, twice: 200+ then 58 leaked headless Edge processes from earlier
+verification scripts - scripts force-killed before their cleanup could run, and
+Windows re-parenting Edge's children so the suites' /T tree-kill missed strays.
+A stray is a live signed-in session still subscribed to the app's realtime
+socket, and it interfered with that account's thread state; with every stray
+swept, the suite is green - and the suites' cleanup is hardened so they cannot
+leak again (ct30-ct33 now kill the whole tree AND every msedge still carrying
+the run's own profile path). Recorded because a red that is silently waved
+away is how real bugs hide - and because verification tooling that leaves live
+sessions behind poisons the tests that come after it.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

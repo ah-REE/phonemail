@@ -33,6 +33,65 @@ const patchSchema = z
     { message: "Provide isRead, tag and/or folder." },
   );
 
+/**
+ * ROUND 29: GET /api/emails/[id] - one row of the caller's mail. The forward
+ * composers read the source this way; PARTY ONLY (sender or recipient), and
+ * the response carries attachment METADATA, never the bytes - those stay
+ * behind /api/attachments/[id]'s own party check.
+ */
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await requireUser(request);
+  if (!user) {
+    return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
+  }
+
+  const { id } = await context.params;
+
+  const email = await prisma.email.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      fromUserId: true,
+      toUserId: true,
+      fromAddress: true,
+      toAddress: true,
+      subject: true,
+      body: true,
+      createdAt: true,
+      tag: true,
+      isRead: true,
+      folder: true,
+      repliedAt: true,
+      attachments: { select: { id: true, filename: true, contentType: true, sizeBytes: true } },
+    },
+  });
+
+  if (!email) {
+    return NextResponse.json({ error: "Message not found." }, { status: 404 });
+  }
+
+  if (email.fromUserId !== user.sub && email.toUserId !== user.sub) {
+    return NextResponse.json({ error: "That message is not yours." }, { status: 403 });
+  }
+
+  return NextResponse.json({
+    message: {
+      id: email.id,
+      mine: email.fromUserId === user.sub,
+      from: email.fromAddress,
+      to: email.toAddress,
+      subject: email.subject,
+      body: email.body,
+      createdAt: email.createdAt,
+      tag: email.tag,
+      isRead: email.isRead,
+      folder: email.folder,
+      repliedAt: email.repliedAt,
+      attachments: email.attachments,
+    },
+  });
+}
+
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await requireUser(request);
   if (!user) {

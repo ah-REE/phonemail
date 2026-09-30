@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { classifyToken, lookupRecipientUsers, recipientToken } from "@/lib/alias";
-import { validateAttachmentSet } from "@/lib/attachments";
+import { MAX_FILES, validateAttachmentSet } from "@/lib/attachments";
 import { EMAIL_FOLDERS, isEmailFolder } from "@/lib/folders";
 import { addressForPhone, submitOutboundEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
@@ -62,6 +62,13 @@ const sendSchema = z.object({
   subject: z.string().trim().min(1, "subject is required").max(200).optional(),
   body: z.string().min(1, "body is required"),
   replyToId: z.string().trim().min(1).optional(),
+  /// ROUND 29 (forward): the row being forwarded. The server checks the caller
+  /// is a party and copies that row's attachments into the new submission; the
+  /// client never re-uploads the files.
+  forwardOfId: z.string().trim().min(1).optional(),
+  /// The forward's remove list: source attachment ids the user removed, which
+  /// must NOT be copied.
+  forwardOmitAttachmentIds: z.array(z.string().trim().min(1)).max(3).optional(),
   /// Present only for a REPLY INSIDE A GROUP. A member's reply is addressed to the
   /// one member whose mail it answers, so deriving the thread from its recipients
   /// would file it in their 1:1 chat; the client names the thread instead, and it
@@ -108,6 +115,10 @@ export async function POST(request: Request) {
       subject: form.get("subject") ?? undefined,
       body: form.get("body") ?? undefined,
       replyToId: form.get("replyToId") ?? undefined,
+      forwardOfId: form.get("forwardOfId") ?? undefined,
+      ...(form.getAll("forwardOmitAttachmentIds").length > 0
+        ? { forwardOmitAttachmentIds: form.getAll("forwardOmitAttachmentIds").map((entry) => String(entry)) }
+        : {}),
       threadKey: form.get("threadKey") ?? undefined,
     };
     files = form
@@ -346,11 +357,53 @@ export async function POST(request: Request) {
   // ROUND 9: the note is also left for a plain group send, not only for a reply.
   // The role tags are derived from the founding mail's rows, so the founding send
   // is exactly the message whose roles have to be recorded.
-  if (claimedReplyTo || groupThreadKey || addresses.length > 1 || ccAddresses.length > 0) {
+  /**
+   * ROUND 29 (forward): the caller must be a party to the source row, and the
+   * copied files join the new ones under the same cap. The BYTES move in the
+   * inbound path - the note carries the source id - so this block is checks
+   * and arithmetic only.
+   */
+  let forwardOfId: string | null = null;
+  if (parsed.data.forwardOfId) {
+    const source = await prisma.email.findUnique({
+      where: { id: parsed.data.forwardOfId },
+      select: {
+        id: true,
+        fromUserId: true,
+        toUserId: true,
+        attachments: { select: { id: true } },
+      },
+    });
+    if (!source) {
+      return NextResponse.json(
+        { error: "The message you are forwarding no longer exists." },
+        { status: 404 },
+      );
+    }
+    if (source.fromUserId !== user.sub && source.toUserId !== user.sub) {
+      return NextResponse.json(
+        { error: "You can only forward mail you sent or received." },
+        { status: 403 },
+      );
+    }
+    const omitted = new Set(parsed.data.forwardOmitAttachmentIds ?? []);
+    const copyCount = source.attachments.filter((attachment) => !omitted.has(attachment.id)).length;
+    if (files.length + copyCount > MAX_FILES) {
+      return NextResponse.json(
+        { error: `Up to ${MAX_FILES} files per message, including the forwarded ones.` },
+        { status: 400 },
+      );
+    }
+    forwardOfId = source.id;
+  }
+
+  if (claimedReplyTo || groupThreadKey || forwardOfId || addresses.length > 1 || ccAddresses.length > 0) {
     await rememberSubmission(submissionKey(fromAddress, subject, addresses), {
       threadKey: groupThreadKey,
       replyToId: claimedReplyTo,
       roles,
+      forwardOfId,
+      forwardOmitAttachmentIds: parsed.data.forwardOmitAttachmentIds ?? null,
     });
   }
 

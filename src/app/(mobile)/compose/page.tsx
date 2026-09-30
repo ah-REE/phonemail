@@ -99,6 +99,11 @@ function ComposeForm() {
   const presetTo = searchParams.get("to") ?? "";
   const replyToId = searchParams.get("replyTo") ?? "";
   const isReply = Boolean(replyToId);
+  // ROUND 29 (forward): the source row's id rides the link; its subject, body
+  // and attachments are fetched once and prefilled. To and Cc stay FREE - the
+  // opposite lock from a reply.
+  const forwardOfId = searchParams.get("forwardOf") ?? "";
+  const isForward = Boolean(forwardOfId);
 
   // Replying: the thread hands over the original message's subject and opening
   // words, so the subject is re: of THAT mail (not of whatever arrived last) and
@@ -118,6 +123,8 @@ function ComposeForm() {
   const lockRecipients = isReply || searchParams.get("lockTo") === "1";
 
   const [recipients, setRecipients] = useState<string[]>(() => parseRecipients(presetTo));
+
+
   const [draftRecipient, setDraftRecipient] = useState("");
   // ROUND 9: CC, the field the spec asked for and the app never had. Same chips,
   // same resolution (number or alias), same autocomplete - and the SAME lock: a
@@ -127,6 +134,15 @@ function ComposeForm() {
   const [draftCc, setDraftCc] = useState("");
   const [subject, setSubject] = useState(isReply ? replySubject : "");
   const [body, setBody] = useState("");
+  /**
+   * ROUND 29 (forward): the source's attachments, fetched once for the block in
+   * the form. Removing one only keeps its id out of the copy list the send
+   * carries; the bytes never existed on this side.
+   */
+  const [forwardFiles, setForwardFiles] = useState<
+    { id: string; filename: string; contentType: string; sizeBytes: number }[]
+  >([]);
+  const [forwardSourceIds, setForwardSourceIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -367,6 +383,52 @@ function ComposeForm() {
    * The event is OPTIONAL because the failed cards retry the send directly - there
    * is no form event to prevent on that path.
    */
+  /** Fetch the forward source once: subject, body and the attachment list. */
+  useEffect(() => {
+    if (!isForward || !forwardOfId) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await authorizedFetch(`/api/emails/${forwardOfId}`);
+        const payload = (await response.json().catch(() => null)) as {
+          message?: {
+            subject?: string;
+            body?: string;
+            from?: string;
+            createdAt?: string;
+            attachments?: { id: string; filename: string; contentType: string; sizeBytes: number }[];
+          };
+        } | null;
+        const source = payload?.message;
+        if (cancelled || !source) {
+          return;
+        }
+        const original = source.subject ?? "";
+        setSubject(original.toLowerCase().startsWith("fwd:") ? original : `Fwd: ${original}`);
+        setBody(
+          [
+            "---------- Forwarded message ----------",
+            `From: ${source.from ?? ""}`,
+            `Date: ${source.createdAt ? new Date(source.createdAt).toLocaleString() : ""}`,
+            `Subject: ${original}`,
+            "",
+            source.body ?? "",
+          ].join("\n"),
+        );
+        const attachments = source.attachments ?? [];
+        setForwardFiles(attachments);
+        setForwardSourceIds(attachments.map((entry) => entry.id));
+      } catch {
+        setError("Could not load the message to forward.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isForward, forwardOfId, authorizedFetch, setSubject, setBody]);
+
   async function handleSend(event?: React.FormEvent) {
     event?.preventDefault();
     setError(null);
@@ -400,6 +462,10 @@ function ComposeForm() {
         form.append("body", body);
         if (replyToId) form.append("replyToId", replyToId);
         if (groupThreadKey) form.append("threadKey", groupThreadKey);
+        if (forwardOfId) form.append("forwardOfId", forwardOfId);
+        forwardSourceIds
+          .filter((id) => !forwardFiles.some((entry) => entry.id === id))
+          .forEach((id) => form.append("forwardOmitAttachmentIds", id));
         files.forEach((file) => form.append("attachments", file));
         const result = await authorizedUpload("/api/emails", form, setProgress);
         sendStatus = result.status;
@@ -416,6 +482,18 @@ function ComposeForm() {
             body,
             ...(replyToId ? { replyToId } : {}),
             ...(groupThreadKey ? { threadKey: groupThreadKey } : {}),
+            ...(forwardOfId
+              ? {
+                  forwardOfId,
+                  ...(forwardSourceIds.some((id) => !forwardFiles.some((entry) => entry.id === id))
+                    ? {
+                      forwardOmitAttachmentIds: forwardSourceIds.filter(
+                        (id) => !forwardFiles.some((entry) => entry.id === id),
+                      ),
+                    }
+                    : {}),
+                }
+              : {}),
           }),
         });
         sendStatus = response.status;
@@ -475,7 +553,7 @@ function ComposeForm() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <AppBar title={isReply ? "Reply" : "Compose"} backHref="/" />
+      <AppBar title={isForward ? "Forward" : isReply ? "Reply" : "Compose"} backHref="/" />
 
             <form className="flex flex-1 flex-col" onSubmit={handleSend} noValidate>
         <div className="flex min-h-[56px] w-full items-center px-4">
@@ -715,6 +793,33 @@ function ComposeForm() {
           value={body}
           onChange={(event) => setBody(event.target.value)}
         />
+        {/* ROUND 29: the forwarded attachments. They ride the server's copy - the
+            bytes were never here - so removing one is just an omission. */}
+        {isForward && forwardSourceIds.length > 0 && (
+          <div className="mt-3 rounded-card border border-wa-line p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-chat-meta">
+              Forwarded attachments
+            </p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {forwardFiles.map((file) => (
+                <li key={file.id} className="flex items-center gap-3 rounded-card border border-wa-line px-3 py-2">
+                  <span className="min-w-0 flex-1 truncate text-sm">{file.filename}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-sm font-semibold text-chat-meta"
+                    aria-label={`Remove forwarded file ${file.filename}`}
+                    onClick={() =>
+                      setForwardFiles((current) => current.filter((entry) => entry.id !== file.id))
+                    }
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* ROUND 8: the chosen files live INSIDE the message body region, as cards -
             not as chips in the toolbar. They are part of the message being written,
             so they belong next to the words. */}

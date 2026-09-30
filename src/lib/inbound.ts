@@ -120,6 +120,28 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
   const submissionId = newSubmissionId();
 
   const attachments: InboundAttachment[] = message.attachments ?? [];
+  /**
+   * ROUND 29 (forward): the note names the source row, and its files ride the
+   * database - the same per-row copy a sent file gets. The remove list is
+   * honored HERE because this is the only place the files ever meet the new
+   * submission: they never crossed the wire.
+   */
+  let forwardedFiles: { filename: string; contentType: string; sizeBytes: number; data: Buffer<ArrayBuffer> }[] = [];
+  if (pending.forwardOfId) {
+    const omitted = new Set(pending.forwardOmitAttachmentIds ?? []);
+    const sourceAttachments = await prisma.attachment.findMany({
+      where: { emailId: pending.forwardOfId },
+      select: { id: true, filename: true, contentType: true, sizeBytes: true, data: true },
+    });
+    forwardedFiles = sourceAttachments
+      .filter((attachment) => !omitted.has(attachment.id))
+      .map((attachment) => ({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        sizeBytes: attachment.sizeBytes,
+        data: Buffer.from(attachment.data),
+      }));
+  }
 
   const deliveries: InboundDelivery[] = [];
 
@@ -159,15 +181,24 @@ export async function submitInboundEmail(message: InboundMessage): Promise<Inbou
     // group message therefore stores its files once per recipient - see the
     // Attachment model for why that trade was taken (ownership and the download
     // check stay the row's own business, at the cost of duplicated bytes).
-    if (attachments.length > 0) {
+    if (attachments.length > 0 || forwardedFiles.length > 0) {
       await prisma.attachment.createMany({
-        data: attachments.map((file) => ({
-          emailId: email.id,
-          filename: file.filename,
-          contentType: file.contentType,
-          sizeBytes: file.sizeBytes,
-          data: Buffer.from(file.contentBase64, "base64"),
-        })),
+        data: [
+          ...attachments.map((file) => ({
+            emailId: email.id,
+            filename: file.filename,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+            data: Buffer.from(file.contentBase64, "base64"),
+          })),
+          ...forwardedFiles.map((file) => ({
+            emailId: email.id,
+            filename: file.filename,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+            data: file.data,
+          })),
+        ],
       });
     }
 

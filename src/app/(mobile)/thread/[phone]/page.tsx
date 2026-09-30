@@ -495,6 +495,16 @@ export default function ThreadPage() {
                           Reply
                         </Link>
                       )}
+                      {/* ROUND 29: Forward joins the row - the fifth action, and the
+                          only one whose lock is the OPPOSITE of reply's: open To. */}
+                      {!message.mine && !message.provisional && (
+                        <Link
+                          href={`/compose?forwardOf=${encodeURIComponent(message.id)}`}
+                          className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        >
+                          Forward
+                        </Link>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[11px] uppercase tracking-wide text-chat-meta">Tags</span>

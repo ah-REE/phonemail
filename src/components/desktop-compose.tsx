@@ -10,7 +10,7 @@ import {
   loadDraft,
   saveDraft as saveDraftEverywhere,
 } from "@/lib/draftSync";
-import { validateAttachmentSet } from "@/lib/attachments";
+import { formatBytes, validateAttachmentSet } from "@/lib/attachments";
 import { invalidRecipients, parseRecipients, RECIPIENT_FORMAT_MESSAGE } from "@/lib/recipients";
 import { useAuth } from "@/lib/useAuth";
 
@@ -58,7 +58,11 @@ export interface DesktopComposeRequest {
   /** True for a reply: To and Cc are the conversation's, not the writer's, choice. */
   lockRecipients?: boolean;
   /** Where the Request came from, for the header's wording. */
-  kind?: "new" | "reply";
+  kind?: "new" | "reply" | "forward";
+  /** ROUND 29: the row being forwarded; the server copies its files. */
+  forwardOfId?: string;
+  /** The source's attachments, shown as attached and removable before sending. */
+  forwardAttachments?: { id: string; filename: string; sizeBytes: number }[];
 }
 
 
@@ -79,6 +83,16 @@ export function DesktopCompose({
   const [toDraft, setToDraft] = useState("");
   const [ccChips, setCcChips] = useState<string[]>(() => parseRecipients((request.cc ?? []).join(", ")));
   const [ccDraft, setCcDraft] = useState("");
+
+  /**
+   * ROUND 29 (forward): the source's attachments, held here so the writer can
+   * see and remove them. Removing one only drops its id from the copy list the
+   * send carries - the bytes never existed on this side.
+   */
+  const [forwardFiles, setForwardFiles] = useState(request.forwardAttachments ?? []);
+  const forwardOmitted = (request.forwardAttachments ?? []).filter(
+    (entry) => !forwardFiles.some((kept) => kept.id === entry.id),
+  );
   const [subjectDraft, setSubjectDraft] = useState(request.subject ?? "");
   const [bodyDraft, setBodyDraft] = useState(request.body ?? "");
 
@@ -275,6 +289,8 @@ export function DesktopCompose({
         form.append("body", bodyDraft);
         if (request.replyToId) form.append("replyToId", request.replyToId);
         if (request.threadKey) form.append("threadKey", request.threadKey);
+        if (request.forwardOfId) form.append("forwardOfId", request.forwardOfId);
+        forwardOmitted.forEach((entry) => form.append("forwardOmitAttachmentIds", entry.id));
         files.forEach((file) => form.append("attachments", file));
         const result = await authorizedUpload("/api/emails", form, setProgress);
         status = result.status;
@@ -290,6 +306,14 @@ export function DesktopCompose({
             body: bodyDraft,
             ...(request.replyToId ? { replyToId: request.replyToId } : {}),
             ...(request.threadKey ? { threadKey: request.threadKey } : {}),
+            ...(request.forwardOfId
+              ? {
+                  forwardOfId: request.forwardOfId,
+                  ...(forwardOmitted.length > 0
+                    ? { forwardOmitAttachmentIds: forwardOmitted.map((entry) => entry.id) }
+                    : {}),
+                }
+              : {}),
           }),
         });
         status = response.status;
@@ -338,7 +362,7 @@ export function DesktopCompose({
             circled cancel, on the same ink the rail wears. */}
         <div className="flex items-center gap-3 bg-on-surface px-5 py-3 text-white">
           <h2 className="font-headline text-base font-bold">
-            {locked ? "Reply" : "New message"}
+            {locked ? "Reply" : request.kind === "forward" ? "Forward" : "New message"}
           </h2>
           <button
             type="button"
@@ -454,6 +478,42 @@ export function DesktopCompose({
             </p>
           )}
 
+          {/* ROUND 29: the forwarded attachments. They ride the server's copy - the
+              bytes were never here - so removing one is just an omission. */}
+          {request.kind === "forward" && (request.forwardAttachments?.length ?? 0) > 0 && (
+            <div className="mt-3 rounded-md border border-neutral-hair bg-paper p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                Forwarded attachments
+              </p>
+              <ul className="mt-2 flex flex-col gap-2">
+                {forwardFiles.map((file) => (
+                  <li key={file.id} className="flex items-center gap-3 rounded-md border border-neutral-hair bg-surface px-3 py-2">
+                    <span className="min-w-0 flex-1 truncate text-sm text-on-surface">{file.filename}</span>
+                    <span className="shrink-0 text-xs text-neutral-muted">{formatBytes(file.sizeBytes)}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-neutral-muted transition-colors duration-ui hover:text-on-surface"
+                      aria-label={`Remove forwarded file ${file.filename}`}
+                      onClick={() =>
+                        setForwardFiles((current) => current.filter((entry) => entry.id !== file.id))
+                      }
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {forwardOmitted.length > 0 && (
+                <p className="mt-2 text-xs text-neutral-muted">
+                  {forwardOmitted.length} forwarded {forwardOmitted.length === 1 ? "file is" : "files are"} not
+                  attached any more - {forwardOmitted.length === 1 ? "it" : "they"} will not be sent.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* The file cards with their upload states, the same component the phone
               composer uses. */}
           <AttachmentDrafts
@@ -525,7 +585,7 @@ export function DesktopCompose({
               type="button"
               className="inline-flex min-h-0 shrink-0 items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 text-[13px] font-medium text-neutral-body transition-colors duration-ui hover:bg-paper disabled:opacity-50"
               onClick={() => affordance.ref.current?.click()}
-              disabled={busy || files.length >= 3}
+              disabled={busy || files.length + forwardFiles.length >= 3}
               aria-label={affordance.label}
               title={affordance.title}
             >

@@ -158,6 +158,8 @@ function InboxInner() {
   const [detailSubject, setDetailSubject] = useState<DesktopUserDetailSubject | null>(null);
   /** Whether the group-info card is open. */
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  /** ROUND 29: which card's action row is revealed, if any. */
+  const [actionsOpenId, setActionsOpenId] = useState<string | null>(null);
 
   /**
    * ROUND 22: THE SEARCH BOX. The desktop list had no search at all; this adds one,
@@ -378,6 +380,77 @@ function InboxInner() {
     });
   }
 
+  /**
+   * ROUND 29: the phone's chevron actions, for the desktop card - the same row
+   * pattern (chevron reveal; documented choice) and the SAME endpoints: spam,
+   * trash and tag are PATCH /api/emails/[id] state changes, recipient-owned,
+   * exactly as on the phone.
+   */
+  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+    setActionsOpenId(null);
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    if (!response.ok) {
+      setError("Could not move that message.");
+      return;
+    }
+    setError(null);
+    void loadThreads();
+    if (selected) {
+      void openThread(selected);
+    }
+  }
+
+  /** The favorite toggle, optimistic the way the phone's is. */
+  async function setMessageTag(messageId: string, tag: string | null) {
+    setActionsOpenId(null);
+    setMessages((current) =>
+      current.map((message) => (message.id === messageId ? { ...message, tag } : message)),
+    );
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    });
+    if (!response.ok) {
+      setError("Could not save that tag.");
+      if (selected) {
+        void openThread(selected);
+      }
+    }
+  }
+
+  /**
+   * ROUND 29: Forward. The opposite lock from reply - To and Cc are FREE, the
+   * subject derives as Fwd:, and the body opens with a forwarded header block
+   * over the original. The source's attachments ride the server's copy;
+   * forwardOfId is the only thing that has to travel.
+   */
+  function openForward(message: Message) {
+    setActionsOpenId(null);
+    const header = [
+      "---------- Forwarded message ----------",
+      `From: ${message.from}`,
+      `Date: ${formatFull(message.createdAt)}`,
+      `Subject: ${message.subject}`,
+      "",
+      message.body,
+    ].join("\n");
+    setComposeRequest({
+      to: [],
+      subject: message.subject.toLowerCase().startsWith("fwd:")
+        ? message.subject
+        : `Fwd: ${message.subject}`,
+      body: header,
+      forwardOfId: message.id,
+      forwardAttachments: message.attachments ?? [],
+      kind: "forward",
+    });
+  }
+
   /** ROUND 28: the counterpart's detail, from the reading pane's header. */
   function openCounterpartDetail() {
     if (!selected || selectedGroup) {
@@ -446,35 +519,40 @@ function InboxInner() {
       {/* ROUND 14: the reference measures the list at ~360px, and shows NO rule under
           its header - the header is separated by the rows' own dividers instead. */}
       <section className="flex w-[360px] shrink-0 flex-col overflow-hidden border-r border-neutral-hair">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <h1 className="font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
-            {FOLDER_TITLES[folder]}
-          </h1>
-          {realtimeStatus !== "socket" && (
-            <span
-              className="h-2 w-2 shrink-0 rounded-full bg-on-surface-variant"
-              title={realtimeStatus}
-              aria-label={`Connection: ${realtimeStatus}`}
-            />
-          )}
+        <div className="px-5 pt-4 pb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="font-headline text-lg font-bold tracking-[-0.01em] text-on-surface">
+              {FOLDER_TITLES[folder]}
+            </h1>
+            {realtimeStatus !== "socket" && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-on-surface-variant"
+                title={realtimeStatus}
+                aria-label={`Connection: ${realtimeStatus}`}
+              />
+            )}
+            <button
+              type="button"
+              className="ml-auto inline-flex min-h-0 items-center gap-1.5 rounded-pill bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors duration-ui hover:brightness-105"
+              onClick={openNewCompose}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            Compose
+            </button>
+          </div>
+
+          {/* ROUND 29 (owner request): the search field moved onto its own line,
+              full width, under the title and the Compose action. */}
           <input
             type="search"
-            className="field ml-auto mr-2 min-h-0 max-w-[220px] py-1.5 text-sm"
+            className="field mt-3 min-h-0 w-full py-1.5 text-sm"
             placeholder="Search mail"
             aria-label="Search mail"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <button
-            type="button"
-            className="inline-flex min-h-0 items-center gap-1.5 rounded-pill bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors duration-ui hover:brightness-105"
-            onClick={openNewCompose}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Compose
-          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -694,7 +772,45 @@ function InboxInner() {
                           </button>
                           {message.repliedAt && <span className="text-xs text-on-surface-variant">Replied</span>}
                           {message.tag && <span className="text-xs text-on-surface-variant">{message.tag}</span>}
+                          {/* ROUND 29: the phone's action row, revealed by the same
+                              chevron (the pattern choice, documented: it is the phone's
+                              own, so the two clients teach one gesture). Received mail
+                              only - move/tag state is the recipient's own, and the
+                              phone hides it on sent bubbles the same way. */}
+                          {!message.mine && (
+                            <button
+                              type="button"
+                              className="ml-auto inline-flex min-h-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low"
+                              aria-expanded={actionsOpenId === message.id}
+                              aria-label={`More actions for ${message.subject}`}
+                              onClick={() =>
+                                setActionsOpenId(actionsOpenId === message.id ? null : message.id)
+                              }
+                            >
+                              Actions
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={actionsOpenId === message.id ? "rotate-180" : undefined}>
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
+
+                        {actionsOpenId === message.id && !message.mine && (
+                          <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-hair pt-3">
+                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
+                              Move to Spam
+                            </button>
+                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
+                              Move to Trash
+                            </button>
+                            <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
+                              {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                            </button>
+                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => openForward(message)}>
+                              Forward
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </article>
                   ))}
