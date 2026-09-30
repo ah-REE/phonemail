@@ -774,12 +774,12 @@ function InboxInner() {
                           {message.tag && <span className="text-xs text-on-surface-variant">{message.tag}</span>}
                           {/* ROUND 29: the phone's action row, revealed by the same
                               chevron (the pattern choice, documented: it is the phone's
-                              own, so the two clients teach one gesture). Received mail
-                              only - move/tag state is the recipient's own, and the
-                              phone hides it on sent bubbles the same way. */}
-                          {!message.mine && (
-                            <button
-                              type="button"
+                              own, so the two clients teach one gesture). EVERY card
+                              carries it - on your own mail it opens the one action
+                              that is yours to take (Forward); spam/trash/favorite are
+                              recipient state, exactly as the phone scopes them. */}
+                          <button
+                            type="button"
                               className="ml-auto inline-flex min-h-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low"
                               aria-expanded={actionsOpenId === message.id}
                               aria-label={`More actions for ${message.subject}`}
@@ -791,13 +791,16 @@ function InboxInner() {
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={actionsOpenId === message.id ? "rotate-180" : undefined}>
                                 <path d="M6 9l6 6 6-6" />
                               </svg>
-                            </button>
-                          )}
+                          </button>
                         </div>
 
-                        {actionsOpenId === message.id && !message.mine && (
+                        {actionsOpenId === message.id && (
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-hair pt-3">
-                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
+                            {/* Spam, Trash and Favorite are the recipient's own state -
+                                on your own mail the row collapses to Forward alone. */}
+                            {!message.mine ? (
+                              <>
+                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
                               Move to Spam
                             </button>
                             <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
@@ -806,6 +809,8 @@ function InboxInner() {
                             <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
                               {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
                             </button>
+                              </>
+                            ) : null}
                             <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => openForward(message)}>
                               Forward
                             </button>
