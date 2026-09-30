@@ -13,6 +13,7 @@ import { BackButton } from "@/components/back-button";
 import { GroupInfo } from "@/components/group-info";
 import { MessageCard } from "@/components/message-card";
 import type { MemberTag } from "@/lib/roles";
+import { EMAIL_TAGS } from "@/lib/tags";
 import { UserSheet } from "@/components/user-sheet";
 import { ThreadSkeleton } from "@/components/skeleton";
 import { dayLabel, startsNewDay, startsNewSubject } from "@/lib/timeline";
@@ -129,6 +130,12 @@ export default function GroupThreadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  /**
+   * ROUND 30 follow-up 1 (the owner: "mobile cards doesnt have action menu
+   * like desktop"): which bubble's action panel is open - the same chevron
+   * the 1:1 thread and the desktop cards carry.
+   */
+  const [tagOpenId, setTagOpenId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -223,6 +230,43 @@ export default function GroupThreadPage() {
     onNewEmail: () => void load(false),
     onFallbackPoll: () => void load(false),
   });
+
+  /**
+   * ROUND 30 follow-up 1: moving and tagging, exactly the 1:1 thread's routes -
+   * one PATCH on the row the bubble stands for (the payload picks the VIEWER's
+   * own row), then a quiet refetch. Spam and Trash are the recipient's filing,
+   * so the panel only offers them where they apply.
+   */
+  async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
+    setTagOpenId(null);
+    setError(null);
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder }),
+    });
+    if (!response.ok) {
+      setError("Could not move that message.");
+      return;
+    }
+    void load(false);
+  }
+
+  async function setTag(messageId: string, tag: string | null) {
+    setTagOpenId(null);
+    setMessages((current) =>
+      current.map((message) => (message.id === messageId ? { ...message, tag } : message)),
+    );
+    const response = await authorizedFetch(`/api/emails/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    });
+    if (!response.ok) {
+      setError("Could not save that tag.");
+      void load(false);
+    }
+  }
 
   // Same rule as the pairwise thread: a new message pulls the thread down to it.
   const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : "";
@@ -361,6 +405,82 @@ export default function GroupThreadPage() {
               }
               replyHref={canReply && !answered ? groupReplyHref(message) : undefined}
               statusNote={message.mine ? "Sent" : canReply && answered ? "Replied" : null}
+              onMore={() => setTagOpenId(tagOpenId === message.id ? null : message.id)}
+              moreOpen={tagOpenId === message.id}
+              moreContent={
+                /* ROUND 30 follow-up 1 (the owner: "mobile cards doesnt have action
+                   menu like desktop"): the group bubble carries the same chevron
+                   tab the 1:1 thread and the desktop cards do - the sender's own
+                   actions on your mail (Trash, Favorite, Forward), the fuller set
+                   on anyone else's (Spam, Trash, Favorite, Reply, Forward), and
+                   the quieter tags line for received mail, the 1:1 panel's shape. */
+                <div className="flex flex-col gap-2 border-t border-wa-line pt-2">
+                  <div className="flex flex-wrap gap-2">
+                    {!message.mine && (
+                      <button
+                        type="button"
+                        className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                        onClick={() => void moveMessage(message.id, "spam")}
+                      >
+                        Move to Spam
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                      onClick={() => void moveMessage(message.id, "trash")}
+                    >
+                      Move to Trash
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={message.tag === "favorite"}
+                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                      onClick={() =>
+                        void setTag(message.id, message.tag === "favorite" ? null : "favorite")
+                      }
+                    >
+                      {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                    </button>
+                    {canReply && !answered && (
+                      <Link
+                        href={groupReplyHref(message)}
+                        className="flex min-h-tap items-center rounded-full bg-msg-action px-4 text-sm font-semibold text-msg-accent"
+                      >
+                        Reply
+                      </Link>
+                    )}
+                    <Link
+                      href={`/compose?forwardOf=${encodeURIComponent(message.id)}`}
+                      className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                    >
+                      Forward
+                    </Link>
+                  </div>
+                  {!message.mine && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] uppercase tracking-wide text-chat-meta">Tags</span>
+                      {EMAIL_TAGS.filter((tag) => tag !== "favorite").map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                          onClick={() => void setTag(message.id, tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                        onClick={() => void setTag(message.id, null)}
+                      >
+                        clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+              }
               footer={
                 long && !expanded ? (
                   <button

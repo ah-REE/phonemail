@@ -3794,6 +3794,21 @@ idempotency, viewer state, the armed-then-cleared rate refusal with its
 counterfactual, both browser flows on real engines, and the latency printout.
 Full regression: 1219 assertions across 38 suites, 0 red.
 
+**Round 30 follow-up 1 (the owner: "mobile cards doesnt have action menu like
+desktop"): the phone's GROUP thread carries the action tab now.** The chevron tab
+shipped to the 1:1 thread and to the desktop cards, but the group thread page was
+missed - the owner's screenshot showed group bubbles with no menu at all. Every
+group bubble now opens the same panel the desktop card shows: the sender's own
+actions on your mail (Move to Trash, Favorite, Forward), the fuller set plus the
+tags line on anyone else's (Move to Spam, Move to Trash, Favorite, Reply, Forward),
+all through the same PATCH /api/emails/[id] routes. ct33 grew to 106: a source pin,
+plus a live drive that creates a group, has B reply inside it, opens both panels on
+the phone (asserting each set), moves the reply to Trash from the panel, proves it
+leaves the group view and lands in the trash list, and restores it. (The drive's
+first cut ran in the wrong session - B's, left over from the desktop block, which
+the run itself caught; the fixed drive flips back to A the way the phone section
+does.) Full regression: 1230 assertions across 38 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
