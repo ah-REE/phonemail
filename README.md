@@ -424,9 +424,11 @@ Written down rather than hidden:
 ## 8. Verification evidence
 
 Every number below came from a run in this repository; nothing here rests on a
-claim made anywhere else.
+claim made anywhere else. (The suite total moves by a few dozen between runs,
+because several suites add checks when more fixtures exist - 0 red is the
+invariant, and the headline number is the latest recorded run.)
 
-- **1308 assertions across 40 suites, green on the loaded database**, in dev mode
+- **1320 assertions across 40 suites, green on the loaded database**, in dev mode
   through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
   screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
   reader, 21 for display names, 39 for the group chat, 36 for the final functional

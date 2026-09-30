@@ -3896,6 +3896,40 @@ destroyed by a suite (the stashed contact was re-created after a run that
 predated the hardening). Full regression: 1308 assertions across 40 suites,
 0 red.
 
+**Round 33 - the submission session: the final README, the env reference, the
+evaluator path, and the submission gate (the owner's brief; documentation and
+verification only, no code changes outside one suite guard).** README: the run
+section carries the exact evaluator path - `git clone <repo> && cd phonemail &&
+docker compose up -d`, the first build and the `docker compose ps` wait, both
+clients' doors on one port, and a step-by-step first-account walkthrough (ANY
+10-digit Indian number; the fixed dev OTP 123456 announced in the response via
+devHint; no .env, no setup, no secrets). The demo script gained the search step
+and the current action list; the counts were re-derived from an actual run
+(1320 assertions across 40 suites; 20 migrations in all three mentions); the
+fresh-clone bullet now names exactly which suites the latest simulation ran.
+.env.example was replaced with the single reference catalog: NONE of the three
+sections requires a .env (stated in its header); Section 1 lists every variable
+the code reads, with the committed values lifted from docker-compose.yml itself;
+Section 2 is the gitignored override path with the rotation policy; Section 3
+keeps the historical transports (FAST2SMS_API_KEY, the Twilio trio) visible
+rather than silently dropped. Audits: no override file or .env has ever been
+committed; zero credential-shaped strings in any committed file; `git
+check-ignore` proves the override rule; the tree is clean. THE SUBMISSION GATE:
+a fresh clone from origin at the final docs commit (1080d94), the two commands
+on a clean volume - 20 migrations, four services healthy - then the walkthrough
+driven live: signup on ANY number with 123456 + devHint, a second account, a
+send with an attachment through the real SMTP round trip, arrival, the
+attachment downloaded byte-identical (sha256), anonymous 401, a third account
+403, the sender 200, the reply arriving, and a forced second reply refused 409 -
+13/13 green - plus ct37 (22), ct36 (56), ct33 (106) and ct24 (17) green on the
+clone. (ct21 stays a loaded-database suite by design - its gate fixtures need
+accounts a fresh clone has never seen; it runs in the full regression.) One
+suite hard-won fact from the session itself: running the regression against REAL
+mode is exactly what the guards exist to stop - 31 suites refused correctly, but
+ct6 checked for dev mode only AFTER sending its OTP request; it now carries the
+same hard guard as every other sign-in suite. Full regression: 1320 assertions
+across 40 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
