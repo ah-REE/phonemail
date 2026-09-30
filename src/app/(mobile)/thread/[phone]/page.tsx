@@ -451,7 +451,7 @@ export default function ThreadPage() {
                         : null
                 }
                 onMore={
-                  message.mine || message.provisional
+                  message.provisional
                     ? undefined
                     : () => setTagOpenId(tagOpenId === message.id ? null : message.id)
                 }
@@ -460,19 +460,28 @@ export default function ThreadPage() {
                   /* ROUND 4: the chevron opens a FOUR-ACTION row - Move to Spam,
                      Move to Trash, Favorite, Reply - each a 56px target. The
                      remaining tags stay reachable on a quieter second line so
-                     nothing the tag panel could do is lost. */
+                     nothing the tag panel could do is lost.
+
+                     ROUND 29 follow-up 6 (the owner: "the action tab for message
+                     card is not there" in mobile mode): MY OWN bubbles carry the
+                     tab now too - with the actions that are mine (Move to Trash,
+                     Favorite, Forward; Spam stays recipient-only and Reply
+                     answers other people's mail). The swipe-left gesture opens
+                     the same panel. */
                   <div className="flex flex-col gap-2 border-t border-wa-line pt-2">
                     <div className="flex flex-wrap gap-2">
+                      {!message.mine && !message.provisional && (
+                        <button
+                          type="button"
+                          className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
+                          onClick={() => void moveMessage(message.id, "spam")}
+                        >
+                          Move to Spam
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
-                        onClick={() => void moveMessage(message.id, "spam")}
-                      >
-                        Move to Spam
-                      </button>
-                      <button
-                        type="button"
-                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                         onClick={() => void moveMessage(message.id, "trash")}
                       >
                         Move to Trash
@@ -480,7 +489,7 @@ export default function ThreadPage() {
                       <button
                         type="button"
                         aria-pressed={message.tag === "favorite"}
-                        className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                        className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                         onClick={() =>
                           void setTag(message.id, message.tag === "favorite" ? null : "favorite")
                         }
@@ -496,36 +505,42 @@ export default function ThreadPage() {
                         </Link>
                       )}
                       {/* ROUND 29: Forward joins the row - the fifth action, and the
-                          only one whose lock is the OPPOSITE of reply's: open To. */}
-                      {!message.mine && !message.provisional && (
+                          only one whose lock is the OPPOSITE of reply's: open To.
+                          Follow-up 6: Forward is a sender's action too, so the
+                          guard is provisional-only now. */}
+                      {!message.provisional && (
                         <Link
                           href={`/compose?forwardOf=${encodeURIComponent(message.id)}`}
-                          className="flex min-h-tap items-center rounded-full border border-wa-line px-4 text-sm font-semibold"
+                          className="flex min-h-tap items-center rounded-full border border-wa-line bg-surface/75 px-4 text-sm font-semibold"
                         >
                           Forward
                         </Link>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[11px] uppercase tracking-wide text-chat-meta">Tags</span>
-                      {EMAIL_TAGS.filter((tag) => tag !== "favorite").map((tag) => (
+                    {/* Follow-up 6: the tags line stays on received mail - the
+                        desktop mine card shows no tag buttons either. */}
+                    {!message.mine && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] uppercase tracking-wide text-chat-meta">Tags</span>
+                        {EMAIL_TAGS.filter((tag) => tag !== "favorite").map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
+                            onClick={() => void setTag(message.id, tag)}
+                          >
+                            {tag}
+                          </button>
+                        ))}
                         <button
-                          key={tag}
                           type="button"
                           className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
-                          onClick={() => void setTag(message.id, tag)}
+                          onClick={() => void setTag(message.id, null)}
                         >
-                          {tag}
+                          clear
                         </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="min-h-9 rounded-full border border-wa-line px-3 text-[13px]"
-                        onClick={() => void setTag(message.id, null)}
-                      >
-                        clear
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 }
                 footer={

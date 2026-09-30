@@ -92,6 +92,10 @@ export async function GET(request: Request) {
    * are the VIEWER's own filing - so there the answer is only what I filed
    * there, and my sent mail does not follow me into them.
    *
+   * ROUND 29 follow-up 6: with one correction - what I MYSELF move to Trash
+   * is my filing whatever side of the message I was on, so the trash branch
+   * also lists my sent rows stamped senderTrash.
+   *
    * An unknown value falls back to the inbox rather than to an empty list, so a
    * hand-typed URL still shows mail.
    */
@@ -110,7 +114,15 @@ export async function GET(request: Request) {
               { toUserId: user.sub, folder: "inbox", deletedForRecipient: false },
               { fromUserId: user.sub, deletedForSender: false },
             ]
-          : [{ toUserId: user.sub, folder, deletedForRecipient: false }],
+          : folder === "trash"
+            ? [
+                { toUserId: user.sub, folder: "trash", deletedForRecipient: false },
+                // ROUND 29 follow-up 6: the sender's own trash - sent mail
+                // the sender moved to Trash, which cannot sit in `folder`
+                // (that is the recipient's placement).
+                { fromUserId: user.sub, senderTrash: true },
+              ]
+            : [{ toUserId: user.sub, folder, deletedForRecipient: false }],
     },
     orderBy: { createdAt: "desc" },
     take: SCAN_LIMIT,
@@ -147,6 +159,9 @@ export async function GET(request: Request) {
             OR: [
               { toUserId: user.sub, folder, deletedForRecipient: false },
               { toUserId: { not: user.sub }, deletedForSender: false },
+              // ROUND 29 follow-up 6: a sender-trashed GROUP row belongs in
+              // its sender's trash view too (pairwise rows ride the main query).
+              ...(folder === "trash" ? [{ fromUserId: user.sub, senderTrash: true }] : []),
             ],
           },
           orderBy: { createdAt: "desc" },

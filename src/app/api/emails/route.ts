@@ -487,12 +487,26 @@ export async function GET(request: Request) {
   // way the conversations and search lists exclude them - a row one screen
   // removed for its owner must not reappear in another (this is also what
   // makes Empty trash empty this list, not just the conversation list).
+  //
+  // ROUND 29 follow-up 6 (the owner: sent mail moved to Trash never showed up
+  // here): the trash folder ALSO lists the sender's own trash - rows the
+  // sender moved to Trash live in senderTrash because `folder` is the
+  // recipient's placement. Everything else stays recipient-scoped.
   const emails = await prisma.email.findMany({
-    where: { toUserId: user.sub, folder: requestedFolder, deletedForRecipient: false },
+    where:
+      requestedFolder === "trash"
+        ? {
+            OR: [
+              { toUserId: user.sub, folder: "trash", deletedForRecipient: false },
+              { fromUserId: user.sub, senderTrash: true },
+            ],
+          }
+        : { toUserId: user.sub, folder: requestedFolder, deletedForRecipient: false },
     orderBy: { createdAt: "desc" },
     take: INBOX_LIMIT,
     select: {
       id: true,
+      fromUserId: true,
       fromAddress: true,
       toAddress: true,
       subject: true,
@@ -511,6 +525,7 @@ export async function GET(request: Request) {
       count: emails.length,
       emails: emails.map((email) => ({
         id: email.id,
+        mine: email.fromUserId === user.sub,
         from: email.fromAddress,
         to: email.toAddress,
         subject: email.subject,

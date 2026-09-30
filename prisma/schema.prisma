@@ -131,6 +131,16 @@ model Email {
   deletedForSender    Boolean @default(false)
   deletedForRecipient Boolean @default(false)
 
+  /// ROUND 29 follow-up 6 (the owner: "mails are not listed [on the trash
+  /// page] when i click move to trash"): the SENDER's own trash marker. A
+  /// row's `folder` is the RECIPIENT's placement - a sent message cannot use
+  /// it - so the sender's "Move to Trash" sets this flag (plus
+  /// deletedForSender, which keeps the row out of the sender's views). The
+  /// sender's trash screens list rows that carry it, Empty trash clears it,
+  /// and "Move to inbox" restores the message. The recipient's copy is
+  /// untouched, exactly like every other per-viewer flag.
+  senderTrash Boolean @default(false)
+
   /// Day 6 group chat. The DERIVED thread key of a multi-recipient message:
   /// "grp:" + sha256(sorted unique member numbers, comma-joined). NULL for
   /// pairwise mail, so 1:1 conversations group exactly as they did before, and

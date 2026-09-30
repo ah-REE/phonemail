@@ -24,10 +24,20 @@ export async function POST(request: Request) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
-  const result = await prisma.email.updateMany({
-    where: { toUserId: user.sub, folder: "trash", deletedForRecipient: false },
-    data: { deletedForRecipient: true },
-  });
+  const [recipientRows, senderRows] = await prisma.$transaction([
+    prisma.email.updateMany({
+      where: { toUserId: user.sub, folder: "trash", deletedForRecipient: false },
+      data: { deletedForRecipient: true },
+    }),
+    // ROUND 29 follow-up 6: the sender's own trash empties with the rest.
+    // deletedForSender is left alone, so an emptied sent message stays out
+    // of the sender's views - the same quiet removal the row action alone
+    // used to mean - it merely leaves the Trash list.
+    prisma.email.updateMany({
+      where: { fromUserId: user.sub, senderTrash: true },
+      data: { senderTrash: false },
+    }),
+  ]);
 
-  return NextResponse.json({ emptied: result.count });
+  return NextResponse.json({ emptied: recipientRows.count + senderRows.count });
 }

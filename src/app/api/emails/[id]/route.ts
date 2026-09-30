@@ -122,7 +122,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const email = await prisma.email.findUnique({
     where: { id },
-    select: { id: true, toUserId: true, fromUserId: true },
+    select: { id: true, toUserId: true, fromUserId: true, senderTrash: true },
   });
 
   if (!email) {
@@ -150,12 +150,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
    *    mechanism delete-chat uses. The recipient's copy is untouched;
    *  - Spam is not offered on sent mail at all (the owner's correction), and
    *    isRead stays recipient-only.
+   *
+   * ROUND 29 follow-up 6 (the owner: "mails are not listed [on the trash page]
+   * when i click move to trash"): the sender's trash is now a REAL list - the
+   * removal also stamps senderTrash, the flag the sender's trash screens read,
+   * and "Move to inbox" (folder: "inbox") is the way back: it clears both
+   * flags and the message returns to the sender's views. The recipient's copy
+   * is untouched by all of it.
    */
   const removesForSender = isSender && !isRecipient && parsed.data.folder === "trash";
+  const restoresForSender =
+    isSender && !isRecipient && parsed.data.folder === "inbox" && email.senderTrash;
 
   if (!isRecipient) {
     const touchesRecipientState =
-      parsed.data.isRead !== undefined || (parsed.data.folder !== undefined && !removesForSender);
+      parsed.data.isRead !== undefined ||
+      (parsed.data.folder !== undefined && !removesForSender && !restoresForSender);
     if (touchesRecipientState) {
       return NextResponse.json(
         { error: "Only the recipient can change this message." },
@@ -170,7 +180,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       ...(parsed.data.isRead !== undefined && isRecipient ? { isRead: parsed.data.isRead } : {}),
       ...(parsed.data.tag !== undefined ? { tag: parsed.data.tag } : {}),
       ...(parsed.data.folder !== undefined && isRecipient ? { folder: parsed.data.folder } : {}),
-      ...(removesForSender ? { deletedForSender: true } : {}),
+      ...(removesForSender ? { deletedForSender: true, senderTrash: true } : {}),
+      ...(restoresForSender ? { deletedForSender: false, senderTrash: false } : {}),
     },
     select: { id: true, isRead: true, tag: true, folder: true },
   });

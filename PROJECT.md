@@ -3751,6 +3751,24 @@ and drives the phone: fixture to trash, the full-width row measured (width, colo
 glyph), one tap empties, the empty state shows. Full regression: 1149 assertions
 across 37 suites, 0 red.
 
+**Follow-up 6 (the owner: "in mobile mode the action tab for message card is not there and
+in trash page mails are not listed when i click move to trash via the message card"):** two
+gaps, both about the sender's own mail. (1) On the phone, MY OWN bubbles had no action tab -
+the chevron was gated to received messages - so the tab now renders on mine too, with the
+sender's own actions: Move to Trash, Favorite, Forward (Spam stays recipient-only, Reply
+answers other people's mail), the swipe panel matches, and the buttons carry a surface fill
+so they read as controls on the green bubble. (2) The sender's "Move to Trash" only set
+deletedForSender - the mail left every view and the Trash screens, which list folder=trash
+rows, never showed it. A new `senderTrash` marker (migration 20260930150000) makes the
+sender's trash a real list: the action stamps it, the phone Trash page lists it as a
+"To: ..." row, the desktop Trash screen lists its thread, "Move to inbox" restores it
+(403 when it was never trashed), and Empty trash clears it - all per-viewer; the
+recipient's copy is untouched. ct33 grew to 95 (28 new assertions; the drive walks the
+owner's exact flow: mine bubble, tab, panel contents, Move to Trash, listed with a To:
+label, row buttons, Move to inbox, back in the conversation; plus the desktop Trash
+listing and the empty/restore edge cases). Full regression: 1177 assertions across 37
+suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

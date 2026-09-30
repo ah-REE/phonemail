@@ -18,6 +18,9 @@ import { useAuth } from "@/lib/useAuth";
  * which is the drift the click-through photographed. It now uses the shared AppBar
  * - and therefore the one BackButton rule - and the same empty-state pattern as
  * every other screen.
+ *
+ * ROUND 29 follow-up 6: the trash list also carries the sender's own mail (the
+ * API marks those rows `mine`); they read "To: ..." and offer only the way back.
  */
 
 interface FolderMessage {
@@ -26,6 +29,11 @@ interface FolderMessage {
   subject: string;
   body: string;
   createdAt: string;
+  /// ROUND 29 follow-up 6: true when this row comes from the SENDER's own
+  /// trash (sent mail they moved here) - the row then reads "To: ..." and
+  /// offers only the way back, because Spam is not a sender-side action.
+  mine?: boolean;
+  to?: string;
 }
 
 function when(iso: string): string {
@@ -175,7 +183,11 @@ export function FolderScreen({
         {messages.map((message) => (
           <li key={message.id} className="border-b border-wa-line p-4">
             <div className="flex items-baseline gap-2">
-              <span className="truncate text-lg font-semibold">{message.from}</span>
+              {/* ROUND 29 follow-up 6: a row from the sender's own trash reads as
+                  addressed TO the counterpart - "from" would be your own number. */}
+              <span className="truncate text-lg font-semibold">
+                {message.mine ? `To: ${message.to}` : message.from}
+              </span>
               <span className="ml-auto shrink-0 text-xs text-wa-muted">{when(message.createdAt)}</span>
             </div>
             <p className="truncate text-sm text-wa-muted">{message.subject}</p>
@@ -188,23 +200,25 @@ export function FolderScreen({
               >
                 Move to inbox
               </button>
-              {folder === "spam" ? (
-                <button
-                  type="button"
-                  className="btn-quiet"
-                  onClick={() => void move(message.id, "trash")}
-                >
-                  Move to trash
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-quiet"
-                  onClick={() => void move(message.id, "spam")}
-                >
-                  Move to spam
-                </button>
-              )}
+              {/* ROUND 29 follow-up 6: no Spam on the sender's own row. */}
+              {!message.mine &&
+                (folder === "spam" ? (
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    onClick={() => void move(message.id, "trash")}
+                  >
+                    Move to trash
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    onClick={() => void move(message.id, "spam")}
+                  >
+                    Move to spam
+                  </button>
+                ))}
             </div>
           </li>
         ))}
