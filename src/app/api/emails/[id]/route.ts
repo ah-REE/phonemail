@@ -122,26 +122,54 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const email = await prisma.email.findUnique({
     where: { id },
-    select: { id: true, toUserId: true },
+    select: { id: true, toUserId: true, fromUserId: true },
   });
 
   if (!email) {
     return NextResponse.json({ error: "Message not found." }, { status: 404 });
   }
 
-  if (email.toUserId !== user.sub) {
+  const isRecipient = email.toUserId === user.sub;
+  /** ROUND 29 follow-up 2: the sender's own mail takes the sender's own actions. */
+  const isSender = email.fromUserId === user.sub;
+
+  if (!isRecipient && !isSender) {
     return NextResponse.json(
-      { error: "Only the recipient can change this message." },
+      { error: "Only a party to the message can change it." },
       { status: 403 },
     );
+  }
+
+  /**
+   * ROUND 29 follow-up 2 (the owner's request: favorite and spam for sent mail):
+   *  - tag (favorite) is a label on the message and is written as-is for either
+   *    party - the shared-row model both sides already read;
+   *  - for the SENDER, "move to spam" cannot set the row's folder - that folder
+   *    is the RECIPIENT's mailbox - so it removes the message from the SENDER's
+   *    own views instead (deletedForSender), the same per-viewer mechanism
+   *    delete-chat uses. The recipient's copy is untouched;
+   *  - isRead and the other folders stay recipient-only.
+   */
+  const removesForSender = isSender && !isRecipient && parsed.data.folder === "spam";
+
+  if (!isRecipient) {
+    const touchesRecipientState =
+      parsed.data.isRead !== undefined || (parsed.data.folder !== undefined && !removesForSender);
+    if (touchesRecipientState) {
+      return NextResponse.json(
+        { error: "Only the recipient can change this message." },
+        { status: 403 },
+      );
+    }
   }
 
   const updated = await prisma.email.update({
     where: { id },
     data: {
-      ...(parsed.data.isRead !== undefined ? { isRead: parsed.data.isRead } : {}),
+      ...(parsed.data.isRead !== undefined && isRecipient ? { isRead: parsed.data.isRead } : {}),
       ...(parsed.data.tag !== undefined ? { tag: parsed.data.tag } : {}),
-      ...(parsed.data.folder !== undefined ? { folder: parsed.data.folder } : {}),
+      ...(parsed.data.folder !== undefined && isRecipient ? { folder: parsed.data.folder } : {}),
+      ...(removesForSender ? { deletedForSender: true } : {}),
     },
     select: { id: true, isRead: true, tag: true, folder: true },
   });

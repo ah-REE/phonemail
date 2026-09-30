@@ -3676,6 +3676,23 @@ them. ct33 grew three assertions (37 now) driving the owner's exact scenario in 
 real engine - B's own sent thread, its chevron, the Forward-only row, the absence
 of recipient-only actions - and the follow-up re-ran the full regression green.
 
+**Follow-up 2 (the owner's request - favorite and spam for sent mail):**
+Favorite and Move to Spam joined Forward on your own cards, with meanings sound
+in this model: Favorite is a label on the shared row (the app's existing truth
+for tags) and is writable by either party now; Move to Spam for the sender
+cannot set the row's folder - that folder is the recipient's mailbox - so it
+removes the message from the sender's own views (deletedForSender, the same
+per-viewer mechanism delete-chat uses) while the recipient's copy stays exactly
+where it was; Trash and read-state stay recipient-only (403 for the sender).
+ct33 grew to 44 assertions - the row on sent mail, Favorite persisted, Trash and
+read refused for the sender, sender-Spam hiding from the sender's thread and
+leaving the recipient's inbox alone. Also fixed, and the owner was right: the
+REAL-mode restore had recreated the app from the dev config before the override
+returned, so the container ran dev behaviour with the file present. The container
+now runs under the override's env (verified: the gate login present and devHint
+gone), and the restore order is fixed for good - move the override back FIRST,
+then recreate.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

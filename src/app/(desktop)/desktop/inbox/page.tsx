@@ -796,21 +796,33 @@ function InboxInner() {
 
                         {actionsOpenId === message.id && (
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-hair pt-3">
-                            {/* Spam, Trash and Favorite are the recipient's own state -
-                                on your own mail the row collapses to Forward alone. */}
-                            {!message.mine ? (
+                            {/* ROUND 29 follow-up 2 (the owner's request): the row is
+                                on EVERY card. On your own mail, Spam removes the message
+                                from YOUR views (the row's folder belongs to the
+                                recipient) and Favorite labels it; Trash stays
+                                recipient-only. Forward is below, on every card. */}
+                            {message.mine ? (
                               <>
                                 <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
-                              Move to Spam
-                            </button>
-                            <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
-                              Move to Trash
-                            </button>
-                            <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
-                              {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
-                            </button>
+                                  Move to Spam
+                                </button>
+                                <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
+                                  {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                </button>
                               </>
-                            ) : null}
+                            ) : (
+                              <>
+                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
+                                  Move to Spam
+                                </button>
+                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
+                                  Move to Trash
+                                </button>
+                                <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
+                                  {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
+                                </button>
+                              </>
+                            )}
                             <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => openForward(message)}>
                               Forward
                             </button>
