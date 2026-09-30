@@ -3659,6 +3659,13 @@ the run's own profile path). Recorded because a red that is silently waved
 away is how real bugs hide - and because verification tooling that leaves live
 sessions behind poisons the tests that come after it.
 
+The fresh-clone evaluator simulation from ORIGIN ran after the push (clone at the
+landed commit, timestamped dir left in place): cold build, fresh database (0 users,
+18 migrations), and the newest seven suites all green against the clone - ct33 (34),
+ct32 (27), ct31 (18), ct30 (26), ct28 (37), ct27 (45), ct24 (17) - with the security
+envelope intact (postgres egress blocked, nosniff + frame-deny on every surface) and
+the main stack restored to REAL mode afterwards.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.
