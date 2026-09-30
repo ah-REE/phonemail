@@ -98,6 +98,21 @@ export function FolderScreen({
     await load();
   }
 
+  /**
+   * ROUND 29 follow-up 4: empty the trash - one POST for every message the
+   * caller's trash holds; the server marks them deleted for the recipient
+   * only, so the other side of any conversation keeps its copy.
+   */
+  async function emptyTrash() {
+    setError(null);
+    const response = await authorizedFetch("/api/emails/empty-trash", { method: "POST" });
+    if (!response.ok) {
+      setError("Could not empty the trash.");
+      return;
+    }
+    await load();
+  }
+
   return (
     <main className="flex flex-1 flex-col">
       <AppBar
@@ -118,6 +133,16 @@ export function FolderScreen({
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-7 text-center">
           <p className="text-lg font-semibold text-on-surface">Nothing in {title.toLowerCase()}</p>
           <p className="text-sm text-on-surface-variant">{emptyNote}</p>
+        </div>
+      )}
+
+      {/* ROUND 29 follow-up 4 (the owner's request): the trash screen carries
+          its own Empty trash - one POST, per-viewer removal, reload. */}
+      {folder === "trash" && messages.length > 0 && (
+        <div className="flex justify-end px-4 pt-3">
+          <button type="button" className="btn-quiet" onClick={() => void emptyTrash()}>
+            Empty trash
+          </button>
         </div>
       )}
 

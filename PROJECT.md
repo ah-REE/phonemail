@@ -3695,7 +3695,7 @@ then recreate.
 
 **Follow-up 3 (the owner's request - signed-in devices on their own page):** the
 device list left Settings/Profile and lives on `/desktop/devices` and
-`/mobile/devices`, linked from the rows it left behind. Interactive device icons:
+`/devices`, linked from the rows it left behind. Interactive device icons:
 each session is drawn as a tile (desktop) or an icon-led row (phone) whose glyph
 comes from a new pure `describeDeviceKind` in lib/device - phone, tablet or
 desktop - and the API carries the `kind` per session. On the desktop a click
@@ -3709,6 +3709,26 @@ engine; ct21's settings-endpoints pin was re-pointed to the two pages it now
 spans, and its notification-throttle probe now arms the window deterministically
 instead of reading suite-order luck (one mid-run flake, diagnosed, made
 impossible). Full regression: 1124 assertions across 37 suites, 0 red.
+
+**Follow-up 4 (the owner's correction - sent mail takes Trash, not Spam; Empty trash):**
+the sent-mail card's row now reads Move to Trash / Favorite / Forward. For the sender,
+Trash is the per-viewer removal the app already used for sender-spam (`deletedForSender`
+- the row's folder belongs to the recipient), and Spam is refused on sent mail with the
+same 403 as every other recipient-only state. Both Trash screens (desktop header, phone
+folder screen) carry **Empty trash**, backed by a new `POST /api/emails/empty-trash`: it
+marks the caller's trash rows deleted-for-recipient - the same per-viewer removal, so
+the counterpart's copy is untouched - and reports how many left. Making that honest
+required one alignment: the `/api/emails` folder list now excludes deleted-for-recipient
+rows the way the conversations and search lists always have, so a row one screen removed
+for its owner cannot reappear in another. The first cut of follow-up 3 also shipped a
+URL bug that this round's phone drive caught: the phone's Manage devices link pointed at
+`/mobile/devices`, which is a 404 - phone screens live at root paths (`/profile`,
+`/devices`, `/trash`), and `/mobile` is only the phone home's alias. The link and the
+docs are fixed, and ct34 now DRIVES the phone side (profile link target + the devices
+screen) so the class cannot ship silently again. ct33 grew to 57 assertions (sender
+Spam 403 / sender Trash removal, the empty-trash API incl. anonymous 401, and a live
+Empty-trash click on the desktop trash screen); ct34 grew to 11. Full regression:
+1128 assertions across 37 suites, 0 red.
 
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 

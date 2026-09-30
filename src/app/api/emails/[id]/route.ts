@@ -141,16 +141,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   /**
-   * ROUND 29 follow-up 2 (the owner's request: favorite and spam for sent mail):
+   * ROUND 29 follow-up 4 (the owner's correction: Trash, not Spam, for sent mail):
    *  - tag (favorite) is a label on the message and is written as-is for either
    *    party - the shared-row model both sides already read;
-   *  - for the SENDER, "move to spam" cannot set the row's folder - that folder
-   *    is the RECIPIENT's mailbox - so it removes the message from the SENDER's
-   *    own views instead (deletedForSender), the same per-viewer mechanism
-   *    delete-chat uses. The recipient's copy is untouched;
-   *  - isRead and the other folders stay recipient-only.
+   *  - for the SENDER, "move to trash" cannot set the row's folder - that
+   *    folder is the RECIPIENT's mailbox - so it removes the message from the
+   *    SENDER's own views instead (deletedForSender), the same per-viewer
+   *    mechanism delete-chat uses. The recipient's copy is untouched;
+   *  - Spam is not offered on sent mail at all (the owner's correction), and
+   *    isRead stays recipient-only.
    */
-  const removesForSender = isSender && !isRecipient && parsed.data.folder === "spam";
+  const removesForSender = isSender && !isRecipient && parsed.data.folder === "trash";
 
   if (!isRecipient) {
     const touchesRecipientState =

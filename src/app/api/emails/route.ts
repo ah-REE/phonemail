@@ -483,8 +483,12 @@ export async function GET(request: Request) {
     );
   }
 
+  // ROUND 29 follow-up 4: deleted-for-recipient rows are excluded, the same
+  // way the conversations and search lists exclude them - a row one screen
+  // removed for its owner must not reappear in another (this is also what
+  // makes Empty trash empty this list, not just the conversation list).
   const emails = await prisma.email.findMany({
-    where: { toUserId: user.sub, folder: requestedFolder },
+    where: { toUserId: user.sub, folder: requestedFolder, deletedForRecipient: false },
     orderBy: { createdAt: "desc" },
     take: INBOX_LIMIT,
     select: {

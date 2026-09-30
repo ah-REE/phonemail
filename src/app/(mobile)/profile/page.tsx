@@ -220,7 +220,7 @@ export default function ProfilePage() {
   // A display preference, per device. Read on mount so the row shows what is
   // actually applied (the head script set it before paint); written on change.
   const [fontSize, setFontSize] = useState<FontSizeId>("normal");
-  // ROUND 29 follow-up 3: the devices moved to their own screen (/mobile/devices).
+  // ROUND 29 follow-up 3: the devices moved to their own screen (/devices).
 
   // Read what is actually applied AFTER mount rather than during render: the head
   // script has already set the size, and reading storage while rendering would make
@@ -738,7 +738,7 @@ export default function ProfilePage() {
           <SectionHeading>Signed-in devices</SectionHeading>
           <Card>
             <Link
-              href="/mobile/devices"
+              href="/devices"
               className="flex min-h-[64px] w-full items-center justify-between gap-4 px-4 py-3"
             >
               <span className="flex min-w-0 flex-col">

@@ -383,8 +383,9 @@ function InboxInner() {
   /**
    * ROUND 29: the phone's chevron actions, for the desktop card - the same row
    * pattern (chevron reveal; documented choice) and the SAME endpoints: spam,
-   * trash and tag are PATCH /api/emails/[id] state changes, recipient-owned,
-   * exactly as on the phone.
+   * trash and tag are PATCH /api/emails/[id] state changes - recipient-owned,
+   * with Trash on your own mail being the sender's per-viewer removal
+   * (follow-up 4).
    */
   async function moveMessage(messageId: string, folder: "inbox" | "spam" | "trash") {
     setActionsOpenId(null);
@@ -402,6 +403,26 @@ function InboxInner() {
     if (selected) {
       void openThread(selected);
     }
+  }
+
+  /**
+   * ROUND 29 follow-up 4 (the owner's request: empty the trash): one POST
+   * marks every message in the caller's trash as deleted-for-recipient - the
+   * same per-viewer removal the row actions use - so the trash empties for
+   * its owner and nobody else's copy is touched. An open thread closes with
+   * it, because its mail just left.
+   */
+  async function emptyTrash() {
+    setError(null);
+    const response = await authorizedFetch("/api/emails/empty-trash", { method: "POST" });
+    if (!response.ok) {
+      setError("Could not empty the trash.");
+      return;
+    }
+    setActionsOpenId(null);
+    setSelected(null);
+    setMessages([]);
+    void loadThreads();
   }
 
   /** The favorite toggle, optimistic the way the phone's is. */
@@ -530,6 +551,15 @@ function InboxInner() {
                 title={realtimeStatus}
                 aria-label={`Connection: ${realtimeStatus}`}
               />
+            )}
+            {folder === "trash" && !loadingList && threads.length > 0 && (
+              <button
+                type="button"
+                className="ml-auto inline-flex min-h-0 shrink-0 items-center whitespace-nowrap rounded-lg border border-neutral-hair bg-surface px-4 py-2 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper"
+                onClick={() => void emptyTrash()}
+              >
+                Empty trash
+              </button>
             )}
             <button
               type="button"
@@ -775,9 +805,8 @@ function InboxInner() {
                           {/* ROUND 29: the phone's action row, revealed by the same
                               chevron (the pattern choice, documented: it is the phone's
                               own, so the two clients teach one gesture). EVERY card
-                              carries it - on your own mail it opens the one action
-                              that is yours to take (Forward); spam/trash/favorite are
-                              recipient state, exactly as the phone scopes them. */}
+                              carries it - on your own mail it opens the actions that
+                              are yours (Trash, Favorite, Forward). */}
                           <button
                             type="button"
                               className="ml-auto inline-flex min-h-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-on-surface-variant transition-colors duration-ui hover:bg-surface-container-low"
@@ -796,15 +825,16 @@ function InboxInner() {
 
                         {actionsOpenId === message.id && (
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-neutral-hair pt-3">
-                            {/* ROUND 29 follow-up 2 (the owner's request): the row is
-                                on EVERY card. On your own mail, Spam removes the message
-                                from YOUR views (the row's folder belongs to the
-                                recipient) and Favorite labels it; Trash stays
-                                recipient-only. Forward is below, on every card. */}
+                            {/* ROUND 29 follow-up 4 (the owner's correction): the row
+                                is on EVERY card. On your own mail, Trash removes the
+                                message from YOUR views (the row's folder belongs to
+                                the recipient); Spam is gone from sent mail, and
+                                Favorite labels it. Forward is below, on every
+                                card. */}
                             {message.mine ? (
                               <>
-                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "spam")}>
-                                  Move to Spam
+                                <button type="button" className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void moveMessage(message.id, "trash")}>
+                                  Move to Trash
                                 </button>
                                 <button type="button" aria-pressed={message.tag === "favorite"} className="flex min-h-tap items-center rounded-lg border border-neutral-hair bg-surface px-4 text-sm font-semibold text-on-surface transition-colors duration-ui hover:bg-paper" onClick={() => void setMessageTag(message.id, message.tag === "favorite" ? null : "favorite")}>
                                   {message.tag === "favorite" ? "Favorite ✓" : "Favorite"}
