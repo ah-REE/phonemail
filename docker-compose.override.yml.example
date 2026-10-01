@@ -5,27 +5,18 @@
 # Compose merges the override over docker-compose.yml automatically, so
 # `docker compose up -d` needs no extra flags.
 #
-# HOW TO READ THIS FILE
-#   - Blocks 1-3 configure the `app` service; block 4 configures `smtp`.
-#   - MINIMUM for real SMS: fill the two gateway values in block 1. Everything
-#     else is for rotating secrets; left at the placeholders below, each line
-#     keeps the committed default from docker-compose.yml - an unfilled copy
-#     changes nothing, and an unedited stack stays in dev mode.
-#   - Some values are read by BOTH services (`MAIL_WEBHOOK_SECRET` below; also
-#     `MAIL_DOMAIN` and `SMTP_PORT` if you ever change them). A drifted pair
-#     breaks mail SILENTLY: smtp accepts the message, its callback to the app
-#     is refused (401), and the message never reaches any inbox. To make that
-#     impossible, the shared secret is written exactly ONCE, as the YAML
-#     anchor just below, and both services reference it.
-#   - Any other key from the catalog in `.env.example` can be overridden the
-#     same way - name it under the service that reads it.
+# BASIC BY DESIGN: this template carries only the two things a real deployment
+# fills in - the sms-gate.app credentials (which switch real SMS on) and the
+# IVR webhook's secret. Every value below mirrors the committed placeholder, so
+# an unfilled copy changes nothing and the stack keeps running in dev mode.
+#
+# Anything else (JWT_SECRET, the mail secret, a domain or a port) can join this
+# file the same way - name the key under the service that reads it. Every
+# variable is explained in the README's "Environment & configuration".
 #
 # sms-gate.app is the Android SMS gateway: the phone running the app (logged
 # into your account) carries the SIM that sends the messages, so the gateway
 # phone must be online for a real send to arrive.
-
-# THE ONE MAIL SECRET - edit this single line; both services below use it.
-x-mail-secret: &mail_secret "replace-with-real-mail-webhook-secret"
 
 services:
   app:
@@ -38,24 +29,12 @@ services:
       SMS_GATE_LOGIN: "replace-with-real-sms-gate-login"
       SMS_GATE_PASSWORD: "replace-with-real-sms-gate-password"
 
-      # --- 2. Rotate before any real deployment ------------------------------
-      # Signs every session token - a long random value. Rotating it signs
-      # everyone out; that is the point.
-      JWT_SECRET: "change-me-placeholder-jwt-secret"
-      # Authenticates the smtp -> app inbound webhook. Read by BOTH services -
-      # defined once as *mail_secret (the anchor above).
-      MAIL_WEBHOOK_SECRET: *mail_secret
-
-      # --- 3. IVR signup webhook (Twilio) ------------------------------------
+      # --- 2. IVR signup webhook (Twilio) ------------------------------------
+      # The shared token for the voice signup line. The integration is INBOUND
+      # - Twilio calls this app - so no Twilio credentials live here; this
+      # token is the only secret, and it is checked on every request.
       # Point the Twilio voice number at
       # <public-url>/api/ivr/signup?token=<this value> - the README's
       # "Setting up the Twilio IVR" guide walks through it.
       IVR_WEBHOOK_SECRET: "replace-with-real-ivr-webhook-secret"
 
-  smtp:
-    environment:
-      # --- 4. The mail hop's other half (same secret, same single source) ----
-      # Besides this secret the smtp service also reads MAIL_DOMAIN, SMTP_PORT
-      # and APP_INBOUND_URL - all keep the committed defaults unless you
-      # override them the same way.
-      MAIL_WEBHOOK_SECRET: *mail_secret

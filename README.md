@@ -151,22 +151,21 @@ you create one file — and turns back off when you remove it.** There is no oth
 > The override file is **gitignored on purpose** — never commit it. The committed placeholder
 > values are what keeps the default dev mode working for anyone who clones.
 
-**What's inside the template.** Four commented blocks cover the whole real-deployment story:
+**What's inside the template.** Deliberately basic — the three values a real deployment
+actually fills in:
 
 | Block | Service | Carries |
 |---|---|---|
 | 1 | app | `SMS_GATE_LOGIN` + `SMS_GATE_PASSWORD` — the switch: the two values to fill |
-| 2 | app | `JWT_SECRET`, `MAIL_WEBHOOK_SECRET` — rotate before any real deployment |
-| 3 | app | `IVR_WEBHOOK_SECRET` — the Twilio IVR webhook token |
-| 4 | smtp | the mail hop's half of `MAIL_WEBHOOK_SECRET` |
+| 2 | app | `IVR_WEBHOOK_SECRET` — the voice signup line's shared token |
 
-The `smtp` block is short on purpose: the only smtp value a real deployment changes is its
-half of the mail secret — `MAIL_DOMAIN`, `SMTP_PORT` and `APP_INBOUND_URL` keep committed
-defaults that already work. And that secret is read by **both** containers, so a drifted pair
-would break mail *silently* (the SMTP service accepts the message, its callback to the app is
-refused with `401 Invalid webhook secret.`, and the message never reaches any inbox). The
-template therefore writes it exactly **once** — a YAML anchor (`&mail_secret`) referenced by
-both services — one line to edit, and the two copies can never disagree.
+Anything else you might rotate (`JWT_SECRET`, `MAIL_WEBHOOK_SECRET`, a domain or a port) can
+join the same file the same way — name the key under the service that reads it — and
+[Environment & configuration](#environment--configuration-every-variable-clearly) explains
+every one. The value to treat carefully there is `MAIL_WEBHOOK_SECRET`: it is read by **both**
+`app` and `smtp`, so a rotation must change both together (or write it once as a YAML anchor
+and let compose resolve the pair) — a drifted copy breaks mail *silently*: the SMTP service
+accepts the message, its callback is refused with `401`, and nothing lands.
 
 The OTP request policy is **one flat cooldown**: 60 seconds between requests for a number —
 and **a successful sign-in clears it instantly**, so a *request → sign in → request again*
@@ -210,6 +209,27 @@ compose file contains no `${...}` substitutions, so a `.env` file would do nothi
 | `SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD` | app | gateway credentials — **the placeholders ARE what keeps dev mode on** | committed placeholders (= dev mode) |
 | `NODE_ENV` / `PORT` | app | runtime mode; the listen port (published as `3000:3000`) | `production` / `3000` |
 | `HOSTNAME` | app | bind address; Docker injects it per container (the code falls back to `0.0.0.0`) | Docker-injected |
+
+**The stories behind the tricky ones:**
+
+- **`SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD`** — this pair *is* the dev/real switch. While
+  both are the committed placeholders, no SMS is attempted and the login code is always
+  `123456` with a `devHint`; fill them with the real gateway credentials (steps in the guide
+  below) and codes start going out through the gateway phone — billable, and the
+  `devHint` disappears.
+- **`IVR_WEBHOOK_SECRET`** — the voice line's shared token, and the *only* secret the IVR
+  needs. The integration is **inbound** — Twilio calls *this* app when the number rings —
+  so no Twilio account credentials live in this stack at all; the account is used once, in
+  the Twilio console, to point the number at `<public-url>/api/ivr/signup?token=<this value>`.
+  The token is what proves a call is genuinely arriving on that secret URL; it is checked on
+  every request, and the legacy Exotel one-shot path uses the same token.
+- **`MAIL_WEBHOOK_SECRET`** — the app↔smtp handshake, read by **both** containers. Rotate
+  it in both places together — or write it once as a YAML anchor (`&name` / `*name`) and
+  let compose resolve the pair: a drifted copy breaks mail *silently* — the SMTP service
+  accepts the message, its callback to the app is refused (`401 Invalid webhook secret.`), and
+  nothing reaches an inbox.
+- **`JWT_SECRET`** — signs every session token. Rotating it signs everyone out (locally you
+  just log in again); before any real deployment, swap it for a long random value.
 
 **Setup, by scenario — pick one:**
 
@@ -682,6 +702,11 @@ fault. Once real mode is on, here is what has to be true for a real text to arri
 
 The voice tree is Twilio-shaped end to end: our route answers Twilio's `POST`s with
 `<Gather>`/`<Say>` XML, and every later menu step is driven by the `action` URLs it returns.
+
+**No Twilio credentials are involved on this side.** The integration is *inbound* — Twilio
+calls *this* app, never the other way round — so the stack stores no account SID or auth
+token; the only secret is our own `IVR_WEBHOOK_SECRET`, travelling inside the webhook URL
+below. Your Twilio login is used once, in their console, to point the number at this endpoint.
 
 1. **A Twilio account with a voice-capable number.** A trial number works — trial accounts
    can call verified numbers.
