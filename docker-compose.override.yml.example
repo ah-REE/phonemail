@@ -5,15 +5,44 @@
 # Compose merges the override over docker-compose.yml automatically, so
 # `docker compose up -d` needs no extra flags.
 #
-# sms-gate.app is a self-hosted Android SMS gateway: the phone running the app
-# (logged into your account) carries the SIM that sends the messages, so the
-# gateway phone must be online for a real send to arrive.
+# This template carries every value a real deployment touches. The MINIMUM
+# for real SMS is the two gateway values in block 1 - fill them and nothing
+# else. Everything after that is for rotating secrets; left at the
+# placeholders below, each line simply keeps the committed default from
+# docker-compose.yml, so an unfilled copy changes nothing (and an unedited
+# stack stays in dev mode). Any other key from the catalog in `.env.example`
+# can be overridden the same way - name it under the service that reads it.
+#
+# sms-gate.app is the Android SMS gateway: the phone running the app (logged
+# into your account) carries the SIM that sends the messages, so the gateway
+# phone must be online for a real send to arrive.
 
 services:
   app:
     environment:
-      # Credentials you created in the sms-gate.app web console.
-      SMS_GATE_LOGIN: "your-sms-gate-login"
-      SMS_GATE_PASSWORD: "your-sms-gate-password"
-      # IVR signup webhook (Exotel) — must match the token in the webhook URL.
+      # --- 1. The switch to real SMS mode - the two values to fill -----------
+      # Your sms-gate.app credentials: install the Android app -> START the
+      # Cloud Server -> LOG IN. The username and password it gives you ARE
+      # these two. While both are still the placeholders, the app stays in
+      # dev mode: fixed OTP 123456 + devHint, and no SMS is attempted.
+      SMS_GATE_LOGIN: "replace-with-real-sms-gate-login"
+      SMS_GATE_PASSWORD: "replace-with-real-sms-gate-password"
+
+      # --- 2. Rotate before any real deployment ------------------------------
+      # Signs every session token - a long random value.
+      JWT_SECRET: "change-me-placeholder-jwt-secret"
+      # Authenticates the smtp -> app inbound webhook. It must EQUAL the
+      # smtp service's copy in block 4 below - change both lines together.
+      MAIL_WEBHOOK_SECRET: "replace-with-real-mail-webhook-secret"
+
+      # --- 3. IVR signup webhook (Twilio) ------------------------------------
+      # Point the Twilio voice number at
+      # <public-url>/api/ivr/signup?token=<this value> - the README's
+      # "Setting up the Twilio IVR" guide walks through it.
       IVR_WEBHOOK_SECRET: "replace-with-real-ivr-webhook-secret"
+
+  smtp:
+    environment:
+      # --- 4. The mail hop's half of the same secret -------------------------
+      # Keep this EQUAL to the app's MAIL_WEBHOOK_SECRET above.
+      MAIL_WEBHOOK_SECRET: "replace-with-real-mail-webhook-secret"
