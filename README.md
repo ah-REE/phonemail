@@ -151,14 +151,16 @@ you create one file — and turns back off when you remove it.** There is no oth
 > The override file is **gitignored on purpose** — never commit it. The committed placeholder
 > values are what keeps the default dev mode working for anyone who clones.
 
-The OTP request policy is tiered: the first **two** requests for a number are immediate, the
-next must wait 60s, and no number may receive more than **five** per two hours — the same rule
-in both modes, so the evaluator can never be locked out.
+The OTP request policy is **one flat cooldown**: 60 seconds between requests for a number —
+and **a successful sign-in clears it instantly**, so a *request → sign in → request again*
+flow never waits. Only abandoned or unverified requests leave the timer standing. (A separate
+brute-force guard — five wrong guesses burn the pending code — bounds *guessing*, not
+requesting.)
 
-> **Testing fast? Reset the timers anytime.** All of those cooldowns live in Redis, so one
-> command clears every
-> timer: `docker compose exec redis redis-cli FLUSHALL`. (A convenience for development and
-> evaluation — the policy itself is what protects real numbers in real mode.)
+> **Testing fast? Reset everything, anytime.** All cooldowns live in Redis, so one command
+> clears every timer: `docker compose exec redis redis-cli FLUSHALL`. (A convenience for
+> development and evaluation — and with the success-reset above, repeat sign-ins need it
+> only after *unverified* requests.)
 
 ### Environment & configuration (every variable, clearly)
 
@@ -545,7 +547,7 @@ that clone.
 |---|---|---|---|
 | Onboarding & chrome | welcome, onboarding screens, brand palette, chat rendering, reader | welcome · phase0 · logo2 · chat_ref · reader | 111 |
 | The app's grammar | display names, the group chat, the final functional round, aliases, contacts | names · groupchat · final · aliases · contacts | 156 |
-| Send → sessions | send/reply/socket reconciliation, contact-alias send, tiered OTP, sessions & devices | ct2 · ct3 · ct5 · ct6 · ct8 | 176 |
+| Send → sessions | send/reply/socket reconciliation, contact-alias send, the OTP policy, sessions & devices | ct2 · ct3 · ct5 · ct6 · ct8 | 176 |
 | Attachments → search | attachments, CC + delete-chat security, IVR tree, OTP policy, throttles, group info, devices | ct13–ct21 | 349 |
 | Desktop → door | desktop design system, groups & CC, security headers, search · PIN · drafts, phase gate, entry rule, desktop sheets, multi-recipient, PIN sign-in | ct22–ct32 | 279 |
 | Actions, devices, credibility | Forward's byte-identical copy, per-viewer sender trash, group action tab, the devices page, sender credibility | ct33 · ct34 · ct35 | 159 |

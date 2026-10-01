@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { MissingJwtSecretError, signAuthToken } from "@/lib/jwt";
-import { verifyOtp } from "@/lib/otp";
+import { clearOtpThrottle, verifyOtp } from "@/lib/otp";
 import { otpSchema, phoneNumberSchema } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 
@@ -76,6 +76,12 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+
+  // ROUND 43: the successful sign-in clears the number's request cooldown, so
+  // repeat sign-ins never wait - only abandoned or unverified requests do.
+  void clearOtpThrottle(phoneNumber).catch((error) => {
+    console.error("[verify-otp] could not clear the OTP throttle", error);
+  });
 
   // 2. First signup creates the account; later logins reuse the same row.
   try {

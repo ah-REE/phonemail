@@ -333,6 +333,19 @@ export async function requestOtp(phoneNumber: string): Promise<RequestOtpResult>
   };
 }
 
+/**
+ * ROUND 43 (the owner's call): a SUCCESSFUL sign-in clears this number's request
+ * cooldown. Their testing pattern - request a code, sign in, request again -
+ * should never wait; only abandoned or unverified requests leave the 60-second
+ * timer standing. The brute-force guard (five wrong guesses burn the pending
+ * code) is untouched, and so is the cooldown itself for unverified requests.
+ */
+export async function clearOtpThrottle(phoneNumber: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.del(otpLastRequestKey(phoneNumber));
+  await redis.del(otpCooldownKey(phoneNumber));
+}
+
 /** Seconds left on a key, with a fallback when the key has no expiry or has gone. */
 async function remainingTtl(
   redis: Awaited<ReturnType<typeof getRedis>>,
