@@ -107,6 +107,8 @@ export function DesktopCompose({
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  /** ROUND 44: which recipient field holds an invalid entry - red border + focus. */
+  const [invalidFields, setInvalidFields] = useState<{ to: boolean; cc: boolean }>({ to: false, cc: false });
 
   const documentInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -225,11 +227,13 @@ export function DesktopCompose({
         setToChips((current) => [...new Set([...current, ...incoming])]);
       }
       setToDraft(tail);
+      setInvalidFields((current) => (current.to ? { ...current, to: false } : current));
     } else {
       if (incoming.length > 0) {
         setCcChips((current) => [...new Set([...current, ...incoming])]);
       }
       setCcDraft(tail);
+      setInvalidFields((current) => (current.cc ? { ...current, cc: false } : current));
     }
   }
 
@@ -264,11 +268,20 @@ export function DesktopCompose({
     // knows exactly what to fix - where the server's 400 could only speak in
     // tokens. (Format only: an unknown-but-well-formed recipient is still the
     // server's 404 to report.)
-    const invalid = invalidRecipients([...recipients, ...cc]);
-    if (invalid.length > 0) {
-      setError(`${RECIPIENT_FORMAT_MESSAGE} Check: ${invalid.join(", ")}`);
+    // ROUND 44: the refusal now points at the field - the border turns alert
+    // red and the cursor lands where the fix is. (The owner typed "f" into Cc,
+    // met "Check: f" at the bottom, and nothing on screen said WHERE.)
+    const invalidTo = invalidRecipients(recipients);
+    const invalidCc = invalidRecipients(cc);
+    if (invalidTo.length + invalidCc.length > 0) {
+      setInvalidFields({ to: invalidTo.length > 0, cc: invalidCc.length > 0 });
+      setError(`${RECIPIENT_FORMAT_MESSAGE} Check: ${[...invalidTo, ...invalidCc].join(", ")}`);
+      window.setTimeout(() => {
+        document.getElementById(invalidTo.length > 0 ? "compose-to" : "compose-cc")?.focus();
+      }, 0);
       return false;
     }
+    setInvalidFields({ to: false, cc: false });
     if (!subjectDraft.trim()) {
       setError("A subject is required.");
       return false;
@@ -400,7 +413,7 @@ export function DesktopCompose({
           <label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-to">
             To
           </label>
-          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 transition-colors duration-ui focus-within:border-accent ${locked ? "bg-paper" : ""}`}>
+          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border bg-surface px-3 py-2 transition-colors duration-ui ${invalidFields.to ? "border-wa-alert focus-within:border-wa-alert" : "border-neutral-hair focus-within:border-accent"} ${locked ? "bg-paper" : ""}`}>
             {toChips.map((chip) => (
               <span key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-hair bg-paper px-2.5 py-1 text-xs font-medium text-on-surface">
                 <span className="max-w-[220px] truncate">{chip}</span>
@@ -409,7 +422,10 @@ export function DesktopCompose({
                     type="button"
                     aria-label={`Remove ${chip} from To`}
                     className="text-neutral-muted transition-colors duration-ui hover:text-on-surface"
-                    onClick={() => setToChips((current) => current.filter((entry) => entry !== chip))}
+                    onClick={() => {
+                      setToChips((current) => current.filter((entry) => entry !== chip));
+                      setInvalidFields((current) => (current.to ? { ...current, to: false } : current));
+                    }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                       <path d="M6 6l12 12M18 6L6 18" />
@@ -427,6 +443,7 @@ export function DesktopCompose({
               onKeyDown={(event) => onChipsKeyDown(event, "to")}
               readOnly={locked}
               aria-readonly={locked}
+              aria-invalid={invalidFields.to}
             />
           </div>
           {locked && (
@@ -438,7 +455,7 @@ export function DesktopCompose({
           <label className="mt-3 text-xs font-semibold uppercase tracking-wide text-on-surface-variant" htmlFor="compose-cc">
             Cc
           </label>
-          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border border-neutral-hair bg-surface px-3 py-2 transition-colors duration-ui focus-within:border-accent ${locked ? "bg-paper" : ""}`}>
+          <div className={`mt-1 flex flex-wrap items-center gap-2 rounded-md border bg-surface px-3 py-2 transition-colors duration-ui ${invalidFields.cc ? "border-wa-alert focus-within:border-wa-alert" : "border-neutral-hair focus-within:border-accent"} ${locked ? "bg-paper" : ""}`}>
             {ccChips.map((chip) => (
               <span key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-hair bg-paper px-2.5 py-1 text-xs font-medium text-on-surface">
                 <span className="max-w-[220px] truncate">{chip}</span>
@@ -447,7 +464,10 @@ export function DesktopCompose({
                     type="button"
                     aria-label={`Remove ${chip} from Cc`}
                     className="text-neutral-muted transition-colors duration-ui hover:text-on-surface"
-                    onClick={() => setCcChips((current) => current.filter((entry) => entry !== chip))}
+                    onClick={() => {
+                      setCcChips((current) => current.filter((entry) => entry !== chip));
+                      setInvalidFields((current) => (current.cc ? { ...current, cc: false } : current));
+                    }}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                       <path d="M6 6l12 12M18 6L6 18" />
@@ -465,6 +485,7 @@ export function DesktopCompose({
               onKeyDown={(event) => onChipsKeyDown(event, "cc")}
               readOnly={locked}
               aria-readonly={locked}
+              aria-invalid={invalidFields.cc}
             />
           </div>
 
