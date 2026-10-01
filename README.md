@@ -89,6 +89,14 @@ The very first boot **BUILDS the images** (several minutes); later boots take se
 Wait until `docker compose ps` shows **all four services healthy**, then open
 **<http://localhost:3000>**.
 
+> **Trip-up: `no configuration file provided: not found`?** You are one folder off.
+> `git clone` creates a `phonemail` directory, and Compose only works from **inside** the
+> folder that contains `docker-compose.yml` — so: `cd phonemail`, then `docker compose up -d`
+> again.
+>
+> *(On Windows PowerShell 5.1 the `&&` above is not available — run the lines separately:
+> `git clone <repo-url>`, then `cd phonemail`, then `docker compose up -d`.)*
+
 **A wide browser shows the desktop client's login; a narrow window — or `/mobile` — shows the
 phone client.** Concretely: the root `/` hands a viewport of 768px or wider to `/desktop` once
 per tab; the phone layout answers `/mobile` explicitly, and choosing it keeps you there (the
