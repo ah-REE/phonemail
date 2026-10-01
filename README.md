@@ -155,6 +155,11 @@ The OTP request policy is tiered: the first **two** requests for a number are im
 next must wait 60s, and no number may receive more than **five** per two hours — the same rule
 in both modes, so the evaluator can never be locked out.
 
+> **Testing fast? Reset the timers anytime.** All of those cooldowns live in Redis, so one
+> command clears every
+> timer: `docker compose exec redis redis-cli FLUSHALL`. (A convenience for development and
+> evaluation — the policy itself is what protects real numbers in real mode.)
+
 ### Environment & configuration (every variable, clearly)
 
 **The one thing to know: there is nothing to configure to run this.** No `.env` file is
