@@ -388,7 +388,7 @@ platform chrome:
 | Mail hop | **nodemailer** + a self-hosted **SMTP service** (`smtp/`) | outbound via the internal SMTP container; inbound parsing for external senders |
 | Validation | **zod 3** on every API body | typed, explicit 400s |
 | Auth | **jsonwebtoken** (JWT sessions in the DB) + **bcryptjs** (PIN) | sessions revocable per device, PIN hashed |
-| SMS | **sms-gate.app** (self-hosted Android gateway) | after Fast2SMS (KYC wall) and Twilio (trial walls) — see [obstacles](#-the-obstacles-we-faced-and-how-each-was-beaten) |
+| SMS | **sms-gate.app** — your SIM in an Android phone, sending through the app's Cloud Server | after Fast2SMS (KYC wall) and Twilio (trial walls) — see [obstacles](#-the-obstacles-we-faced-and-how-each-was-beaten) |
 | Runtime | **Docker Compose**: `app`, `postgres`, `redis`, `smtp` | four healthy services, one command, no `.env` needed |
 
 <details>
@@ -461,8 +461,8 @@ Every one of these is a real chapter in this repository's history, with a regres
 somewhere that keeps it beaten.
 
 1. **The OTP transport, three times over.** Fast2SMS required KYC; the Twilio trial hit
-   verification walls for Indian numbers. The answer was a **self-hosted Android SMS gateway
-   (sms-gate.app)** sending over the developer's own SIM. Then we learned carriers **drop
+   verification walls for Indian numbers. The answer was **sms-gate.app** — an Android phone
+   with the developer's own SIM, sending through the app's Cloud Server. Then we learned carriers **drop
    templated or duplicated SMS** — so the code rotates among short, manually-verified
    wordings, and the login flow never depends on texts in dev. Everything above is why a
    fresh clone runs in a **fixed-OTP dev mode** with a `devHint` instead of ever guessing.
@@ -635,10 +635,10 @@ switch back) is [Dev mode vs real mode](#dev-mode-vs-real-mode-and-how-to-switch
 default checkout the app **deliberately sends NOTHING** — that is dev mode working, not a
 fault. Once real mode is on, here is what has to be true for a real text to arrive:
 
-- **The gateway phone is online with the app running.** sms-gate.app queues each message for
-  the paired Android device; if that phone is off, the gateway still answers 2xx (meaning
-  "queued", not "delivered") and nothing arrives. (Where the credentials come from:
-  [below](#where-the-sms-gateapp-credentials-come-from).)
+- **The gateway phone is online with the app running and its Cloud Server started.**
+  sms-gate.app queues each message for that phone; if it is off, the gateway still answers
+  2xx (meaning "queued", not "delivered") and nothing arrives. (Where the credentials come
+  from: [below](#where-the-sms-gateapp-credentials-come-from).)
 - **The recipient is notifiable.** The spec allows the new-mail SMS only for users without
   the mobile app, recorded as `User.registeredVia`: `portal`, `desktop` or `ivr` notify;
   `mobile` (and anything unrecognised) does not.
@@ -672,18 +672,20 @@ uses the same token; the doc above keeps its console steps.)*
 
 ### Where the sms-gate.app credentials come from
 
-**sms-gate.app is the free SMS gateway the login codes and new-mail texts go through — and
-your "login and password" are simply your sms-gate.app account.**
+**sms-gate.app is the free SMS gateway the login codes and new-mail texts go through, and
+it hands you exactly the two values this project needs.**
 
-1. **Create the account & pair the phone.** Install the sms-gate.app Android app on the
-   phone whose SIM will send the texts, and sign in / create the account there — the cloud
-   service (`api.sms-gate.app`) does the sending for that account.
-2. **Keep the phone online.** Messages are queued to it; if it is off, the gateway still
+1. **Install** the sms-gate.app Android app on the phone whose SIM will send the texts.
+2. **Start the Cloud Server** in the app — that is what lets the service queue messages for
+   this phone.
+3. **Log in** (create / sign in to the sms-gate.app account from the app).
+4. **You will get a username and password.** The app shows them once the cloud server is
+   on — those two values **are** `SMS_GATE_LOGIN` and `SMS_GATE_PASSWORD`.
+5. **Keep the phone online.** Messages are queued to it; if it is off, the gateway still
    answers `2xx` (meaning "queued", not "delivered") and nothing arrives.
-3. **Put the account's credentials in the override** as `SMS_GATE_LOGIN` and
-   `SMS_GATE_PASSWORD` — the app sends them as **HTTP Basic auth** to
-   `api.sms-gate.app/3rdparty/v1/message` — and `docker compose up -d`.
-4. **Test:** request a login code — the SMS should land. With the committed placeholders
+6. **Put them in the override** and `docker compose up -d` — the app sends them as **HTTP
+   Basic auth** to `api.sms-gate.app/3rdparty/v1/message`.
+7. **Test:** request a login code — the SMS should land. With the committed placeholders
    `smsGateConfig()` is deliberately `null`: dev mode, no attempt
    ([Dev mode vs real mode](#dev-mode-vs-real-mode-and-how-to-switch)).
 
