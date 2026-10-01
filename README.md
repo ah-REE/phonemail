@@ -18,6 +18,7 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 > | **Where** | Phone client at `/` (installable PWA) · desktop client at `/desktop` · one port, `localhost:3000` |
 > | **Run it** | `git clone <repo-url> && cd phonemail` then `docker compose up -d` — **no `.env`, no setup, no secrets** |
 > | **Sign in** | **ANY 10-digit Indian number**; the code is always **`123456`** and every response says so (`devHint`) |
+> | **Modes** | 🟢 **Dev by default** (nothing to configure). 🔴 Real SMS is opt-in through one gitignored file — [how to switch](#dev-mode-vs-real-mode-and-how-to-switch) |
 > | **Verified** | **1337 assertions across 41 suites, 0 red** · 20 committed migrations · fresh-clone evaluator simulations, green |
 
 ---
@@ -27,7 +28,7 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 1. [What is PhoneMail?](#-what-is-phonemail)
 2. [Run it — two commands](#-run-it--two-commands)
    - [Your first account, step by step](#your-first-account-step-by-step)
-   - [How sign-in works here (dev OTP ⇄ real SMS)](#how-sign-in-works-here-dev-otp--real-sms)
+   - [Dev mode vs real mode (and how to switch)](#dev-mode-vs-real-mode-and-how-to-switch)
    - [🎬 The demo script](#-the-demo-script)
 3. [Features](#-features)
    - [💬 Messages & conversations](#-messages--conversations)
@@ -47,7 +48,7 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 10. [Known limitations](#️-known-limitations)
 11. [Project layout](#️-project-layout)
 12. [Documentation](#-documentation)
-13. [Real-mode operations: enabling real SMS](#-real-mode-operations-enabling-real-sms)
+13. [Real mode operations: the gateway checklist](#-real-mode-operations-the-gateway-checklist)
 
 ---
 
@@ -103,12 +104,37 @@ No `.env`, no setup, no secrets:
 4. You are in. For a two-sided demo, open a second browser profile/tab and sign in as a
    different number — **each tab keeps its own session**.
 
-### How sign-in works here (dev OTP ⇄ real SMS)
+### Dev mode vs real mode (and how to switch)
 
-| Mode | Credentials | What happens at sign-in |
+**One rule, no ambiguity: a fresh clone is ALWAYS in dev mode. Real mode turns on only when
+you create one file — and turns back off when you remove it.** There is no other switch: no
+`.env` file, no settings screen, no code change.
+
+**Which mode am I in, right now?** Request a login code and read the response:
+
+- it carries a **`devHint`** field and the code is always **`123456`** → you are in **🟢 dev mode**;
+- there is no `devHint`, and a **real 6-digit code arrives by SMS** → you are in **🔴 real mode**.
+
+| | 🟢 Dev mode — the default | 🔴 Real mode — opt-in |
 |---|---|---|
-| **Dev (default)** | the committed placeholder values in `docker-compose.yml` | fixed OTP **`123456`**, a **`devHint`** in the response, **no SMS** is attempted |
-| **Real** | a gitignored `docker-compose.override.yml` with real `SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD` | a 6-digit code (`crypto.randomInt`) sent through the **gateway phone** — a self-hosted Android SMS gateway (**sms-gate.app**) with a real SIM |
+| Setup needed | **none** — `git clone` + `docker compose up -d` is the whole thing | the gitignored `docker-compose.override.yml`, filled with real gateway credentials |
+| The login code | always **`123456`**, explained by the **`devHint`** | a random 6-digit code, sent by SMS through the **gateway phone** |
+| Is any SMS sent? | **never** | yes — real, billable SMS from a real SIM |
+| Made for | the evaluator, development, demos | an actual deployment with the gateway phone |
+
+**Turn ON real mode — four steps:**
+
+1. Copy the template: `docker-compose.override.yml.example` → `docker-compose.override.yml`.
+2. Fill in the **two values** it asks for: `SMS_GATE_LOGIN` and `SMS_GATE_PASSWORD` (your
+   sms-gate.app credentials; the **gateway phone** — see §13 — must be online).
+3. Apply: `docker compose up -d` (Compose merges the override automatically — no other flag).
+4. Check: request a login code — the `devHint` is gone and the code arrives by SMS.
+
+**Turn real mode OFF (back to dev):** delete or rename `docker-compose.override.yml` and run
+`docker compose up -d` again. `123456` works again. That is the entire switch.
+
+> The override file is **gitignored on purpose** — never commit it. The committed placeholder
+> values are what keeps the default dev mode working for anyone who clones.
 
 The OTP request policy is tiered: the first **two** requests for a number are immediate, the
 next must wait 60s, and no number may receive more than **five** per two hours — the same rule
@@ -495,13 +521,12 @@ phonemail/
 
 ---
 
-## 🛠️ Real-mode operations: enabling real SMS
+## 🛠️ Real mode operations: the gateway checklist
 
-The default checkout **deliberately sends NOTHING**, and that is the feature working, not a
-fault. Real **SMS notifications** (and real login codes) turn on only when the gitignored
-**`docker-compose.override.yml`** supplies the gateway credentials — copy
-`docker-compose.override.yml.example` and fill it in. What then has to be true for a real
-text to arrive:
+**You are only here if you deliberately turned real mode on** — the switch itself (and how to
+switch back) is [Dev mode vs real mode](#dev-mode-vs-real-mode-and-how-to-switch). In the
+default checkout the app **deliberately sends NOTHING** — that is dev mode working, not a
+fault. Once real mode is on, here is what has to be true for a real text to arrive:
 
 - **The gateway phone is online with the app running.** sms-gate.app queues each message for
   the paired Android device; if that phone is off, the gateway still answers 2xx (meaning
