@@ -53,6 +53,8 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 11. [Project layout](#️-project-layout)
 12. [Documentation](#-documentation)
 13. [Real mode operations: the gateway checklist](#-real-mode-operations-the-gateway-checklist)
+    - [Setting up the Twilio IVR](#setting-up-the-twilio-ivr)
+    - [Where the sms-gate.app credentials come from](#where-the-sms-gateapp-credentials-come-from)
 
 ---
 
@@ -169,7 +171,7 @@ compose file contains no `${...}` substitutions, so a `.env` file would do nothi
 | `REDIS_URL` | app | Redis: OTP codes, rate windows, throttles | `redis://redis:6379` |
 | `JWT_SECRET` | app | signs session tokens — **rotate for any real deployment** | committed placeholder |
 | `MAIL_WEBHOOK_SECRET` | app + smtp | authenticates the smtp→app inbound webhook (rotate both together) | committed placeholder |
-| `IVR_WEBHOOK_SECRET` | app | the Exotel IVR signup webhook's shared secret | committed placeholder |
+| `IVR_WEBHOOK_SECRET` | app | the Twilio IVR webhook's shared secret (the legacy Exotel one-shot path uses the same token) | committed placeholder |
 | `MAIL_DOMAIN` | app + smtp | the mail domain both sides accept | `phonemail.com` |
 | `SMTP_HOST` / `SMTP_PORT` | app | the internal mail hop | `smtp` / `25` |
 | `APP_INBOUND_URL` | smtp | where the mail service posts each parsed message | `http://app:3000/api/mail/inbound` |
@@ -363,11 +365,13 @@ platform chrome:
 
 ### ☎️ No-smartphone paths
 
-- **IVR signup** (`docs/ivr-setup.md`): call the toll-free number, press 1 (Exotel one-shot)
-  or walk a full voice tree (language → menu → register). Every branch unit-tested against the
-  pure flow; the real call needs the operator console wired.
+- **IVR signup** (`docs/ivr-setup.md`): call the number and walk the **Twilio voice tree**
+  — language → menu → *press 4 to register* (a legacy one-shot path also exists: press 1).
+  The caller's number is proven by the call itself, so no OTP is involved. Every branch
+  unit-tested against the pure flow; the real call needs your Twilio console wired —
+  [how to set it up](#setting-up-the-twilio-ivr).
 - **SMS notifications**: users without the app (registered via `portal`, `desktop` or `ivr` —
-  see [the real-mode section](#-real-mode-operations-enabling-real-sms)) can be told "you have
+  see [the real-mode section](#-real-mode-operations-the-gateway-checklist)) can be told "you have
   new mail" by text, throttled, sanitized, and never able to break a delivery.
 
 ---
@@ -575,7 +579,7 @@ Honest, complete, each with its recommendation:
 | # | Limitation | Status | Path to done |
 |---|---|---|---|
 | 1 | Phone verification is not automatic (no SIM, no WebOTP) | Partial, platform-limited | The last-number pre-fill + auto-submit on the sixth digit is the honest maximum |
-| 2 | The IVR signup's real call is unverified | Unverified (operator-side) | Wire the Exotel/Twilio console, re-run `ct19` against a live call |
+| 2 | The IVR signup's real call is unverified | Unverified (operator-side) | Wire the Twilio console ([how](#setting-up-the-twilio-ivr)), re-run `ct19` against a live call |
 | 3 | Profile picture is not built | Cut | Remove the avatar columns or build upload + a party-checked route |
 | 4 | `/portal` keeps inline styles | Deviation, stated | Port onto the token system the next time it is touched |
 | 5 | Drafts are single-device | Deviation, stated | A server-side draft needs a recipient-less row, which the `Email` model deliberately forbids |
@@ -633,13 +637,55 @@ fault. Once real mode is on, here is what has to be true for a real text to arri
 
 - **The gateway phone is online with the app running.** sms-gate.app queues each message for
   the paired Android device; if that phone is off, the gateway still answers 2xx (meaning
-  "queued", not "delivered") and nothing arrives.
+  "queued", not "delivered") and nothing arrives. (Where the credentials come from:
+  [below](#where-the-sms-gateapp-credentials-come-from).)
 - **The recipient is notifiable.** The spec allows the new-mail SMS only for users without
   the mobile app, recorded as `User.registeredVia`: `portal`, `desktop` or `ivr` notify;
   `mobile` (and anything unrecognised) does not.
 - **The wording stays short and rotated.** Indian carriers drop templated or duplicated
   text — the formats in `src/lib/otp.ts` are only the ones manually verified to arrive.
 - **Real SMS costs real money** from a real SIM. Do not enable it while testing.
+
+### Setting up the Twilio IVR
+
+The voice tree is Twilio-shaped end to end: our route answers Twilio's `POST`s with
+`<Gather>`/`<Say>` XML, and every later menu step is driven by the `action` URLs it returns.
+
+1. **A Twilio account with a voice-capable number.** A trial number works — trial accounts
+   can call verified numbers.
+2. **Make this app reachable from the internet** (Twilio must POST to it): the fastest path
+   is a tunnel — `ngrok http 3000` or `cloudflared tunnel --url http://localhost:3000` —
+   and the printed HTTPS host is the `<your-public-host>` below. (A deployed host removes
+   the rotating-URL problem entirely.)
+3. **Point the number at the IVR.** In the Twilio Console → Phone Numbers → your number →
+   **A call comes in** → **Webhook** →
+   `https://<your-public-host>/api/ivr/signup?token=<IVR_WEBHOOK_SECRET>` with method
+   **HTTP POST**. Nothing else: every menu step is driven by the URLs this endpoint returns.
+4. **Set the secret.** `IVR_WEBHOOK_SECRET` (individually, through the override) — the
+   committed placeholder works too; the secret is checked on **every** request.
+5. **Call it.** 1 = English → the menu → **4 registers the caller** — their number is proven
+   by the call itself, so no OTP is involved. The full menu, the Tamil handling, the replay
+   limits and `curl` sanity checks live in [docs/ivr-setup.md](docs/ivr-setup.md).
+
+*(A legacy one-shot path also exists — Exotel's `CallFrom` → "press 1, account ready" — and
+uses the same token; the doc above keeps its console steps.)*
+
+### Where the sms-gate.app credentials come from
+
+**sms-gate.app is the free SMS gateway the login codes and new-mail texts go through — and
+your "login and password" are simply your sms-gate.app account.**
+
+1. **Create the account & pair the phone.** Install the sms-gate.app Android app on the
+   phone whose SIM will send the texts, and sign in / create the account there — the cloud
+   service (`api.sms-gate.app`) does the sending for that account.
+2. **Keep the phone online.** Messages are queued to it; if it is off, the gateway still
+   answers `2xx` (meaning "queued", not "delivered") and nothing arrives.
+3. **Put the account's credentials in the override** as `SMS_GATE_LOGIN` and
+   `SMS_GATE_PASSWORD` — the app sends them as **HTTP Basic auth** to
+   `api.sms-gate.app/3rdparty/v1/message` — and `docker compose up -d`.
+4. **Test:** request a login code — the SMS should land. With the committed placeholders
+   `smsGateConfig()` is deliberately `null`: dev mode, no attempt
+   ([Dev mode vs real mode](#dev-mode-vs-real-mode-and-how-to-switch)).
 
 **Security note for deployment:** terminate TLS in front of the app, rotate the placeholder
 secrets through the same override file, and keep the override out of git — `git check-ignore
