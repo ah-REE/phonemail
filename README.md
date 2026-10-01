@@ -212,24 +212,33 @@ compose file contains no `${...}` substitutions, so a `.env` file would do nothi
 
 **The stories behind the tricky ones:**
 
-- **`SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD`** — this pair *is* the dev/real switch. While
-  both are the committed placeholders, no SMS is attempted and the login code is always
-  `123456` with a `devHint`; fill them with the real gateway credentials (steps in the guide
-  below) and codes start going out through the gateway phone — billable, and the
-  `devHint` disappears.
+- **`SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD`** — this pair *is* the dev/real switch, and the
+  mode is decided by these two strings alone. While both are the committed placeholders, no
+  SMS is attempted and the login code is always `123456` with a `devHint`; fill them with the
+  real gateway credentials (steps in the guide below) and codes start going out through the
+  gateway phone — billable, and the `devHint` disappears.
 - **`IVR_WEBHOOK_SECRET`** — the voice line's shared token, and the *only* secret the IVR
   needs. The integration is **inbound** — Twilio calls *this* app when the number rings —
   so no Twilio account credentials live in this stack at all; the account is used once, in
   the Twilio console, to point the number at `<public-url>/api/ivr/signup?token=<this value>`.
   The token is what proves a call is genuinely arriving on that secret URL; it is checked on
   every request, and the legacy Exotel one-shot path uses the same token.
-- **`MAIL_WEBHOOK_SECRET`** — the app↔smtp handshake, read by **both** containers. Rotate
-  it in both places together — or write it once as a YAML anchor (`&name` / `*name`) and
-  let compose resolve the pair: a drifted copy breaks mail *silently* — the SMTP service
-  accepts the message, its callback to the app is refused (`401 Invalid webhook secret.`), and
-  nothing reaches an inbox.
+- **`MAIL_WEBHOOK_SECRET`** — the app↔smtp handshake. It sits in **two places** in
+  `docker-compose.yml` — under `app:` and under `smtp:` — and the two copies must be
+  **identical**; rotating means editing both (or writing it once as a YAML anchor — `&name` /
+  `*name` — when it lives in the override). A drifted pair breaks mail *silently*: the SMTP
+  service still accepts the message, its callback to the app is refused
+  (`401 Invalid webhook secret.`), and nothing reaches an inbox — no corruption, just loss.
+  It has nothing to do with dev mode or OTP. **The test is one normal send:** every message
+  in the app rides this secret, so if it lands in the recipient's inbox, both sides agree.
 - **`JWT_SECRET`** — signs every session token. Rotating it signs everyone out (locally you
-  just log in again); before any real deployment, swap it for a long random value.
+  just log in again; no data is touched); before any real deployment, swap it for a long
+  random value.
+- **`MAIL_DOMAIN` / `SMTP_PORT`** — if you ever change them, the same both-services rule
+  applies (each appears under `app:` and `smtp:`); the defaults work as-is.
+- **Everything else** (`DATABASE_URL`, `REDIS_URL`, `SMTP_HOST`, `APP_INBOUND_URL`,
+  `POSTGRES_*`, `NODE_ENV`, `PORT`, `HOSTNAME`) is internal wiring between the containers —
+  it works as-is, and you would only touch it to re-map the stack itself.
 
 **Setup, by scenario — pick one:**
 
@@ -243,8 +252,10 @@ compose file contains no `${...}` substitutions, so a `.env` file would do nothi
    gateway checklist is [§13](#-real-mode-operations-the-gateway-checklist).
 
 **Rotating any secret is one edit + one restart:** change it in `docker-compose.override.yml`
-(never in a committed file), run `docker compose up -d`. The committed placeholders are safe
-to publish; the real values belong to the override alone — see
+(never in a committed file), run `docker compose up -d`. The edit alone does nothing while
+the stack is running — env values are read when a container is created, so `up -d` is what
+applies them (no `--build` needed — that flag is for code changes). The committed
+placeholders are safe to publish; the real values belong to the override alone — see
 [docs/SECURITY.md](docs/SECURITY.md).
 
 ### 🎬 The demo script
