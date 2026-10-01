@@ -1,661 +1,518 @@
-# PhoneMail
+<div align="center">
 
-Your phone number **is** your email address: send to `9876543210@phonemail.com`
-and it arrives in a chat-style mobile inbox. Built for rural, first-time
-smartphone users who already know WhatsApp — large type, one accent colour, big
-tap targets, no jargon.
+# 📮 PhoneMail
 
-> Written for the evaluator: how to run it, how to test it without sending a real
-> SMS, the demo script, and an honest line-by-line mapping to `docs/SPEC.md`.
+**Real email. Chat-app feel. Two clients, one service.**
 
-## 1. What it is
+An email service where your **phone number is your address** — `9876543210@phonemail.com` —
+with a WhatsApp-style phone client, a Gmail-style desktop client, real mail delivery,
+group threads that cannot leak, and a toll-free path for people who have no smartphone at all.
 
-A phone number *is* the mail address: the account identity is the number, and the
-address is `<number>@phonemail.com`. There is no username, no password and no
-separate inbox/sent split — every exchange with one person is a single chat, the
-way a messaging app works, so a first-time smartphone user already knows how to
-use it. Three surfaces share one backend and one set of endpoints: a
-**WhatsApp-style mobile client** at `/` (also an installable PWA), a
-**Gmail-style desktop client** at `/desktop`, and a **registration-only web
-portal** at `/portal`. Accounts are created and accessed with a phone number and
-a one-time code; mail is delivered through a real SMTP hop rather than an email
-API.
+</div>
 
-## 2. Run it
+> **At a glance**
+>
+> | | |
+> |---|---|
+> | **What** | A two-client email service on one Next.js codebase, backed by PostgreSQL, Redis and socket.io |
+> | **Where** | Phone client at `/` (installable PWA) · desktop client at `/desktop` · one port, `localhost:3000` |
+> | **Run it** | `git clone <repo-url> && cd phonemail` then `docker compose up -d` — **no `.env`, no setup, no secrets** |
+> | **Sign in** | **ANY 10-digit Indian number**; the code is always **`123456`** and every response says so (`devHint`) |
+> | **Verified** | **1337 assertions across 41 suites, 0 red** · 20 committed migrations · fresh-clone evaluator simulations, green |
 
-Exactly two commands:
+---
+
+## 🗺️ Table of Contents
+
+1. [What is PhoneMail?](#-what-is-phonemail)
+2. [Run it — two commands](#-run-it--two-commands)
+   - [Your first account, step by step](#your-first-account-step-by-step)
+   - [How sign-in works here (dev OTP ⇄ real SMS)](#how-sign-in-works-here-dev-otp--real-sms)
+   - [🎬 The demo script](#-the-demo-script)
+3. [Features](#-features)
+   - [💬 Messages & conversations](#-messages--conversations)
+   - [👥 Groups & the privacy triangle](#-groups--the-privacy-triangle)
+   - [📎 Files](#-files)
+   - [🔎 Search & organisation](#-search--organisation)
+   - [🛡️ Trust & safety](#️-trust--safety)
+   - [🔐 Account, sessions & the login door](#-account-sessions--the-login-door)
+   - [📱 Both clients & the feedback language](#-both-clients--the-feedback-language)
+   - [☎️ No-smartphone paths](#️-no-smartphone-paths)
+4. [Tech stack](#️-tech-stack)
+5. [Architecture](#-architecture)
+6. [Security & privacy](#-security--privacy)
+7. [The obstacles we faced (and how each was beaten)](#-the-obstacles-we-faced-and-how-each-was-beaten)
+8. [Verification & evidence](#-verification--evidence)
+9. [Spec coverage](#-spec-coverage)
+10. [Known limitations](#️-known-limitations)
+11. [Project layout](#️-project-layout)
+12. [Documentation](#-documentation)
+13. [Real-mode operations: enabling real SMS](#-real-mode-operations-enabling-real-sms)
+
+---
+
+## ✨ What is PhoneMail?
+
+PhoneMail asks one question: **what if email felt like a chat app and needed nothing but a phone number?**
+
+- **Your number is your address.** No usernames, no passwords by default — sign up with a
+  10-digit phone number and a one-time code. Mail arrives at `number@phonemail.com`.
+- **Two clients, one service.** The phone client (WhatsApp's design language: bubbles, green for
+  yours, run-grouping, live arrival) and the desktop client (Gmail-style and Gmail-measured:
+  a 240px rail, a 380px list, a readable 720px reading column with stacked, traditional emails).
+  Same endpoints, same tokens, same data — they are two skins over one API.
+- **The far side needs nothing.** People you mail receive ordinary email. If they sign up with
+  PhoneMail, they additionally get the chat-style client and live delivery.
+- **Nobody is left out.** A toll-free voice path (`IVR`) creates an account from a keypad —
+  press a number, and an account exists. Non-app users can be told "you have new mail" by SMS.
+- **Some things are private by construction.** In a group, a member sees the creator's
+  broadcasts and their own replies — **never another member's reply**. This is enforced in the
+  data and on the server, not just hidden in the UI.
+
+---
+
+## 🚀 Run it — two commands
 
 ```bash
 git clone <repo-url> && cd phonemail
 docker compose up -d
 ```
 
-The very first boot BUILDS the images (several minutes); later boots take
-seconds. Wait until `docker compose ps` shows all four services healthy, then
-open <http://localhost:3000>.
+The very first boot **BUILDS the images** (several minutes); later boots take seconds.
+Wait until `docker compose ps` shows **all four services healthy**, then open
+**<http://localhost:3000>**.
 
-**A wide browser shows the desktop client's login; a narrow window - or `/mobile`
-- shows the phone client.** Concretely: the root `/` hands a viewport of
-768px or wider to `/desktop` once per tab; the phone layout answers `/mobile`
-explicitly, and choosing it keeps you there (the choice lives in the tab's
-sessionStorage, so the in-app links back to `/` do not bounce you out). On a narrow
-viewport - a real phone, or dev-tools mobile - `/` is the phone client as it always
-was.
+**A wide browser shows the desktop client's login; a narrow window — or `/mobile` — shows the
+phone client.** Concretely: the root `/` hands a viewport of 768px or wider to `/desktop` once
+per tab; the phone layout answers `/mobile` explicitly, and choosing it keeps you there (the
+choice lives in the tab's `sessionStorage`, so in-app links back to `/` do not bounce you out).
 
-The first boot builds the images, which takes a few minutes; after that the app
-starts in seconds. No `.env` file, no manual `npm install`, no credentials —
-every value both sides need is wired into `docker-compose.yml`, and anything
-still a placeholder degrades gracefully.
+**The port is fixed at 3000.** If something else occupies it, stop that process first —
+`docker compose down` in this folder frees it again.
 
-**Four services**, all defined in `docker-compose.yml`:
+### Your first account, step by step
 
-| Service | Role |
-|---|---|
-| `app` | Next.js 15 (App Router) on the Node.js runtime, plus the Socket.io server (`server.mjs`). Runs `prisma migrate deploy` on start. Published on **3000**. |
-| `postgres` | Postgres 17 — users, emails, aliases, contacts. Internal only, never published. |
-| `redis` | Redis 7 — pending OTPs, cooldowns, the notification throttle. Internal only. |
-| `smtp` | A self-hosted SMTP server (Node `smtp-server`). Internal only. It accepts mail for `phonemail.com` and posts each message back to the app. |
+No `.env`, no setup, no secrets:
 
-**The port is hardcoded, and that is worth knowing before you run this.**
-`docker-compose.yml` publishes `3000:3000` as a literal, not from an environment
-variable, so **nothing else on the host may hold port 3000** — a second PhoneMail
-stack cannot bind while the first is up. (During this build the fresh-clone
-evaluator simulation therefore stopped only the main `app` container for its
-duration and restarted it afterwards, rather than editing the clone's compose
-file and testing something other than what the repository serves.) If you need
-two stacks at once, change the host side of that one line.
-
-## 3. Testing it without any credentials (the evaluator path)
-
-**A fresh clone runs in dev-OTP mode out of the box.** The committed
-`docker-compose.yml` ships *placeholder* SMS credentials, and the app treats
-those as "not configured" on purpose:
-
-**Your first account, step by step.** No `.env`, no setup, no secrets:
-
-1. Open <http://localhost:3000>. A wide browser shows the desktop client's
-   login; a narrow window (or `/mobile`) shows the phone client.
+1. Open <http://localhost:3000>. A wide browser shows the desktop client's login; a narrow
+   window (or `/mobile`) shows the phone client.
 2. Enter **ANY 10-digit Indian number** and press Create account.
-3. The code screen tells you the code: it is always **123456**, and every send
-   response carries a **`devHint`** field saying so - with the committed
-   placeholders **no SMS is attempted**.
+3. The code screen tells you the code: it is always **`123456`**, and every send response
+   carries a **`devHint`** field saying so — with the committed placeholders **no SMS is
+   attempted**.
+4. You are in. For a two-sided demo, open a second browser profile/tab and sign in as a
+   different number — **each tab keeps its own session**.
 
-- **The OTP request policy is tiered.** The first **two** requests for a number are
-  immediate (the rapid pair - somebody who mistyped wants the code now), from the
-  third the spacing is **60 seconds**, and a number may have at most **five** codes per
-  **2-hour** window. The window is set with the first request and does not slide, so the
-  budget refills on a predictable clock. Every refusal says which rule it hit and how
-  long the actual wait is.
-- `POST /api/auth/send-otp` answers with the fixed development code **123456**
-  and a **`devHint`** field saying so, and **no SMS is attempted**.
-- Every verification run recorded in this repository was made in that mode, and
-  the whole flow is reachable without a single secret.
+### How sign-in works here (dev OTP ⇄ real SMS)
 
-| Mode | Trigger | Behaviour |
+| Mode | Credentials | What happens at sign-in |
 |---|---|---|
-| **Dev (default)** | the committed placeholder credentials | fixed OTP `123456`, `devHint` in the response, no SMS |
-| **Real** | a gitignored `docker-compose.override.yml` with real credentials | a 6-digit code generated with `crypto.randomInt`, sent through the gateway phone |
+| **Dev (default)** | the committed placeholder values in `docker-compose.yml` | fixed OTP **`123456`**, a **`devHint`** in the response, **no SMS** is attempted |
+| **Real** | a gitignored `docker-compose.override.yml` with real `SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD` | a 6-digit code (`crypto.randomInt`) sent through the **gateway phone** — a self-hosted Android SMS gateway (**sms-gate.app**) with a real SIM |
 
-Real SMS turns on only when that override file supplies `SMS_GATE_LOGIN` /
-`SMS_GATE_PASSWORD` — copy `docker-compose.override.yml.example` and fill it in.
-The transport is a self-hosted Android SMS gateway (sms-gate.app): a phone with a
-SIM, running the gateway app, sends the message. **Do not enable it while
-testing** — it sends real, billable SMS from a real SIM.
+The OTP request policy is tiered: the first **two** requests for a number are immediate, the
+next must wait 60s, and no number may receive more than **five** per two hours — the same rule
+in both modes, so the evaluator can never be locked out.
 
-## 4. The demo script
+### 🎬 The demo script
 
-Two browser tabs side by side is the clearest demonstration: sessions are **per
-tab** (`sessionStorage`), so the two tabs are two independent accounts.
+1. **Two accounts, two doors.** In tab A sign in as one number (phone or desktop); in tab B as
+   another. Each tab keeps its own session.
+2. **Send → live arrival.** From tab A compose a mail; it appears in tab B **without a reload**
+   (socket.io), with the sender's name, the time, and the day pill ("Today").
+3. **Reply once.** Reply in tab B; in tab A the mail now says *Replied*, and a *second* reply
+   to the same mail is refused — one answer per mail, enforced by the server.
+4. **The New Mail button.** A thread has **no message box**: the bar at the bottom is a
+   **New mail** button — replies belong to a specific mail, not to "the chat".
+5. **A group.** From Home, compose to two recipients (`6381195975, 9500089722`). That is one
+   message and one thread, visible to all three members. The creator **broadcasts** (their
+   message box is the New mail button, recipient set locked); every other member **replies per
+   mail**, privately, and that reply reaches only the person whose mail it answers — **a third member never sees it**, and an answer addressed to the group or to anybody but the
+   mail's author is refused by the server. Nobody can add or remove a recipient inside the thread.
+6. **An alias.** Profile → **Alias IDs** → add `john.doe7`. An alias must mix letters and
+   digits and an account may hold **one**. Mail sent to an alias lands in the same inbox.
+7. **A contact.** Open a thread and tap the person's name. The detail sheet opens; save them
+   with your own label ("Amma") — the name you saved beats the name the account chose.
+8. **Settings.** In Profile: **Signed-in devices** (every session with a readable label and a
+   per-device **Log out**, mobile parity on both clients), language, the **PIN lock**, the
+   font-size preference — and the account-deletion path that says exactly what will be removed.
+9. **The chat's own grammar.** Consecutive messages from one sender group into a run; a
+   calendar change draws a **date pill**; a long mail collapses behind *Read full message*;
+   the chevron under a mail opens **Move to Spam / Move to Trash / Favorite / Reply / Forward**
+   (on your own mail: **Move to Trash / Favorite / Forward**). Unread state is the chat list's
+   badge — the cards carry no marker.
+10. **A file.** In the compose screen, attach a file (camera icon). It travels through the real
+    mail pipeline and arrives as a card the recipient can open — **only the mail's parties can
+    download it** (401 without a token, 403 for anyone else).
+11. **Search.** Home's search bar runs from three characters: hits in subject and body come
+    back as THREADS with a snippet and a match count, and a complete number offers to start
+    that chat.
+12. **The details done right.** Tapping a move shows the **undo toast** ("Moved to Trash ·
+    Undo", five seconds); the **favorite star** pops as its chip appears; and every action
+    answers instantly — the phone and the desktop speak the same small motion language.
 
-1. **Two accounts, two doors.** In tab A sign in as `8870313035`, in tab B as
-   `6381195975`. Pressing **Create account** with a number that already has one
-   reads "Welcome back" and goes straight to the inbox; pressing **Log in** with
-   a number that has none is carried into account creation ("Let's create your
-   account") instead of dead-ending — the copy follows the *number's* state, not
-   the button. The dev code `123456` is shown on screen via `devHint`.
-2. **Send → live arrival.** In tab A use the compose button (bottom right) and
-   send to `6381195975`. Tab B's chat list updates **live** over the socket, with
-   an unread badge, and the new mail opens a `Subject: …` divider in the thread.
-3. **Reply once.** In tab B open the thread and either press **Reply** on the mail
-   or **swipe it to the right** - the swipe opens the same reply compose directly.
-   Back in tab A the reply arrives, labelled `re: …`. Answering the *same* mail
-   again is impossible: the affordance is gone, and the server refuses a forced
-   second attempt with **`409`** — reply-once is enforced server-side, not in the
-   UI.
-4. **The New Mail button.** A thread has **no message box**: what looks like one
-   is a **New mail** button that opens the traditional compose with `To` locked
-   to that person. There is no way to type a reply into the thread and have it
-   go somewhere else.
-5. **A group.** From Home, compose to two recipients (`6381195975, 9500089722`).
-   That is one message and one thread, visible to all three members. The creator
-   **broadcasts** (their message box is the New mail button, recipient set
-   locked); every other member **replies per mail**, privately, and that reply
-   reaches only the person whose mail it answers - a third member never sees it,
-   and an answer addressed to the group or to anybody but the mail's author is
-   refused by the server. Nobody can add or remove a recipient inside the thread.
-6. **An alias.** Profile → **Alias IDs** → add `john.doe7`. An alias must mix
-   letters and digits and an account may hold **one**. Mail sent to
-   `john.doe7@phonemail.com` arrives exactly as if the number had been used.
-7. **A contact.** Open a thread and tap the person's name. The detail sheet opens;
-   **Add** saves them, closes the sheet by itself, and the chat shows the name
-   you gave them immediately — no reload.
-8. **Settings.** In Profile: **Signed-in devices** (every session with a readable
-   label - "Chrome on Windows" - when it signed in, when it was last active, a *This
-   device* marker and a **Log out** that really ends that device's token), **Font
-   size** (Normal / Large / Extra large, applied before first paint and remembered on
-   this device), the **SMS notification** switch (real state the
-   delivery path reads), the **Language** row, the **Folders** rows (Drafts,
-   Spam, Trash — each opens its own screen, and a thread's chevron panel moves a
-   mail into Spam or Trash), the display-name row, and **Delete account**, which
-   verifies a live one-time code before removing everything and reports exactly
-   what it removed.
-9. **The chat's own grammar.** Consecutive messages from one sender group into a
-   run; a calendar change draws a **date pill** ("Today", "Yesterday",
-   "27 Sep"); a long mail collapses behind *Read full message*; the chevron under
-   a mail opens Move to Spam / Move to Trash / Favorite / Reply / Forward
-   (on your own mail: Move to Trash / Favorite / Forward). Unread state is
-   the chat list's own badge - the cards carry no marker.
-10. **A file.** In the compose screen THREE affordances sit where the single
-   paperclip used to be: a **document** icon (file picker filtered to documents), an
-   **image** icon (filtered to images) and a **camera** icon (which asks a phone for
-   a capture). Up to three files, 20MB each, 40MB per message. The chosen files
-   appear as cards in the MESSAGE BODY - an icon for the kind, the name, the size -
-   and come off again with one tap; an oversize file is refused before it is
-   uploaded. Pressing send shows real upload progress on those cards (a percentage,
-   because the send goes through XMLHttpRequest precisely so it can), a failed send
-   leaves them with a retry, and the message arrives with a download card inside its
-   bubble in the same language. The home screen's **Attachments** chip filters to the
-   conversations that carry one.
-11. **Search.** Home's search bar runs from three characters: hits in subject and
-   body come back as THREADS with a snippet and a match count, and a complete
-   number offers to start that chat.
+---
 
-## 5. Feature-to-spec mapping
+## 🧩 Features
 
-Every line of `docs/SPEC.md`, where it lives, and its honest status — done,
-a documented deviation, or cut with a reason.
+### 💬 Messages & conversations
+
+| Feature | Notes |
+|---|---|
+| Send to any number (or alias) | Composer with To/Cc, quoted replies, forward (a byte-identical copy), and a recipient lock when answering inside a group |
+| Live arrival | socket.io events into the recipient's own room; the thread also reconciles with the server on every load |
+| Reply once | the store marks the answered mail; a second answer gets **409** — the state machine is in the data, not the UI |
+| Attachments | multipart upload, MIME over the internal SMTP hop, Postgres storage, party-only download |
+| Drafts | server-side, one per user, debounced saves from both composers, restored on return |
+| Delete chat | hides *your* side only — the counterpart keeps their copy, and new mail starts it again |
+| Folders | Inbox / Spam / Trash / Sent with per-viewer semantics; "Empty trash" is a list-header action on both clients |
+
+### 👥 Groups & the privacy triangle
+
+A group thread has **no table and no membership row**: the key is
+`"grp:" + sha256(sorted unique [sender, ...recipients])`. Mail naming the same people lands in
+the same thread with zero stored state, and one-to-one mail has no key at all.
+
+The visibility model, enforced server-side on **every** readable surface (the thread payload
+both clients share, search, replies):
+
+- the **creator's broadcasts** — any member reads them;
+- **your own mails** — always;
+- a **reply** — exactly two payloads, its sender's and the mail-it-answers' author's. Nobody else's;
+- a member can only answer the **creator's mail**; the server refuses anything addressed to the
+  group or to another member; **you can never read or answer a legacy row that is none of
+  these** — the round-34 sieve below tells that story.
+
+### 📎 Files
+
+Attachments ride the real mail pipeline: uploaded once per submission, fanned out as metadata
+per recipient row, stored in Postgres, and served with a party check — the mail's sender and
+recipient(s) only, 403 for everyone else, 401 without a token.
+
+### 🔎 Search & organisation
+
+- Full-text (case-insensitive) search of **subject and body**, live from three characters,
+  returning THREADS with a snippet, a match count, and a tap-through.
+- Contacts with your own labels (your name for someone beats theirs), one alias per account,
+  tags (**Important / Later / Done**), **Favorite** with its star-pop, unread badges.
+
+### 🛡️ Trust & safety
+
+- **Sender credibility** in the user sheet on both clients: member since (with a human age),
+  sent / received counts, "Reported by N users" (only when >0).
+- **Report spam**: confirm → *Reported ✓*. Idempotent (a repeat never double-counts), rate
+  limited (10 distinct reports an hour), self-report refused, and a report **never silently
+  blocks** anything — it is a signal that travels with the account.
+- The credibility signals are readable by every signed-in user by design; **reporter identities
+  are never exposed** — only the per-viewer "have I reported this account" bit.
+
+### 🔐 Account, sessions & the login door
+
+- **Sessions live in the database**: every sign-in is a row with a readable device identity
+  ("Chrome on Android", "This device"), last-active time, and a **per-device Log out** — on
+  both clients, including logging out the device you are using.
+- **PIN lock**: a 4-digit interface lock over both clients (set / change / remove each require
+  the current PIN; five wrong attempts lock for a minute), presented honestly as an interface
+  lock — the JWT remains the API's boundary.
+- **Delete account** states exactly what will be removed, requires a live OTP, and then removes
+  it all — cleanly, in foreign-key order.
+
+### 📱 Both clients & the feedback language
+
+- **Phone (`/`)**: WhatsApp's design language — bubbles, run grouping, swipe-to-reply, a home
+  list with previews, folder screens, installable PWA (a service worker with real update
+  discipline).
+- **Desktop (`/desktop`)**: Gmail-measured chrome, a traditional reading pane (stacked emails,
+  From/To/date headers, no bubbles), sheets that open from the mail itself, and full settings
+  parity. **Your sent mail is tinted with the outgoing token** — visually yours, like the
+  phone's green bubble.
+- **One motion system, both clients** (round 31): a press is 0.96 in 120ms; a Move to
+  Spam/Trash collapses its card (240ms) and offers a 5s **undo toast**; the favorite star is
+  the app's only bounce; composers enter and exit in reverse; sheets exit on the arrival
+  curve; lists settle with a transform-only FLIP. Everything honours
+  `prefers-reduced-motion` — the undo toast stays, because it is functional.
+
+### ☎️ No-smartphone paths
+
+- **IVR signup** (`docs/ivr-setup.md`): call the toll-free number, press 1 (Exotel one-shot)
+  or walk a full voice tree (language → menu → register). Every branch unit-tested against the
+  pure flow; the real call needs the operator console wired.
+- **SMS notifications**: users without the app (registered via `portal`, `desktop` or `ivr` —
+  see [the real-mode section](#-real-mode-operations-enabling-real-sms)) can be told "you have
+  new mail" by text, throttled, sanitized, and never able to break a delivery.
+
+---
+
+## 🏗️ Tech stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Framework | **Next.js 15** (App Router) + **React 19** + **TypeScript 5** | one codebase serving both clients and the API; server routes handle webhooks and multipart |
+| Styling | **Tailwind CSS 3.4** with a **token set** (`tailwind.config.ts`) | WhatsApp/Gmail languages by tokens, never literal hex — a grep for hex finds none |
+| Data | **PostgreSQL** via **Prisma 6** | relational mail with fan-out rows, one schema, 20 committed migrations |
+| Cache / gates | **Redis 4** client | OTP codes, rate windows, throttles — the stateful limits live here on purpose |
+| Realtime | **socket.io 4** (server `server.mjs`, client in `src/lib`) | per-user rooms; live arrival, live home list |
+| Mail hop | **nodemailer** + a self-hosted **SMTP service** (`smtp/`) | outbound via the internal SMTP container; inbound parsing for external senders |
+| Validation | **zod 3** on every API body | typed, explicit 400s |
+| Auth | **jsonwebtoken** (JWT sessions in the DB) + **bcryptjs** (PIN) | sessions revocable per device, PIN hashed |
+| SMS | **sms-gate.app** (self-hosted Android gateway) | after Fast2SMS (KYC wall) and Twilio (trial walls) — see [obstacles](#-the-obstacles-we-faced-and-how-each-was-beaten) |
+| Runtime | **Docker Compose**: `app`, `postgres`, `redis`, `smtp` | four healthy services, one command, no `.env` needed |
+
+<details>
+<summary>The full dependency list (package.json)</summary>
+
+```
+dependencies:  @prisma/client ^6, bcryptjs ^3, jsonwebtoken ^9, next ^15,
+               nodemailer ^10, prisma ^6, react ^19, react-dom ^19, redis ^4,
+               socket.io ^4.8, socket.io-client ^4.8, zod ^3
+devDependencies: @types/* (node, react, bcryptjs, jsonwebtoken, nodemailer),
+               autoprefixer, postcss, tailwindcss ^3.4, typescript ^5
+```
+
+</details>
+
+---
+
+## 🧭 Architecture
+
+```
+                    ┌──────────────────────────────────────────────┐
+   browser (phone)  │                 docker compose               │
+   browser (desktop)│                                              │
+        │           │   ┌─────────┐   ┌──────────┐   ┌─────────┐   │
+        └──  :3000 ─┼─▶ │   app   │──▶│ postgres │   │  redis  │   │
+                    │   │ Next.js │   │  (mail,  │   │ (OTPs,  │   │
+   internet mail ──▶│   │ + socket│   │ sessions,│◀──│ gates,  │   │
+        (smtp)      │   │  server │   │  drafts) │   │ throttle)│   │
+                    │   └────┬────┘   └──────────┘   └─────────┘   │
+                    │        │  outbound + inbound                │
+                    │   ┌────▼─────┐                               │
+                    │   │   smtp   │  (webhook secret shared)      │
+                    │   └──────────┘                               │
+                    └──────────────────────────────────────────────┘
+```
+
+Key design facts (each earned a round of its own):
+
+- **Group threads are derived, not stored** — the key is a hash of the sorted address set, so
+  no membership table can drift from reality.
+- **Fan-out rows**: one submission writes one row per recipient; read state, folder and tags
+  are each viewer's own.
+- **Notifications are a server decision** — `User.registeredVia` records how an account was
+  first created; only `portal`, `desktop` and `ivr` are notified (never `mobile`).
+- **Every API is party-checked** — mail, downloads and threads each verify the caller's
+  relationship to the data before returning it.
+
+---
+
+## 🔒 Security & privacy
+
+- **Party-only everywhere**: thread payloads, attachments, and deletes all check the caller.
+- **Sessions are revocable**: one JWT per device, revocable individually; the login door
+  renders alone when signed out.
+- **No literal hex in components** — colours are tokens; the design system and the code
+  agree by grep.
+- **Committed placeholders, never real secrets**: real credentials live only in the
+  gitignored `docker-compose.override.yml`; a full secret audit (no override or `.env` ever
+  committed, zero credential-shaped strings) is part of the evidence in
+  [docs/SECURITY.md](docs/SECURITY.md).
+- **The privacy stance, stated**: credibility numbers are readable by every signed-in user —
+  that is what makes them useful — but reporter identities are never exposed, and reports
+  block nothing silently.
+
+---
+
+## 🧗 The obstacles we faced (and how each was beaten)
+
+Every one of these is a real chapter in this repository's history, with a regression
+somewhere that keeps it beaten.
+
+1. **The OTP transport, three times over.** Fast2SMS required KYC; the Twilio trial hit
+   verification walls for Indian numbers. The answer was a **self-hosted Android SMS gateway
+   (sms-gate.app)** sending over the developer's own SIM. Then we learned carriers **drop
+   templated or duplicated SMS** — so the code rotates among short, manually-verified
+   wordings, and the login flow never depends on texts in dev. Everything above is why a
+   fresh clone runs in a **fixed-OTP dev mode** with a `devHint` instead of ever guessing.
+2. **The send that looked like it vanished.** A message would send perfectly — 202, stored,
+   socket fired — and still not appear. Root cause: thread endpoints returned the **oldest**
+   200 rows (an ascending limit), so once a busy conversation passed the cap its newest mail
+   could never load. Fixed, and load-bearingly tested since.
+3. **The group privacy breach.** The original fan-out era duplicated everything to everyone;
+   the reply model made *new* replies private, but rows from the old era (replies with no
+   `replyToId`, duplicated per member) still rode the reads and could still be answered —
+   a live member-to-member channel. Round 34 built **one shared privacy predicate**
+   (fan-out + subject sieve), made the send route refuse unanswerable rows, fixed the
+   desktop's reply to address the author alone, and froze it all in a dedicated suite with
+   seeded legacy rows, so no future round can quietly loosen it again.
+4. **The search leak caught by its own negative control.** The first search release made
+   every non-reply row visible to everyone once the group scoping was left implied. The
+   suite's negative control (an unrelated account hunting another pair's mail) caught it the
+   same day; membership is now **derived from the caller's own rows** before any query runs.
+5. **The three broken controls** (a global 56px button floor, a scroll trap, a mis-parented
+   state) — root-caused to the layout system rather than patched at the symptom, which is why
+   the phone's buttons behave everywhere since.
+6. **The notification throttle that could never fire.** The per-recipient SMS throttle sat
+   *after* the dev-mode return — unreachable in exactly the mode it was written for. Moved
+   ahead of the return, reported as `throttled`, tested.
+7. **The bubble merge.** Live arrivals + optimistic sends + reloads can triple-render a
+   message. The client reconciles with a merge that drops provisional bubbles when the real
+   row arrives and de-duplicates repeated socket events — unit-tested as a pure function.
+8. **Desktop parity, iteration by iteration.** The desktop kept inheriting phone patterns it
+   should not have (bubbles, phone screens). Two rounds rebuilt it as its own client:
+   measured Gmail chrome, traditional stacked emails, its own composer, sheets — and "the
+   shell renders only for a signed-in session".
+9. **The motion pass forced its own bug fix.** Building the undo toast / sheet exits surfaced
+   a race where a scheduled close could fire **after a sheet was reopened**; every closer now
+   schedules exactly one close via an instance ref — found by the new suite's drives, not by
+   luck.
+10. **Discipline as infrastructure.** The suites refuse to run against real SMS (a file guard
+    checks for the override); one legacy suite learned this the hard way and now carries the
+    same guard. Fresh-clone simulations re-run the walkthrough and the newest suites from
+    `origin` on clean volumes — every landing in this repository proved itself on a clone
+    before it was called done.
+
+Along the way, smaller fixes that matter just as much: the immutable leading subject on
+replies, recipient-scoped delete chat, the single sent tick, the FontSize preference applied
+before first paint, contact-name precedence, and the credential catalog that keeps the
+transport history visible instead of forgotten (`.env.example`).
+
+---
+
+## ✅ Verification & evidence
+
+The two commands above are the whole story; everything below was produced by **actual runs in
+this repository** — nothing rests on a claim made anywhere else. (The suite total moves by a
+few dozen between runs, because several suites add checks when more fixtures exist — **0 red is the invariant**, and the headline number is the latest recorded run.)
+
+**The headline:** **1337 assertions across 41 suites, green on the loaded database**, in dev
+mode, with the whole stack up from `docker compose up -d`. Plus **fresh-clone evaluator
+simulations**: `git clone` from origin, cold build, all **20 migrations** on a clean volume,
+all four services healthy, the README's walkthrough performed live — signup with `123456`, a
+two-account send with an attachment downloaded byte-identical — the corrected **group
+triangle** (a member sees the broadcast and nothing of a fellow member's reply; their own
+reply to the creator works), and the newest suites (ct38, ct37, ct33, ct24) all green against
+that clone.
+
+**The build, round by round** (each suite = the session that shipped the feature):
+
+| Era | What it proved | Suites | Assertions |
+|---|---|---|---|
+| Onboarding & chrome | welcome, onboarding screens, brand palette, chat rendering, reader | welcome · phase0 · logo2 · chat_ref · reader | 111 |
+| The app's grammar | display names, the group chat, the final functional round, aliases, contacts | names · groupchat · final · aliases · contacts | 156 |
+| Send → sessions | send/reply/socket reconciliation, contact-alias send, tiered OTP, sessions & devices | ct2 · ct3 · ct5 · ct6 · ct8 | 176 |
+| Attachments → search | attachments, CC + delete-chat security, IVR tree, OTP policy, throttles, group info, devices | ct13–ct21 | 349 |
+| Desktop → door | desktop design system, groups & CC, security headers, search · PIN · drafts, phase gate, entry rule, desktop sheets, multi-recipient, PIN sign-in | ct22–ct32 | 279 |
+| Actions, devices, credibility | Forward's byte-identical copy, per-viewer sender trash, group action tab, the devices page, sender credibility | ct33 · ct34 · ct35 | 159 |
+| Motion & pre-submission | the action motion pass (both clients); the pre-submission fixes (tint, device logout, outcomes-only copy) | ct36 · ct37 | 78 |
+| The privacy freeze | payloads, search, refusals, sockets, seeded legacy rows | ct38 | 29 |
+
+Each suite is a session's own gate, and the full set is re-run before every landing: **41
+suites, 0 red, every time.** The one documented skip is a socket assertion that needs a
+socket client from `node_modules`, which a fresh clone only has inside its container — it
+runs and passes on the loaded database.
+
+---
+
+## 📋 Spec coverage
+
+The original brief's feature list, mapped to what ships. Statuses are carried, deviations are
+stated, and nothing aspirational is claimed as done:
 
 | Spec line | Where | Status |
 |---|---|---|
 | Phone number as the email ID | `prisma/schema.prisma`, `src/lib/phone.ts` | **Done** — `9876543210@phonemail.com` |
-| Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Done in code, operator-side wiring pending** - a full voice tree: language (1 English / 2 Tamil) -> main menu -> what PhoneMail is on 3 / **register on 4**. Twilio makes a new request per step, so the stage, the language and the replay count ride in each Gather's action URL and the token is checked on every request; an unknown stage restarts at the greeting, and two invalid digits end the call politely. The Exotel one-shot path (press 1, account ready) still works. Every branch is unit-tested against the pure flow plus live guard checks; **the real call is unverified until the console is wired** |
-| Web portal, two fields (phone + OTP), registration only, resets after each signup | `/portal` | **Done** — after creation the fields clear and it returns to the empty phone step for the next account |
-| If no free OTP providers are available, use password auth | — | **Not needed** — an OTP transport is available (self-hosted gateway), so the conditional fallback clause never applies |
-| Web client | `/desktop` | **Done** — Gmail-style and Gmail-measured (rail 240px, list 380px, a 720px readable reading column): the rail holds the logo, the real folders and profile/settings at its foot; the list is thread-grouped with Compose in its toolbar; the pane renders stacked EMAILS (From/To/date header, full body, attachment cards, Reply) and opens on an empty state, never a form; a desktop-native composer card handles new mail and replies (the phone's compose screen is unreachable from here); settings reach full parity with the phone; and **a signed-out visitor sees the login card alone - the shell renders only for a signed-in session**. Colours are the design system's tokens only (a grep for literal hex finds none), and no chat bubbles exist anywhere on this client |
+| Toll-free account creation: call, press "1", or SMS | `POST /api/ivr/signup`, `docs/ivr-setup.md` | **Done in code, operator-side wiring pending** — a full voice tree (language → menu → register), every branch unit-tested; the real call is unverified until the console is wired |
+| Web portal, two fields (phone + OTP) | `/portal` | **Done** — resets to the empty phone step after each signup |
+| Web client | `/desktop` | **Done** — Gmail-measured chrome; a signed-out visitor sees the login card alone; tokens only (a literal-hex grep finds none) |
 | Mobile client | `/` (mobile route group), installable PWA | **Done** |
-| Access the inbox from both clients | `/` and `/desktop` | **Done** — same endpoints, same JWT. On a wide viewport `/` hands over to `/desktop` even before signing in (the desktop's own login screen takes it from there); `/mobile` is the explicit phone URL and is never redirected away from (round 12) |
-| SMS notification, exact template, only for users without the mobile app (registered via call, portal or web client) | `src/lib/notify.ts`, gate on `User.registeredVia` | **Done** — the spec's own wording is the canonical format, in a rotated set of short one-line bodies (a single long fixed template is the one shape this project proved the carrier drops - see `src/lib/otp.ts`), with the subject flattened and truncated. Gated `portal`/`desktop`/`ivr`, 60s per-recipient throttle that reports `throttled` (round 12 moved it ahead of the dev-mode return, where it had been unreachable), and it can never fail a delivery. The README's own section says what has to be true for a real text to arrive |
-| Implement SMS via free trial providers (Twilio et al.); a pre-available template if custom text is unavailable; the provider's international number for testing | `src/lib/otp.ts`, PROJECT.md §9 | **Superseded, documented** — Fast2SMS required KYC and the Twilio trial hit verification walls for Indian numbers, so the shipped transport is a self-hosted Android gateway through the developer's own SIM. The message formats in `src/lib/otp.ts` are the ones manually verified to arrive through a real carrier |
-| Mobile: every screen follows WhatsApp's design language | `src/app/(mobile)`, tokens in `tailwind.config.ts` | **Done** |
-| Screen 1: language selection | `/onboarding` step 1 | **Superseded, feature kept** — the owner replaced the step with the welcome screen, and language moved to the **Language row in Settings**, which is present (English live; Hindi and Tamil are offered as coming-soon entries that cannot be chosen, because only English ships) |
-| Screen 2: Terms & Conditions | consent line above the CTA + `/terms` | **Deviation, stated** — the amended brief replaced the separate screen with an acknowledgement line, which is what ships; the line links to the real Terms page |
-| Screen 3: phone verification, automatically detected and pre-filled, editable | `/onboarding` step 2 | **Partial, platform-limited** — a web page cannot read the SIM. The honest equivalent ships: the last number that signed up **on this device** is pre-filled, and it stays editable |
-| Screen 4: OTP automatically detected and verified, then the inbox | `/onboarding` step 3 | **Partial** — the code auto-submits on the sixth digit; WebOTP (SMS Retriever) is not implemented, because it needs the app to be a verified origin |
-| Request device permissions during onboarding (SIM, SMS, contacts) | — | **Not applicable on the web** — no such permission exists for a browser page |
-| Home: two ways to compose — traditional (bottom-right button) and chat view (search a number) | Home | **Done** — and since round 4 they are the *only* ways: a thread has no composer, so a message can only start from Home or from a mail's Reply |
-| No separate Inbox or Sent — everything is a conversation | `GET /api/conversations` | **Done** |
-| Full-width search bar | Home | **Done** |
-| Filter chips: All, Unread, Attachments, Favorites | Home | **Done** — all four filter. **Attachments** filters on a real count of the files a conversation carries |
-| Top-left menu: Home, Drafts, Spam, Trash | Settings → Folders | **Deviation, resolved** — the drawer was removed at the owner's request and the folders became rows in Settings, each opening its own screen, with move-to-folder in a thread's chevron panel. The destination changed; the feature is present |
-| Profile icon, top-right → account settings: alias IDs, language, personal details, profile picture and more | Home → `/profile` | **Done** for aliases, language, the display name, the folders, the notification switch and account deletion; **the profile picture is not built** (see limitations) |
-| Compact Subject field above the message box | traditional `/compose` | **Done as superseded** — the subject field's home is the **traditional compose**, and the thread's message box is a **New mail** button that opens it. A mail that opened a subject renders `Subject: <subject>`; only a reply renders `re: <subject>` |
-| All emails from the same sender stay in one chat | `GET /api/conversations` | **Done** |
-| New emails display the subject at the top; replies are linked to the original (swipe right to tag the original message) | thread | **Done with one moved gesture** — a new subject draws a divider at its chronological position, and a reply carries a link to the exact mail it answers plus a quoted preview. The tag/move panel is on **swipe left**; **swipe right** opens the reply compose for that mail directly (quoted context, derived subject, reply-once) |
-| When replying the Subject field is hidden; for new emails it stays visible | `/compose` | **Deviation, stated** — the reply's subject is pre-filled `re: <original>` and stays visible, so the sender can see what they are answering |
-| Each message can be replied to only once | `POST /api/emails` claim, `Email.repliedAt` | **Done** — a conditional update, so a race cannot double-reply; the affordance disappears once a mail is answered, and a forced second attempt answers `409` |
-| A long email: tap it to open the traditional view | thread → *Read full message* | **Done** |
-| Delete a conversation | the person sheet (a thread's header, or the address book) | **Done** - *Delete chat*, with a confirmation that says what actually happens. It is RECIPIENT-SCOPED: your side of the pairwise thread leaves your list, your thread and your unread count, and the counterpart's copy is untouched, because the row is shared. Group messages are never touched by it, and a new mail from the same person restarts the conversation |
-| Compose a new email in the traditional view from the space WhatsApp's camera tab occupies; `To` pre-filled and locked | the thread's **New mail** button | **Done** — the camera slot became the New mail button; `To` arrives pre-filled and locked |
-| Reply in the traditional view: swipe right and pick it, or tap the mail → full view → Reply | thread | **Done** - swipe right now OPENS the reply compose for that mail directly (quoted context, derived subject, `replyToId`, reply-once), and the spec's alternative (tap → full view → Reply) also ships |
-| CC in the traditional compose | `/compose`, `POST /api/emails` | **Done** - a real Cc field directly under To, with the same chips, the same resolution (a number or an alias), the same contacts autocomplete and per-chip removal. Cc recipients ARE recipients: they receive fan-out rows exactly as the To list does, they count towards the group, and the MIME message carries the Cc header. *(Round 21: the multipart send path read `to` and `attachments` and never `cc`, so a message with a file attached silently dropped every Cc recipient - no row, no thread membership, no error. Fixed, and `ct23` now freezes the 2 To + 1 Cc delivery on both payload shapes.)* |
-| Inside a conversation, new recipients cannot be added to To or CC; they stay locked in the traditional view; multiple recipients only from Home's compose | locked `lockTo` on the New mail compose | **Done** — a thread has no recipient field at all |
-| Two or more recipients from Home create a group chat; later mail to one recipient stays in its own 1:1 chat | derived thread keys (`src/lib/threadKey.ts`) | **Done** |
-| Group replies are visible only to their sender and the group's creator | `POST /api/emails` (validated group key) + the group thread's per-viewer filter | **Done** — the creator broadcasts; every other member replies from a mail, the reply is addressed to that mail's author, carries the group key explicitly, and appears in exactly two payloads. One reply per member per mail, and the socket event reaches only the recipient |
-| Forward an email to new recipients (round 29, the new verb) | `POST /api/emails` `forwardOfId`, both composers | **Done** - forwarding re-sends an existing mail to NEW recipients: To and Cc are FREE (the opposite lock from reply), the subject derives `Fwd: <original>` (unless edited), and the body opens with a forwarded header block over the original content. The caller must be a party to the source (403 otherwise); the server COPIES the source row's attachment bytes into every new fan-out row - a large file moves without a byte through the client - and the composer's remove list (`forwardOmitAttachmentIds`) drops individual files from the copy. `ct33` freezes the sha256-identical copy, the 403, the omit list and the group rules |
-| The message action row on the desktop (round 29) | the desktop cards' chevron reveal | **Done** - the phone's chevron row, drawn for the desktop: Move to Spam, Move to Trash, Favorite and Forward (Reply stays the card's own button), 56px targets, the phone's exact `PATCH /api/emails/[id]` endpoints, on received mail as the phone also scopes it |
-| Sender credibility + spam reports (round 30, the new safety surface) | `SpamReport` model, `/api/users/[phone]/credibility`, `/api/users/[phone]/report`, both user-detail surfaces | **Done** - account age, the honest send:receive pair and the DISTINCT-reporter count render in every user sheet on both clients ("Member since Sep 2026 · less than a month", "Sent N · Received M", and "Reported by N users" only when N > 0). REPORT SPAM runs a three-state flow (idle, a confirm that says what a report is, then "Reported ✓") and files a SIGNAL that blocks and deletes nothing - the delivery gate is a separate consumer. One report per reporter per account (a UNIQUE pair; a repeat is a no-op), at most 10 distinct reports per reporter per hour (Redis counter, refused with `retryAfterSeconds`), self-reports refused with a 400. `ct35` drives all of it live |
-| Summary: automatic phone & OTP detection (password if OTP is unavailable) | see the two rows above | **Partial, platform-limited**, as above |
-| Summary: emails organised as chats | — | **Done** |
-| Summary: manage alias IDs in settings | `/profile`, `/api/aliases` | **Done** — an account holds one alias, and it must mix letters and digits, so an alias cannot be a second phone number and cannot be all digits |
-| Web: a single screen with phone, OTP and one Next button; "By signing up, you agree to the Terms of Service" above it, hyperlinked | `/portal` | **Partial** — the portal is a two-step phone → OTP flow rather than one screen; the consent line with its live hyperlink is present |
-| Web home similar to Gmail; no conversation-style interface; profile and settings provided | `/desktop`, `/desktop/inbox`, `/desktop/profile`, `/desktop/settings` | **Done** — the desktop shows MAIL, not chat: the reading pane renders one stacked email per message (round 12 removed the last bubble markup), the rail's three folder items are the real `Email.folder` values, and settings carry profile/aliases/language/SMS/font size/devices/delete - the same endpoints and modules the phone uses |
-| Dockerize everything; software must be up at `docker compose up -d` | `docker-compose.yml`, `Dockerfile`, `smtp/Dockerfile` | **Done** — re-verified from a fresh clone of origin |
+| Access the inbox from both clients | `/` and `/desktop` | **Done** — same endpoints, same JWT; `/mobile` is the explicit phone URL |
+| SMS notification — only for users without the mobile app | `src/lib/notify.ts`, gated on `User.registeredVia` | **Done** — rotated short wordings, 60s throttle that reports `throttled`, can never fail a delivery |
+| Implement SMS via free trial providers; pre-available template | `src/lib/otp.ts`, PROJECT.md §9 | **Superseded, documented** — KYC/trial walls sent the transport self-hosted; formats are the manually-verified ones |
+| Mobile: WhatsApp's design language | `src/app/(mobile)`, tokens in `tailwind.config.ts` | **Done** |
+| Language selection | Settings row | **Superseded, feature kept** — English live; Hindi/Tamil as coming-soon entries |
+| Terms & Conditions | consent line + `/terms` | **Deviation, stated** — acknowledgement line, linked to the real Terms page |
+| Phone verification, auto-detected | `/onboarding` step 2 | **Partial, platform-limited** — the last number used on this device is pre-filled; a web page cannot read the SIM |
+| An end-to-end suite | 41 suites, see above | **Done** — 1337 assertions, 0 red |
 
-| PIN lock | `User.pinHash`, `/api/me/pin`, `/api/me/verify-pin`, `/api/me/pin/reset`, both settings screens | **Done, honestly scoped (round 22; extended round 28)** - a 4-6 digit PIN, bcrypt-hashed server-side, that LOCKS THE INTERFACE on a resumed session (fresh tab or PWA launch) and, as an optional convenience only, can also SIGN IN (`POST /api/auth/login-pin`, the same five-wrong-entries/60-seconds strikes, the same session OTP issues - OTP remains the default and primary path per the spec). It is not an API boundary: the JWT still authorises everything and a correct PIN changes nothing about the session. Changing or removing it requires the current PIN; five wrong entries refuse it for 60 seconds; a forgotten PIN is reset through a one-time code for the account's own number. See [`docs/SECURITY.md`](docs/SECURITY.md) §13 |
-| Full-text search of the mailbox | `GET /api/search`, both clients' search bars | **Done (round 22)** - case-insensitive substring (`ILIKE`) over subject AND body, reusing the conversations endpoints' per-viewer rule: my own rows, mail addressed to me, and another member's BROADCAST in a thread I am in - and never another member's private reply. Results are THREADS with the label, a snippet around the first hit, the match count and the time, capped at 20. Queries shorter than three characters return an explained empty payload rather than a 400, because the client is typing. The phone keeps its search-to-chat offer for a complete number |
-| Drafts | `Draft` model, `/api/me/draft`, both composers, the Drafts screen | **Done (round 22)** - ONE active draft per account (a unique index, not a convention), saved debounced from either composer, restored when a new compose opens, cleared by a successful send, and written through to `localStorage` so an offline spell is never lost: a save that cannot reach the server is kept on the device and pushed up by the next reachable save. A reply is never drafted |
+*(The full history — every round's brief, decision and follow-up — lives in
+[PROJECT.md §9](PROJECT.md) and [docs/SPEC.md](docs/SPEC.md).)*
 
-**The two deviations that were closed**, for the record: the **Language** row and
-the **Folders** rows were both restored to Settings (they had briefly been
-removed), so the mapping no longer carries a deviation for either.
+---
 
-### Sender credibility: what the numbers mean, and what a report is (round 30)
+## ⚠️ Known limitations
 
-Every user-detail surface - the phone's sheet and the desktop's detail modal - shows a
-TRUST block for the account it describes:
+Honest, complete, each with its recommendation:
 
-- **Member since <Mon YYYY> · <age>** - the account's own `createdAt`, read as months
-  ("Mar 2026 · 8 months"; anything under a month reads "less than a month").
-- **Sent N · Received M** - live row counts of what the account has sent and received;
-  both are shown, so the ratio is an honest pair rather than a mystery number. (A
-  group message counts once per fan-out row, exactly like the delivery itself.)
-- **Reported by N users** - shown ONLY when at least one report exists, never as
-  "Reported by 0". N counts DISTINCT reporters: one person reporting twice moves it
-  once.
-
-**What a report IS.** REPORT SPAM (three states: idle, a confirm, then "Reported ✓")
-files a signal. It blocks nothing and deletes nothing by itself - it is the sensor;
-what consumes it is a separate delivery gate. One report per reporter per account is
-a UNIQUE index, so a repeat is a no-op; a reporter may file at most 10 distinct
-reports per hour (Redis counter; a refusal carries `retryAfterSeconds`); a self-report
-is refused and the action is hidden on your own sheet. There is no un-report endpoint
-yet - reports persist.
-
-**The privacy stance, stated.** The signals are readable by EVERY signed-in user -
-any authenticated caller can read any account's credibility - because their whole
-purpose is to help a stranger judge a first message; a signal only its recipient
-could see would be useless. What is never visible is WHO reported: the count is an
-aggregate of distinct reporters, and the single per-viewer bit is `viewerReported`,
-the caller's own report state (which is what lets a reopened sheet settle on
-"Reported ✓"). The credibility read is uncached and its latency is measured by
-`ct35` on every run (single-digit-to-low-teens milliseconds on the loaded dev
-database).
-
-### The feedback language (round 31)
-
-**One motion system, both clients.** A press is 0.96 in 120ms; a Move to
-Spam/Trash collapses its card or bubble (240ms, height + fade) and offers a 5s
-UNDO toast; the favorite star is the app's only bounce (1 -> 1.25 -> 1);
-composers slide or scale in and exit in reverse; sheets and modals exit on the
-arrival curve; lists settle with a transform-only FLIP. Everything is
-prefers-reduced-motion-gated - same outcomes, instant - except the undo toast,
-which is functional and stays.
-### Remaining gaps, each with its recommendation
-
-Re-checked line by line against `docs/SPEC.md` on 2026-09-28. "Unverified" means
-implemented here but not provable from this repository alone.
-
-| # | Gap or unverified flag | Status | Recommendation |
+| # | Limitation | Status | Path to done |
 |---|---|---|---|
-| 1 | Phone verification is not automatic (no SIM, no WebOTP) | Partial, platform-limited | Accept: a web page cannot read the SIM; the last-number pre-fill plus auto-submit on the sixth digit is the honest maximum |
-| 2 | The IVR signup's real call is unverified | Unverified (operator-side) | Wire the Exotel/Twilio console, then re-run `ct19` against a live call and record the transcript |
-| 3 | Profile picture is not built | Cut | Either remove the `User.avatar*` columns or build upload plus a party-checked serving route - do not leave unused scaffolding |
-| 4 | `/portal` keeps its inline styles | Deviation, stated | Port it onto the token system the next time it is touched; it is a registration-only page |
-| 5 | Drafts live in `localStorage` | Deviation, stated | Accept for a single-device demo; a server-side draft needs a recipient-less row, which the `Email` model deliberately forbids |
-| 6 | No TLS at the app layer | Unverified (deployment) | Terminate TLS in front of the app before any real deployment; the Compose stack is HTTP for the evaluator |
-| 7 | 7-day JWT with no revocation list | Gap, documented | Per-device sessions already revoke; the token itself cannot. Accept for the demo, or shorten the TTL |
-| 8 | 5 npm advisories in the transitive tree | Unverified (informational) | Upgrade the `next`/`postcss` chains after submission; the committed artefact is the verified one |
-| 9 | Committed placeholder secrets | Deviation, documented | Rotate through `docker-compose.override.yml` (gitignored), exactly as the SMS credentials already are |
-| 10 | SMS needs the gateway phone online | Unverified (external) | Accept: a fresh clone runs in dev mode and the evaluated path never needs a real text |
-| 11 | Responsiveness is audited by a browser harness, not by a suite | Verified | 16 page-width combinations across both clients, 0 findings; it stays out of the regression because the regression must run with no browser |
+| 1 | Phone verification is not automatic (no SIM, no WebOTP) | Partial, platform-limited | The last-number pre-fill + auto-submit on the sixth digit is the honest maximum |
+| 2 | The IVR signup's real call is unverified | Unverified (operator-side) | Wire the Exotel/Twilio console, re-run `ct19` against a live call |
+| 3 | Profile picture is not built | Cut | Remove the avatar columns or build upload + a party-checked route |
+| 4 | `/portal` keeps inline styles | Deviation, stated | Port onto the token system the next time it is touched |
+| 5 | Drafts are single-device | Deviation, stated | A server-side draft needs a recipient-less row, which the `Email` model deliberately forbids |
+| 6 | No TLS at the app layer | Unverified (deployment) | Terminate TLS in front of the app before any real deployment |
+| 7 | 5 npm advisories in the transitive tree | Unverified (informational) | Upgrade `next`/`postcss` chains post-submission |
+| 8 | Committed placeholder secrets | Deviation, documented | Rotate through `docker-compose.override.yml`, exactly as the SMS credentials already are |
+| 9 | SMS needs the gateway phone online | Unverified (external) | A fresh clone runs in dev mode; the evaluated path never needs a real text |
+| 10 | Responsiveness audited by harness, not suite | Verified | 16 page-width combinations, 0 findings; kept out of the regression so the suites run browser-free |
 
-## 6. Architecture
+---
 
-**Runtime.** Next.js 15 App Router with every API route pinned to the Node.js
-runtime (`export const runtime = "nodejs"`) — there is no Edge runtime anywhere in
-the project, which is what satisfies the "backend: Node.js" requirement. Socket.io
-needs a long-lived process, so the app runs through `server.mjs` rather than
-`next start`; API routes and the socket server therefore share one process, which
-is how a route can emit a realtime event.
-
-**Four Docker services**: `app`, `postgres`, `redis`, `smtp` — one internal
-network, one compose file, one command. Postgres, Redis and SMTP publish nothing;
-only `app:3000` is reachable from the host.
-
-**The SMTP round trip is the point.** `POST /api/emails` never writes a row. It
-hands the message to the `smtp` service, which parses it and posts it back to
-`/api/mail/inbound` — and **that is the only place an `Email` row is ever
-created**. A message that did not complete the round trip therefore cannot appear
-as delivered, and the hop is observable in `docker compose logs smtp`.
-
-**Group threads are derived, not stored.** A group has no table and no membership
-row: the key is `"grp:" + sha256(sorted unique [sender, ...recipients])`. Two
-things fall out of that — a reply naming the same people lands in the same thread
-with no stored state, and a message with exactly one recipient has no key at all,
-which keeps one-to-one mail unchanged.
-
-**The broadcast / reply visibility model.** In a group, the creator's mail is a
-**broadcast**: every member reads it. Any other member's mail is a **reply**,
-addressed to the one member whose mail it answers, carrying the group key
-explicitly — so a reply lives in exactly two payloads, its sender's and its
-recipient's, and nobody else's socket hears about it. `replyToId` is what
-distinguishes the two in the data, which is why a broadcast cannot be filed as a
-reply or a reply as a broadcast. Round 34 tightened the read for the older data
-the fan-out era left behind (replies duplicated per member with no replyToId):
-such rows are sieved by their submission's fan-out and their subject, so a
-member's copy stays visible to its sender and to the author of the broadcast it
-answers, and to nobody else - and the send route refuses to answer anything that
-is neither a broadcast nor a reply.
-
-**The notification gate is a server decision.** `User.registeredVia` records how
-an account was *first* created; only `portal`, `desktop` and `ivr` are notified.
-An unknown value falls to the safe side (no SMS), and the account's own switch can
-only ever *narrow* who is notified — never widen it past what the spec allows. The
-throttle and the never-fail-a-delivery rule live in `src/lib/notify.ts`.
-
-**Folders are recipient-scoped state.** `Email.folder` behaves like `isRead` and
-`tag`: moving a message to Spam or Trash hides it from *that reader's* inbox and
-group views, while the sender still sees what they sent.
-
-**Aliases resolve through one lookup** (`src/lib/alias.ts`) shared by the send
-route and the inbound path, so the two cannot drift apart. Uniqueness is checked
-against phone numbers as well as other aliases, so an address is never ambiguous.
-
-**Sessions are per tab.** The JWT lives in `sessionStorage`, so two tabs are two
-accounts — that is what makes the two-tab demo work — and the auth guard is
-three-phase (loading → authenticated → unauthenticated) so a refresh never flashes
-the onboarding screen.
-
-**The service worker is build-stamped, and navigations are network-first.**
-`/sw.js` is served by a route handler that stamps the cache name from the image's
-own `.next/BUILD_ID`, so a rebuild rotates the cache and an installed PWA picks up
-new code instead of serving a stale one. Navigations are answered from the
-**network** whenever the network is there; the precache is only the **offline
-fallback**, and matching respects the full URL including search params (no
-`ignoreSearch`). That is what stops a returning user — or the installed PWA — from
-being served a previous build's shell.
-
-**Attachments are rows, not files.** A file's bytes live in Postgres (`Attachment`),
-like the avatar, because the container filesystem is not durable and "no filesystem
-storage" was the requirement. A message with files is submitted as
-multipart/form-data over the SAME single SMTP submission the text uses, the SMTP
-service hands the MIME parts on, and the inbound webhook - still the only writer of
-an `Email` row - stores the files with it. Downloads are JWT-gated and party-only:
-401 without a token, 403 for anyone but the message's sender and recipient.
-
-**Migrations are committed** (`prisma/migrations/`, 20 of them) and applied by the
-app container's entrypoint, so a fresh clone reaches a working schema with no
-manual step.
-
-**OTP transport history.** The project started on Fast2SMS, moved to a Twilio
-trial (both blocked by KYC / trial verification walls for Indian numbers), and now
-sends through a self-hosted Android gateway over the developer's own SIM. The
-formats in `src/lib/otp.ts` are only the ones manually verified to arrive — the
-carrier drops templated text and filters duplicates, which is why the code rotates
-among short, verified wordings. Full history: PROJECT.md §9 and §10.
-
-## 7. Known limitations
-
-Written down rather than hidden:
-
-- **Attachments have limits, and they are deliberate.** Three files per message,
-  20MB each, 40MB in total, enforced in the browser, in the send route and again on
-  the inbound webhook. A group message stores its files once per recipient row
-  rather than sharing them through a join table - duplicated bytes in exchange for
-  an attachment owned by exactly the row it belongs to, which is what keeps the
-  download check the row's own party check. There is no share link: a download needs
-  a session, and the bytes are fetched with the same Authorization header
-  everything else uses, so a token never appears in a URL.
- The display name is real, editable
-  and what the profile header leads with. A **profile picture is not built**: no
-  upload, no serving route, the `User.avatar*` columns are unused scaffolding, and
-  every account shows the same neutral person mark.
-- **Phone auto-detection and WebOTP are platform-limited.** A browser cannot read
-  the SIM, and SMS Retriever needs a verified origin; the app does what the
-  platform allows (last-number pre-fill, auto-submit on the sixth digit).
-- **`/portal` keeps its original styling.** It is written with inline styles
-  rather than the token system, so it did not take part in the visual refresh. It
-  is functional and uses the same palette.
-- **Drafts are on the account now, and were local until round 22.** An `Email`
-  row needs both a sender and a recipient, so a draft still cannot be an `Email` -
-  it is its own one-per-user row (`Draft`). The browser's copy is a write-through
-  cache, which is what makes an offline spell survivable.
-- **The PIN locks the screen, not the account.** It is a convenience for a shared
-  device: the session token is untouched by it, an API call is unchanged by it, and
-  anyone holding the token can still read the mailbox. (Round 28's optional PIN sign-in is the deliberate exception - it issues the same session a code would, under the same strikes; OTP remains the primary path.) Written up in
-  [`docs/SECURITY.md`](docs/SECURITY.md) §13 rather than implied to be more.
-- **5 npm advisories** (`npm audit --omit=dev`: 1 moderate, 4 high) in the
-  transitive tree. They are informational here: no dependency was upgraded during
-  the build, because the verified artefact is the committed one, and upgrading the
-  chain (`next`/`postcss` and their transitive deps) is the next maintenance step.
-- **SMS delivery needs the gateway phone online.** Real SMS goes through a
-  self-hosted Android gateway, so delivery requires that phone running the gateway
-  app with a working SIM. Nothing in the evaluated path depends on it — a fresh
-  clone runs in dev mode.
-- **Carrier filtering is real.** Indian carriers drop templated or duplicated SMS
-  text, which is why only a small set of message wordings is used and why the code
-  rotates between them rather than sending one long custom sentence.
-- **There is no end-to-end encryption, and it was a decision.** The server sees
-  subject and body in plaintext. The full design that would change that - per-user
-  keypairs at signup, a non-extractable private key on the device, encrypt at
-  compose, a ciphertext-only server - is written up in
-  [`docs/E2E-FUTURE.md`](docs/E2E-FUTURE.md), together with the reason it was cut:
-  on the web there is no recovery story for a lost device that is both usable and
-  safe, and shipping without one would turn "lost my phone" into "lost my mail" for
-  exactly the users this product is for.
-- **No native shell.** The Capacitor/Android assessment is in §10.2: feasible, but
-  it needs a hosted backend, the organisers clarified web-only, and the PWA already
-  delivers install, standalone and an offline shell.
-
-## 8. Verification evidence
-
-Every number below came from a run in this repository; nothing here rests on a
-claim made anywhere else. (The suite total moves by a few dozen between runs,
-because several suites add checks when more fixtures exist - 0 red is the
-invariant, and the headline number is the latest recorded run.)
-
-- **1320 assertions across 40 suites, green on the loaded database**, in dev mode
-  through the real SMTP round trip: 15 for the onboarding forms, 27 for the auth
-  screens, 27 for the palette, 21 for the chat reference, 21 for the traditional
-  reader, 21 for display names, 39 for the group chat, 36 for the final functional
-  items, 25 for aliases plus the non-member 403 path, 37 for contacts, 60 for the
-  round-2 fixes, 54 for the round-3 items, 32 for the settings reference
-  (source-only), 20 for the round-3 chat fixes, 10 for the round-4 polish rules
-  (source-only), 26 for round 4, 25 for round 5 (the service worker **executed in a
-  sandbox** rather than read), 26 for round 6 (source-only), 32 for round 7 (the
-  deployed stylesheet plus the attachment round trip, hashes included), 33 for round
-  8, 47 for round 9 (the five fixes, CC, delete chat's scoping and the security
-  report's references - including the reply-privacy invariant proven for the payload
-  AND the socket), 50 for round 10 (the IVR tree: 28 mocked branches plus 22 live
-  checks), 53 for round 11 (the contact sheet's in-place confirmation, the font-size
-  module and its pre-paint bootstrap, the wide-screen handover, the **tiered OTP
-  policy driven live**, sessions with per-device revocation, and the desktop moved
-  onto the design system's tokens), and **54 for round 12**: the notify chain's
-  **six outcomes driven live** (including the throttle, which the old gate order made
-  unreachable), the rotated and sanitized notification body, the wide-screen entry
-  decision at five widths and four URLs, the contact save's animated confirmation,
-  the role tags proven through a real SMTP round trip on a member set that had never
-  existed, the rail's real folder links, the endpoints the desktop settings reuse,
-  and the absence of bubble markup in the new traditional reading pane; and **24 for round 13**: the signed-out page carrying no shell, the reading pane's empty default, the desktop composer's fields, affordances and BOTH send paths driven live, the Gmail measures, the token audit and every desktop route.
-
-  And **round 22**, the last three features: **31** for the search (subject and body
-  hits, the snippet around the first hit, thread grouping, the three-character floor,
-  the search-to-chat offer unchanged - and the INVARIANT that a group's private reply
-  is findable by its two parties and by nobody else, a control that caught a real
-  visibility leak in the first implementation), **45** for the PIN and the draft (set,
-  change and remove each requiring the current PIN, a wrong PIN refused with the
-  strikes left, five wrong entries locking for a minute with the reason, the
-  OTP-verified reset for a forgotten PIN, one draft per account enforced by the index
-  rather than a convention, the emptied-composer rule, and the OFFLINE PATH driven
-  through the real module - a save with the server unreachable stays on the device and
-  the next reachable save pushes it up). Three assertions this round's changes moved
-  were re-pointed rather than left to fail.
-
-  And **round 21**, the final hardening pass: **12** for the multi-recipient fix (2 To
-  + 1 Cc delivered on BOTH payload shapes, with the multipart path that used to drop
-  the Cc recipient frozen shut), **56** for the re-pointed round-8 suite (it now
-  grades the FLAT OTP policy that ships - a second request inside 60s refused, allowed
-  after it, the 5-strike burn untouched, and no window counters in any response),
-  **17** for the security headers read off live responses including a 404, and **16**
-  for the hardening proof: the manifest, the two icons and a real service worker
-  (installable), the socket accepting a real tab token, a message landing in an OPEN
-  socket *and* in the recipient's inbox while postgres, redis and smtp sit on internal
-  networks, and the egress checks that show those three cannot reach the internet
-  while the app still can. The responsiveness audit is separate from the suites - it
-  drives a real browser at 360/390/768/1024/1440 on both clients (16 page-width
-  combinations, 0 findings) and so cannot run in a regression that must work with no
-  browser.
-
-  And the rounds that followed, each with its own suite: **37** for the phase gate
-  (round 23), **25** for the front-door rule (round 25), **26 / 18 / 27** for the
-  desktop sheets, the multi-recipient composer and PIN sign-in (round 28), **106**
-  for the message actions (round 29: Forward's byte-identical copy, the per-viewer
-  sender trash, the group bubble's action tab), **11** for the devices page, **42**
-  for sender credibility (round 30: exact seeded deltas, idempotency, the armed
-  rate refusal, both sheets driven), **56** for the action motion pass (round 31:
-  the computed height collapses on both clients, both undo round-trips, the star
-  and its chip, both composers' exits, the report morph, delete chat's row
-  collapse) and **22** for the pre-submission fixes (round 32: the desktop sent
-  tint, the desktop device logout chain, the tree-wide outcomes-only scan).
-
-  `ct5/settings_ref.mjs`, `ct8/polish_regression.mjs` and
-  `ct15/clickthrough6_regression.mjs` are the **source-only** suites: they grade a
-  design, a copy rule and the shape of the markup, which live in the source and the
-  tokens, so they need no server, no OTP and no mode - and are never a reason to
-  touch one.
-### SMS notifications: what has to be true for a real text to arrive
-
-The app sends a "you have new mail" SMS through the sms-gate.app gateway. In the
-default checkout it deliberately sends NOTHING, and that is the feature working,
-not a fault:
-
-- **Dev mode never sends.** `docker-compose.yml` ships placeholder gateway
-  credentials, and the code treats a placeholder as "no gateway": the delivery
-  path records the outcome `dev-mode` and returns. To send real SMS, put the real
-  credentials in `docker-compose.override.yml` (see
-  `docker-compose.override.yml.example`); that file is gitignored and must NOT be
-  committed.
-- **The gateway phone has to be online with the app running.** sms-gate.app queues
-  each message for the paired Android device. If that phone is off, has no signal,
-  or the sms-gate app is not running, the gateway still accepts the message (it
-  answers 2xx, which means "queued", not "delivered") and nothing arrives.
-- **The recipient has to be notifiable.** The spec allows this SMS only for users
-  who do NOT have the mobile app, which the app records as `User.registeredVia`:
-  `portal`, `desktop` or `ivr` notify; `mobile` (and anything unrecognised) does
-  not. An account that first signed in on the phone therefore never gets these
-  texts, even if it later uses the web client - first registration is what counts.
-- **The account's own switch has to be on.** `/profile` (phone) and
-  `/desktop/settings` carry a switch for it, on by default. It can only ever
-  narrow who is notified, never widen it past the spec's rule.
-- **One text per recipient per 60 seconds.** A burst of mail cannot drain the
-  SIM's quota; the second message inside the window reports `throttled`.
-
-The delivery path records WHY for every message - `sent`, `throttled`,
-`dev-mode`, `failed`, `skipped-mobile`, `skipped-disabled` or `skipped-self` -
-and the SMTP service logs that outcome with the delivery it belongs to, so the
-answer to "why did no text arrive?" is always in `docker compose logs smtp`.
-
-- **Fresh-clone evaluator simulations, repeatedly through the build** - most
-  recently against the current commit: `git clone https://github.com/ah-REE/phonemail.git`
-  then `docker compose up -d`, all TWENTY migrations applying on a clean volume (the
-  Session table included), all four services healthy, `/`, `/mobile`, `/desktop`,
-  `/desktop/inbox`, `/desktop/settings`, `/compose` and `/favicon.ico` all answering
-  200, and the newest suites run against that clone with `COMPOSE_DIR=<clone>` -
-  most recently **ct36, ct35, ct33, ct34 and ct24, all green** - plus the round's
-  own surface checks. Earlier simulations ran larger suite sets (the full
-  twenty-three, then the twenty-seven of their day); the one documented skip is a
-  socket assertion that needs a socket client from `node_modules`, which a fresh
-  clone only has inside its container - the same assertion runs and passes on the
-  loaded database. The suites that inspect the database directly were run with
-  `COMPOSE_DIR=<clone>` so they read the stack actually under test.
-- **The service-worker counterfactual.** The stale-shell fix is not asserted by
-  reading code: the served `/sw.js` is fetched over HTTP, executed in a Node
-  sandbox with stubbed `self`/`caches`/`fetch`, and driven with real requests.
-  With a previous build's shell cached at `/` and the network available, the
-  **pre-fix** worker returns the stale shell for a navigation while the current one
-  returns the network's answer. Pre-fix stale, post-fix fresh — the counterfactual
-  holds.
-- **Load numbers** (one run, dev mode, this machine, Node HTTP client):
-  `GET /api/health` p50 **5.7 ms**, p95 **7.6 ms** over 30 sequential requests;
-  `POST /api/auth/send-otp` **13.3 ms** and `POST /api/auth/verify-otp` **13.7 ms**
-  as single round trips — comfortably inside the 500 ms login target. A 50-way
-  concurrent burst from a single client returns all 200s with a p95 of **315 ms**,
-  which is connection setup rather than server time. The OTP endpoints are
-  deliberately cooldown-guarded (60s per number, 5 wrong attempts), so they are
-  measured as round trips rather than under load.
-
-## 9. Compliance notes
-
-**a. BACKEND = NODE.JS.** Built on Next.js (App Router) whose API routes and
-server run entirely on the Node.js runtime — no Edge runtime anywhere in the
-project, which is what satisfies the "Backend: Node.js or Go" requirement.
-
-**b. EMAIL TRANSPORT = SELF-HOSTED LOCAL SMTP.** The `smtp` service is a
-self-hosted SMTP server speaking real SMTP on port 25, implemented with Node's
-`smtp-server` package (maintained by the author of `nodemailer`) rather than
-Postfix/Haraka. No third-party email API is used. The Postfix/Haraka swap path is
-documented in [`smtp/README.md`](smtp/README.md).
-
-**c. OTP AUTH.** Placeholder credentials (the committed default) run dev mode —
-fixed OTP `123456`, `devHint` in responses — so the two-command boot needs no
-secrets. Real SMS runs through a self-hosted Android SMS gateway configured via a
-gitignored `docker-compose.override.yml`. The evaluated flow never depends on real
-SMS.
-
-**d. REALTIME.** Socket.io on a custom Node server; JWT-authenticated
-connections; per-user rooms, with a 30-second polling fallback when the socket is
-unavailable.
-
-**Security.** Every security feature that is actually in this build - OTP-only auth,
-
-the JWT and its gating, the notification rules, the webhook secrets, the reply-once
-claim, party-only downloads, the group reply invariant, the alias rules, deletion
-and the service worker's scope - is written up in
-[`docs/SECURITY.md`](docs/SECURITY.md), each entry with the file and symbol to grep
-for. The honest gaps (no TLS at the app layer, the npm advisories, the 7-day token
-with no revocation, the committed placeholder secrets and their rotation policy)
-are at the end of the same document.
-
-## 10. Future work
-
-In the order it would actually help.
-
-### 10.1 End-to-end encryption - designed, and deliberately not built
-
-Per-user keypairs at signup, the private key non-extractable on the device, encrypt
-at compose, a server that holds ciphertext only: the whole design, with what it buys
-and what it costs, is in [`docs/E2E-FUTURE.md`](docs/E2E-FUTURE.md). The short
-version of why it is not here: on the web there is no *usable and safe* recovery for
-a lost device, and shipping encryption without one would turn "lost my phone" into
-"lost my mail" for exactly the users this product is for.
-
-### 10.2 A native shell (Capacitor / Android) - assessed, not taken
-
-**The assessment: feasible, but it needs a hosted backend.** A Capacitor wrapper is
-mechanically straightforward - the client is already a single-origin web app with a
-service worker, its storage is `sessionStorage`, and every call is same-origin HTTP.
-It would give a real install, a real icon and, the one thing the web cannot give,
-access to the platform keychain (§10.1) and to SMS Retriever for automatic OTP.
-
-What it needs first is the deployment: a Capacitor app cannot reach
-`localhost:3000`, because a phone has no Compose stack. Shipping the shell means
-operating the API and the SMTP hop at a public HTTPS origin - a deployment project,
-not a packaging one.
-
-**What the organisers said:** web-only, explicitly, so a native build would sit
-outside the brief.
-
-**What ships instead:** the PWA. `manifest.json` with `display: standalone` and both
-icons, a service worker with install/activate/fetch handlers registered from the
-mobile shell, realtime over a socket with a 30-second polling fallback, and five
-security headers on every response. That is install-from-the-browser, a standalone
-window and an offline shell - the same user-visible outcome as a thin native wrapper,
-with none of the deployment.
-
-**The call:** keep the PWA for this scope. Revisit Capacitor only alongside §10.1
-(native keychain) *and* a hosted backend, because either alone does not pay for
-itself.
-
-### 10.3 The small ones
-
-- Rotate the committed placeholder secrets and terminate TLS before any real
-  deployment (see §7 and `docs/SECURITY.md`).
-- Upgrade the `next`/`postcss` chains to clear the five advisories.
-- Build the profile picture, or remove the `User.avatar*` columns.
-- Port `/portal` onto the token system.
-
-## Repository layout
+## 🗂️ Project layout
 
 ```
-src/app/(mobile)/      the mobile client (onboarding, home, threads, compose, folders, profile)
-src/app/(desktop)/     the Gmail-style desktop client (/desktop, /desktop/inbox, profile, settings)
-src/app/portal/        registration-only web portal
-src/app/api/           every endpoint (auth, emails, conversations, aliases, contacts, mail/inbound, ivr, health)
-src/components/        shared UI (message card, app bar, back button, wordmark, user sheet, avatar)
-src/lib/               domain logic (alias, threadKey, timeline, folders, inbound, notify, otp, socket, phone)
-prisma/                schema + 20 committed migrations
-smtp/                  the self-hosted SMTP service and its README
-design/                the Stitch exports the visual language was built from
-docs/                  SPEC.md (the organiser's task), SECURITY.md and E2E-FUTURE.md
-PROJECT.md             the working plan and the full decisions log (§9)
+phonemail/
+├── docker-compose.yml          the four services (app, postgres, redis, smtp)
+├── docker-compose.override.yml.example   the real-credentials template (gitignored copy)
+├── .env.example                THE environment catalog — every variable, three sections
+├── server.mjs                  Next.js + socket.io in one process
+├── smtp/                       the mail hop: outbound + inbound webhook
+├── prisma/                     schema + 20 committed migrations
+├── src/
+│   ├── app/
+│   │   ├── (mobile)/           the phone client  (/, /thread, /compose, /search …)
+│   │   ├── (desktop)/          the desktop client (/desktop/inbox, /settings, /devices)
+│   │   ├── api/                every endpoint: auth, emails, conversations, files, ivr …
+│   │   └── portal/             the two-field registration page
+│   ├── components/             the shared kit (message card, sheets, toast, motion pieces)
+│   └── lib/                    auth, sessions, roles, notify, thread keys, the privacy predicate
+├── docs/                       SECURITY · SPEC · E2E-FUTURE · ivr-setup
+└── PROJECT.md                  the full build log (§9 = every round's decision)
 ```
+
+---
+
+## 📚 Documentation
+
+| Doc | What it covers |
+|---|---|
+| [docs/SECURITY.md](docs/SECURITY.md) | the security posture, grep-verifiable references, the secret audit |
+| [docs/SPEC.md](docs/SPEC.md) | the original specification this build answers |
+| [docs/E2E-FUTURE.md](docs/E2E-FUTURE.md) | the end-to-end test strategy for what comes next |
+| [docs/ivr-setup.md](docs/ivr-setup.md) | wiring the toll-free voice path |
+| [smtp/README.md](smtp/README.md) | the mail service, and the Postfix/Haraka swap path |
+| [PROJECT.md](PROJECT.md) | the complete build log — every round, in order |
+
+---
+
+## 🛠️ Real-mode operations: enabling real SMS
+
+The default checkout **deliberately sends NOTHING**, and that is the feature working, not a
+fault. Real **SMS notifications** (and real login codes) turn on only when the gitignored
+**`docker-compose.override.yml`** supplies the gateway credentials — copy
+`docker-compose.override.yml.example` and fill it in. What then has to be true for a real
+text to arrive:
+
+- **The gateway phone is online with the app running.** sms-gate.app queues each message for
+  the paired Android device; if that phone is off, the gateway still answers 2xx (meaning
+  "queued", not "delivered") and nothing arrives.
+- **The recipient is notifiable.** The spec allows the new-mail SMS only for users without
+  the mobile app, recorded as `User.registeredVia`: `portal`, `desktop` or `ivr` notify;
+  `mobile` (and anything unrecognised) does not.
+- **The wording stays short and rotated.** Indian carriers drop templated or duplicated
+  text — the formats in `src/lib/otp.ts` are only the ones manually verified to arrive.
+- **Real SMS costs real money** from a real SIM. Do not enable it while testing.
+
+**Security note for deployment:** terminate TLS in front of the app, rotate the placeholder
+secrets through the same override file, and keep the override out of git — `git check-ignore
+-v docker-compose.override.yml` proves the rule that keeps every audit green.
