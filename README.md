@@ -130,8 +130,9 @@ tab** (`sessionStorage`), so the two tabs are two independent accounts.
    That is one message and one thread, visible to all three members. The creator
    **broadcasts** (their message box is the New mail button, recipient set
    locked); every other member **replies per mail**, privately, and that reply
-   reaches only the person whose mail it answers. Nobody can add or remove a
-   recipient inside the thread.
+   reaches only the person whose mail it answers - a third member never sees it,
+   and an answer addressed to the group or to anybody but the mail's author is
+   refused by the server. Nobody can add or remove a recipient inside the thread.
 6. **An alias.** Profile → **Alias IDs** → add `john.doe7`. An alias must mix
    letters and digits and an account may hold **one**. Mail sent to
    `john.doe7@phonemail.com` arrives exactly as if the number had been used.
@@ -319,7 +320,12 @@ addressed to the one member whose mail it answers, carrying the group key
 explicitly — so a reply lives in exactly two payloads, its sender's and its
 recipient's, and nobody else's socket hears about it. `replyToId` is what
 distinguishes the two in the data, which is why a broadcast cannot be filed as a
-reply or a reply as a broadcast.
+reply or a reply as a broadcast. Round 34 tightened the read for the older data
+the fan-out era left behind (replies duplicated per member with no replyToId):
+such rows are sieved by their submission's fan-out and their subject, so a
+member's copy stays visible to its sender and to the author of the broadcast it
+answers, and to nobody else - and the send route refuses to answer anything that
+is neither a broadcast nor a reply.
 
 **The notification gate is a server decision.** `User.registeredVia` records how
 an account was *first* created; only `portal`, `desktop` and `ivr` are notified.

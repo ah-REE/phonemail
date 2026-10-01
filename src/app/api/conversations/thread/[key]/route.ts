@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser, UNAUTHORIZED_BODY } from "@/lib/auth";
 import { contactNamesByPhone } from "@/lib/contacts";
 import { prisma } from "@/lib/prisma";
+import { answeredSubject, fanOutSubmissions, groupRowVisibleToViewer, isBroadcastSubmission } from "@/lib/group-visibility";
 import { deriveMemberTags, type MemberTag } from "@/lib/roles";
 import { isGroupThreadKey, phoneOf } from "@/lib/threadKey";
 
@@ -13,10 +14,12 @@ export const dynamic = "force-dynamic";
  * GET /api/conversations/thread/[key] - one GROUP conversation (Day 6).
  *
  * A group thread has no owner, no row and no membership table: the URL carries
- * the derived key (see lib/threadKey.ts) and every Email row that carries that
- * key is the conversation. That is what makes the spec's requirement possible -
- * every member sees the WHOLE thread, including the rows that were addressed to
- * other members - without a second data model.
+ * the derived key (see lib/threadKey.ts) and the member's OWN readable rows that
+ * carry that key are the conversation - the creator's broadcasts plus that
+ * member's replies, never another member's reply. Round 34 restored this: the
+ * predicate (which includes sieving out lone reply-to-null rows that are not
+ * fan-outs - the shape the pre-reply-model fan-out left behind) lives in
+ * lib/group-visibility.ts and is shared with search.
  *
  * Authorization IS membership, proven by the data: the requester must appear as
  * sender or recipient on at least one row carrying the key. Someone who holds a
@@ -95,6 +98,44 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   // looked like a send that did nothing.
   messages.reverse();
 
+  // ROUND 34: the privacy sieve. The three branches above are the reply model's
+  // own; what they cannot tell apart is a BROADCAST (a fan-out: one submission,
+  // one row per recipient) from a LONE row with replyToId null that another
+  // member's old fan-out copied around before the reply model existed. The rule
+  // (shared with search, in lib/group-visibility.ts): a replyToId-null row is
+  // visible to others only when its submission actually fanned out - so legacy
+  // member-to-member rows are invisible to everyone but their sender, and CANNOT
+  // be read or answered by anyone else.
+  const fanOut = await fanOutSubmissions(threadKey);
+  // The founders' subjects: every broadcast's cleaned subject -> its author. Rows
+  // arrive in reading order, so the EARLIEST broadcast of a subject wins - the
+  // conversation a legacy "re:" row answered.
+  const broadcastAuthorBySubject = new Map<string, string>();
+  for (const message of messages) {
+    if (isBroadcastSubmission(message, fanOut)) {
+      const keyOf = answeredSubject(message.subject);
+      if (keyOf && !broadcastAuthorBySubject.has(keyOf)) {
+        broadcastAuthorBySubject.set(keyOf, message.fromUserId);
+      }
+    }
+  }
+  const visibleMessages = messages.filter((message) =>
+    groupRowVisibleToViewer(
+      {
+        fromUserId: message.fromUserId,
+        toUserId: message.toUserId,
+        replyToId: message.replyToId,
+        submissionId: message.submissionId,
+        subject: message.subject,
+      },
+      user.sub,
+      fanOut,
+      broadcastAuthorBySubject,
+    ),
+  );
+  messages.length = 0;
+  messages.push(...visibleMessages);
+
 
 
   if (messages.length === 0) {
@@ -150,10 +191,10 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   const unread = shown.filter((message) => message.toUserId === user.sub && !message.isRead).length;
   const latest = shown[shown.length - 1];
 
-  // The creator is the member who broadcasts - the sender of the thread's first
-  // broadcast. Derived, like everything else about a group, so no column has to
-  // remember it: who opened the conversation is the member whose mail did.
-  const broadcasts = shown.filter((message) => !message.replyToId);
+  // The creator is the member who broadcasts - the sender of the thread's latest
+  // broadcast. Fan-out-validated (round 34), so a legacy member's lone
+  // replyToId-null row can never masquerade as a broadcast here.
+  const broadcasts = shown.filter((message) => isBroadcastSubmission(message, fanOut));
   const creatorPhone =
     broadcasts.length > 0 ? phoneOf(broadcasts[broadcasts.length - 1].fromAddress) : null;
 

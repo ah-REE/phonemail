@@ -251,7 +251,7 @@ export async function POST(request: Request) {
 
     const rows = await prisma.email.findMany({
       where: { threadKey: groupThreadKey },
-      select: { id: true, fromUserId: true, toUserId: true },
+      select: { id: true, fromUserId: true, toUserId: true, replyToId: true, submissionId: true, subject: true },
     });
 
     if (rows.length === 0) {
@@ -276,6 +276,25 @@ export async function POST(request: Request) {
         { error: "A reply goes to the member who wrote that mail." },
         { status: 400 },
       );
+    }
+
+    // ROUND 34: a reply must answer a BROADCAST (a real fan-out) or a REPLY. A
+    // lone replyToId-null row is the shape the pre-reply-model fan-out left
+    // behind when it copied replies around; answering it would open exactly the
+    // member-to-member channel the invariant forbids, so it is refused here -
+    // before the reply-once claim below, which is a mutation.
+    if (answered.replyToId === null) {
+      const copies = answered.submissionId
+        ? await prisma.email.count({ where: { submissionId: answered.submissionId } })
+        : 1;
+      // A broadcast is a fan-out of a NEW subject; a fanned "re:" submission is
+      // the pre-reply-model fan-out's copy of a reply - answerable by nobody.
+      if (copies < 2 || /^re:\s*/i.test(answered.subject ?? "")) {
+        return NextResponse.json(
+          { error: "A reply must answer a broadcast or a reply." },
+          { status: 400 },
+        );
+      }
     }
   }
 

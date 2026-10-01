@@ -11,6 +11,8 @@ import {
   SEARCH_THREAD_LIMIT,
   snippetAround,
 } from "@/lib/search";
+import { groupRowVisibleToViewer } from "@/lib/group-visibility";
+import { answeredSubject } from "@/lib/group-visibility";
 import { phoneOf } from "@/lib/threadKey";
 
 export const runtime = "nodejs";
@@ -133,7 +135,40 @@ export async function GET(request: Request) {
       body: true,
       createdAt: true,
       threadKey: true,
+      replyToId: true,
+      submissionId: true,
     },
+  });
+
+  // ROUND 34: the thread endpoint's privacy sieve, applied here too (search
+  // spans threads, so it post-filters): a group row with replyToId null that is
+  // not MY row must belong to a real fan-out (a broadcast) - a lone null row is
+  // the shape the old fan-out left behind, invisible to everyone but its sender.
+  const candidateSubmissions = rows
+    .filter((row) => row.threadKey && row.replyToId === null && row.fromUserId !== user.sub)
+    .map((row) => row.submissionId)
+    .filter((value): value is string => Boolean(value));
+  const fanOutRows = candidateSubmissions.length
+    ? await prisma.email.groupBy({
+        by: ["submissionId"],
+        where: { submissionId: { in: candidateSubmissions } },
+        _count: { _all: true },
+      })
+    : [];
+  const fanOut = new Set(
+    fanOutRows
+      .filter((entry) => (entry._count?._all ?? 0) >= 2 && entry.submissionId)
+      .map((entry) => entry.submissionId as string),
+  );
+  const visibleRows = rows.filter((row) => {
+    if (!row.threadKey) {
+      return true; // pairwise rows already obey the endpoint's two branches
+    }
+    return groupRowVisibleToViewer(
+      { fromUserId: row.fromUserId, toUserId: row.toUserId, replyToId: row.replyToId, submissionId: row.submissionId, subject: row.subject },
+      user.sub,
+      fanOut,
+    );
   });
 
   interface Hit {
@@ -152,7 +187,7 @@ export async function GET(request: Request) {
   const groupMembers = new Map<string, Set<string>>();
   const counterparts = new Map<string, string>();
 
-  for (const row of rows) {
+  for (const row of visibleRows) {
     const isGroup = Boolean(row.threadKey);
     const other = row.fromUserId === user.sub ? row.toAddress : row.fromAddress;
     const identity = isGroup ? `group:${row.threadKey}` : `pair:${phoneOf(other)}`;

@@ -459,7 +459,13 @@ export default function GroupThreadPage() {
             ? messages.find((entry) => entry.id === message.replyToId)
             : undefined;
           // Members reply from a broadcast; the creator keeps the composer.
-          const canReply = !message.mine && !message.replyToId;
+          // ROUND 34: a member may answer the CREATOR's mail only. The server enforces
+  // it; the affordance must not offer what the server refuses - notably not a
+  // legacy member-to-member row.
+  const canReply =
+    !message.mine &&
+    creatorPhone !== null &&
+    String(message.from).startsWith(`${creatorPhone}@`);
           const answered = myReplyTo(message);
 
           // RUNS: consecutive messages from one sender are one person talking, so the

@@ -3930,6 +3930,40 @@ ct6 checked for dev mode only AFTER sending its OTP request; it now carries the
 same hard guard as every other sign-in suite. Full regression: 1320 assertions
 across 40 suites, 0 red.
 
+**Round 34 - the group privacy invariant (the owner's brief): found, reproduced,
+restored, frozen.** THE BREACH, reproduced live with three accounts: every
+payload was correct for FRESH mail, but the loaded database carries the
+pre-reply-model fan-out's leftovers - member replies duplicated per recipient
+with replyToId NULL, or fanned "re:" submissions - and the read filter's
+"replyToId null = broadcast" assumption plus its "addressed to me" branch let
+those rows reach members: C's payload contained B's "re:" rows addressed to C
+and B's fanned copies addressed to others. Worse, the send guard's two rules -
+"recipient of a message can reply" and "addressed to that row's author" - both
+pass for such a row, so C's reply to B's legacy row was ACCEPTED (202): a
+member-to-member channel. THE ARCHAEOLOGY (git log over both files): the
+filter's three branches have been stable since a17ba82 ("Click-through round 3
+- ... the group reply model") refined ea6c277's open clause ({toUserId: {not}} -
+a restyle commit that had shipped no reply privacy at all); the send guard's
+rules arrived with a17ba82 and were never weakened. The loosening was the
+model's own assumption: it treated every replyToId-null row as a broadcast,
+and the pre-model fan-out left exactly such rows behind. The suites (ct2/ct3/
+ct18, live sockets) were green because they exercise fresh data - ct18's
+assertions are intact; no suite had been re-pointed weaker. THE FIX: one shared
+predicate (src/lib/group-visibility.ts) applied by the thread endpoint and
+search - a replyToId-null row is a BROADCAST only when its submission actually
+fanned out (2+ copies) AND its subject is not a "re:" answer; a fanned "re:"
+legacy row is visible to its sender and to the author of the broadcast it
+answers (recovered by subject), never to a fellow member; the send route
+refuses to answer anything that is neither a broadcast nor a reply, BEFORE the
+reply-once claim; the affordances follow - members answer the creator's mail
+only (both clients' reply buttons are creator-scoped), and the desktop's group
+reply, which had addressed EVERY other member, now addresses the mail's author
+alone. THE FREEZE: ct38 (new, 29 assertions) proves the invariant on every
+surface - payloads, search, the reply refusals, the affordances, and the live
+socket isolation - including SQL-seeded legacy rows in both shapes (lone and
+fanned), so no future round can quietly re-point it without the diff showing.
+Full regression: 1337 assertions across 41 suites, 0 red.
+
 ## 10. OTP Implementation Reference (historical — Fast2SMS)
 
 > **Note (Day 2 hotfix):** the live transport is Twilio's Messages REST API.

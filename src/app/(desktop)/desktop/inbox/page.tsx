@@ -152,6 +152,9 @@ function InboxInner() {
     accountName: string | null;
     address: string;
   } | null>(null);
+  /** ROUND 34: the group's creator (from the thread payload) - members reply
+      only to their mail. */
+  const [threadCreator, setThreadCreator] = useState<string | null>(null);
   const [groupDetails, setGroupDetails] = useState<{
     members: string[];
     memberNames: (string | null)[];
@@ -317,7 +320,9 @@ function InboxInner() {
           memberNames?: (string | null)[];
           memberAddresses?: string[];
           memberTags?: Record<string, MemberTag>;
+          creatorPhone?: string | null;
         };
+        setThreadCreator(body.creatorPhone ?? null);
         setMessages(body.messages ?? []);
         setThreadSubject(body.subject ?? "");
         // ROUND 28: the member list and role tags, from the thread payload itself,
@@ -392,9 +397,10 @@ function InboxInner() {
   function openReplyTo(message: Message) {
     const quoted = message.body.replace(/\s+/g, " ").slice(0, 160);
     if (selectedGroup) {
-      const others = selectedGroup.members.filter((member) => member !== phoneOf(message.from));
+      // ROUND 34: inside a group a reply is addressed to the MAIL'S AUTHOR alone -
+      // the creator's mail for members - never the group or another member.
       setComposeRequest({
-        to: others.length > 0 ? others : selectedGroup.members,
+        to: [phoneOf(message.from)],
         subject: message.subject.toLowerCase().startsWith("re:") ? message.subject : `Re: ${message.subject}`,
         quoted,
         replyToId: message.id,
@@ -965,17 +971,26 @@ function InboxInner() {
                         <AttachmentCards attachments={message.attachments} />
 
                         <div className="mt-4 flex items-center gap-3">
-                          <button
-                            type="button"
-                            className="press inline-flex min-h-0 items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:bg-accent-tint"
-                            onClick={() => openReplyTo(message)}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <path d="M9 7L4 12l5 5" />
-                              <path d="M4 12h9a6 6 0 0 1 6 6v1" />
-                            </svg>
-                            Reply
-                          </button>
+                          {/* ROUND 34: members answer the creator's mail only;
+                              nobody answers their own, and the answered mail says
+                              "Replied" instead. */}
+                          {!message.mine &&
+                            !message.repliedAt &&
+                            (!selectedGroup ||
+                              (threadCreator !== null &&
+                                String(message.from).startsWith(`${threadCreator}@`))) && (
+                              <button
+                                type="button"
+                                className="press inline-flex min-h-0 items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent transition-colors duration-ui hover:bg-accent-tint"
+                                onClick={() => openReplyTo(message)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M9 7L4 12l5 5" />
+                                  <path d="M4 12h9a6 6 0 0 1 6 6v1" />
+                                </svg>
+                                Reply
+                              </button>
+                            )}
                           {message.repliedAt && <span className="text-xs text-on-surface-variant">Replied</span>}
                           {message.tag === "favorite" ? (
                             <AnimatedFavoriteChip show pop={starPop === message.id} />
