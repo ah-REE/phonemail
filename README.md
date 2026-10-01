@@ -29,6 +29,7 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 2. [Run it — two commands](#-run-it--two-commands)
    - [Your first account, step by step](#your-first-account-step-by-step)
    - [Dev mode vs real mode (and how to switch)](#dev-mode-vs-real-mode-and-how-to-switch)
+   - [Environment & configuration (every variable, clearly)](#environment--configuration-every-variable-clearly)
    - [🎬 The demo script](#-the-demo-script)
 3. [Features](#-features)
    - [💬 Messages & conversations](#-messages--conversations)
@@ -126,7 +127,8 @@ you create one file — and turns back off when you remove it.** There is no oth
 
 1. Copy the template: `docker-compose.override.yml.example` → `docker-compose.override.yml`.
 2. Fill in the **two values** it asks for: `SMS_GATE_LOGIN` and `SMS_GATE_PASSWORD` (your
-   sms-gate.app credentials; the **gateway phone** — see §13 — must be online).
+   sms-gate.app credentials; the **gateway phone** — see §13 — must be online — and
+   [every variable is explained here](#environment--configuration-every-variable-clearly)).
 3. Apply: `docker compose up -d` (Compose merges the override automatically — no other flag).
 4. Check: request a login code — the `devHint` is gone and the code arrives by SMS.
 
@@ -139,6 +141,54 @@ you create one file — and turns back off when you remove it.** There is no oth
 The OTP request policy is tiered: the first **two** requests for a number are immediate, the
 next must wait 60s, and no number may receive more than **five** per two hours — the same rule
 in both modes, so the evaluator can never be locked out.
+
+### Environment & configuration (every variable, clearly)
+
+**The one thing to know: there is nothing to configure to run this.** No `.env` file is
+required, read, or even possible to get wrong — `docker compose up -d` is the whole setup.
+Everything the app reads lives inside `docker-compose.yml` with a working value, and the
+compose file contains no `${...}` substitutions, so a `.env` file would do nothing here.
+
+**Where the story is written down: [`.env.example`](.env.example).** It is a **reference catalog, not a file you copy.** Its three sections:
+
+1. **Set by Docker Compose** — every variable the containers read, with its committed value.
+2. **Real-value overrides** — the gitignored `docker-compose.override.yml`: where real
+   credentials (and rotations) belong. Never committed.
+3. **Not read by this build** — the transport history (`FAST2SMS_API_KEY`, the Twilio
+   trio), kept visible so no key is silently forgotten.
+
+**Every variable, in one table:**
+
+| Variable | Read by | What it does | Value at HEAD |
+|---|---|---|---|
+| `DATABASE_URL` | app | Postgres connection (internal DNS name) | `postgresql://phonemail:…@postgres:5432/phonemail` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | postgres | the database's own bootstrap | `phonemail` / committed placeholder / `phonemail` |
+| `REDIS_URL` | app | Redis: OTP codes, rate windows, throttles | `redis://redis:6379` |
+| `JWT_SECRET` | app | signs session tokens — **rotate for any real deployment** | committed placeholder |
+| `MAIL_WEBHOOK_SECRET` | app + smtp | authenticates the smtp→app inbound webhook (rotate both together) | committed placeholder |
+| `IVR_WEBHOOK_SECRET` | app | the Exotel IVR signup webhook's shared secret | committed placeholder |
+| `MAIL_DOMAIN` | app + smtp | the mail domain both sides accept | `phonemail.com` |
+| `SMTP_HOST` / `SMTP_PORT` | app | the internal mail hop | `smtp` / `25` |
+| `APP_INBOUND_URL` | smtp | where the mail service posts each parsed message | `http://app:3000/api/mail/inbound` |
+| `SMS_GATE_LOGIN` / `SMS_GATE_PASSWORD` | app | gateway credentials — **the placeholders ARE what keeps dev mode on** | committed placeholders (= dev mode) |
+| `NODE_ENV` / `PORT` | app | runtime mode; the listen port (published as `3000:3000`) | `production` / `3000` |
+| `HOSTNAME` | app | bind address; Docker injects it per container (the code falls back to `0.0.0.0`) | Docker-injected |
+
+**Setup, by scenario — pick one:**
+
+1. **Just run it (the evaluator's path):** nothing to do — `git clone` → `docker compose up -d`.
+2. **Change a value** (a different port, domain, or placeholder): edit `docker-compose.yml`
+   for a quick local experiment — or, for anything you want to keep **out of git**, put just
+   that key in `docker-compose.override.yml` (Compose merges it automatically). Then
+   `docker compose up -d` again.
+3. **Real SMS, or rotating secrets:** the override file again — the four steps and the way
+   back are in [Dev mode vs real mode](#dev-mode-vs-real-mode-and-how-to-switch), and the
+   gateway checklist is [§13](#-real-mode-operations-the-gateway-checklist).
+
+**Rotating any secret is one edit + one restart:** change it in `docker-compose.override.yml`
+(never in a committed file), run `docker compose up -d`. The committed placeholders are safe
+to publish; the real values belong to the override alone — see
+[docs/SECURITY.md](docs/SECURITY.md).
 
 ### 🎬 The demo script
 
