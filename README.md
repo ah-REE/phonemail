@@ -151,6 +151,23 @@ you create one file — and turns back off when you remove it.** There is no oth
 > The override file is **gitignored on purpose** — never commit it. The committed placeholder
 > values are what keeps the default dev mode working for anyone who clones.
 
+**What's inside the template.** Four commented blocks cover the whole real-deployment story:
+
+| Block | Service | Carries |
+|---|---|---|
+| 1 | app | `SMS_GATE_LOGIN` + `SMS_GATE_PASSWORD` — the switch: the two values to fill |
+| 2 | app | `JWT_SECRET`, `MAIL_WEBHOOK_SECRET` — rotate before any real deployment |
+| 3 | app | `IVR_WEBHOOK_SECRET` — the Twilio IVR webhook token |
+| 4 | smtp | the mail hop's half of `MAIL_WEBHOOK_SECRET` |
+
+The `smtp` block is short on purpose: the only smtp value a real deployment changes is its
+half of the mail secret — `MAIL_DOMAIN`, `SMTP_PORT` and `APP_INBOUND_URL` keep committed
+defaults that already work. And that secret is read by **both** containers, so a drifted pair
+would break mail *silently* (the SMTP service accepts the message, its callback to the app is
+refused with `401 Invalid webhook secret.`, and the message never reaches any inbox). The
+template therefore writes it exactly **once** — a YAML anchor (`&mail_secret`) referenced by
+both services — one line to edit, and the two copies can never disagree.
+
 The OTP request policy is **one flat cooldown**: 60 seconds between requests for a number —
 and **a successful sign-in clears it instantly**, so a *request → sign in → request again*
 flow never waits. Only abandoned or unverified requests leave the timer standing. (A separate
