@@ -33,11 +33,14 @@ group threads that cannot leak, and a toll-free path for people who have no smar
    - [🎬 The demo script](#-the-demo-script)
 3. [Features](#-features)
    - [💬 Messages & conversations](#-messages--conversations)
+   - [👤 Identity, contacts & the address book](#-identity-contacts--the-address-book)
    - [👥 Groups & the privacy triangle](#-groups--the-privacy-triangle)
    - [📎 Files](#-files)
    - [🔎 Search & organisation](#-search--organisation)
+   - [🚫 Spam, trash & the folders](#-spam-trash--the-folders)
    - [🛡️ Trust & safety](#️-trust--safety)
    - [🔐 Account, sessions & the login door](#-account-sessions--the-login-door)
+   - [⚙️ Settings — every row](#️-settings--every-row)
    - [📱 Both clients & the feedback language](#-both-clients--the-feedback-language)
    - [☎️ No-smartphone paths](#️-no-smartphone-paths)
 4. [Tech stack](#️-tech-stack)
@@ -241,7 +244,26 @@ to publish; the real values belong to the override alone — see
 | Attachments | multipart upload, MIME over the internal SMTP hop, Postgres storage, party-only download |
 | Drafts | server-side, one per user, debounced saves from both composers, restored on return |
 | Delete chat | hides *your* side only — the counterpart keeps their copy, and new mail starts it again |
-| Folders | Inbox / Spam / Trash / Sent with per-viewer semantics; "Empty trash" is a list-header action on both clients |
+| Folders | Spam, Trash and Drafts screens whose state is per-viewer; your sent mail lives in its threads and appears in Trash (as "To: …" rows) when you clear it; "Empty trash" is a list-header action on both clients |
+
+### 👤 Identity, contacts & the address book
+
+- **Your number is your identity.** You are `9876543210@phonemail.com` — there is no
+  username. A **display name** (Profile → "Add your name") is editable on both clients and is
+  what others see beside your mail.
+- **Aliases**: one per account, must mix letters and digits (`john.doe7`), added and removed
+  from Settings on both clients. Mail to an alias lands in the same inbox as mail to the
+  number.
+- **Contacts — the address book** (`/contacts`, the phone's chat-list shape): one row per
+  address, showing **the name you gave it**; without one, the account's own name; otherwise
+  the address itself — never an invented placeholder. Tapping a contact opens the
+  conversation, not a composer.
+- **Saving a person**: every detail sheet carries the save block — "Add to contacts"
+  pre-fills the name field from what the sheet already knows, the save morphs into "Saved",
+  and "Remove from contacts" puts it back. **The name you saved beats the name the account
+  chose** — precedence is product behaviour, enforced by the server.
+- **How you appear**: your own rows read "You: …" in previews, and your sent mail carries the
+  single **Sent** tick.
 
 ### 👥 Groups & the privacy triangle
 
@@ -272,6 +294,19 @@ recipient(s) only, 403 for everyone else, 401 without a token.
 - Contacts with your own labels (your name for someone beats theirs), one alias per account,
   tags (**Important / Later / Done**), **Favorite** with its star-pop, unread badges.
 
+### 🚫 Spam, trash & the folders
+
+- **Move to Spam** sits on every actionable card and bubble; **Spam** is a folder screen
+  (alongside Trash and Drafts under Profile → Folders on the phone) that lists what is in it
+  and offers the honest way back — **Move to inbox**.
+- **Both are per-viewer.** Moving mail to Spam or Trash changes *your* copy: the other side
+  keeps theirs, untouched.
+- **Your own mail cannot be spammed.** Moving mail you sent to "Spam" would hide the
+  recipient's copy of something they received — so the sender's action lands in **Trash**
+  instead (those rows read "To: …"), and **Empty trash** clears it, on both clients.
+- **Spam ≠ a report.** The folder is personal filing; [Report spam](#️-trust--safety) is the
+  signal that travels with the account.
+
 ### 🛡️ Trust & safety
 
 - **Sender credibility** in the user sheet on both clients: member since (with a human age),
@@ -292,6 +327,24 @@ recipient(s) only, 403 for everyone else, 401 without a token.
   lock — the JWT remains the API's boundary.
 - **Delete account** states exactly what will be removed, requires a live OTP, and then removes
   it all — cleanly, in foreign-key order.
+
+### ⚙️ Settings — every row
+
+The phone keeps them in **Profile** (Security · Personal details · Alias IDs · Folders ·
+Signed-in devices · Preferences); the desktop has its own **Settings** page. Same features,
+platform chrome:
+
+| Row | What it does |
+|---|---|
+| **Personal details** | your display name ("Add your name" + Save) and the number itself |
+| **Alias IDs** | add / remove your one alias; the mix-letters-and-digits rule is stated inline |
+| **Language** | English is live; Hindi and Tamil are listed as coming soon (stated, not smuggled) |
+| **Notify me about new mail by SMS** | a real toggle, stored per account — offered only to accounts that did not register on the mobile app (the spec's own rule; see [§13](#-real-mode-operations-the-gateway-checklist)) |
+| **Font size** | a per-device display preference ("the elder-friendly design makes this worth having"), applied before first paint |
+| **PIN lock** (Security) | a 4-digit interface lock: set / change / remove each require the current PIN; it **resets with an OTP** when forgotten; five wrong attempts lock for a minute — and the doors remember the number and offer **one-field PIN sign-in** |
+| **Signed-in devices** | every session, labelled, with a per-device **Log out** — including this one |
+| **Folders** | quick links to Drafts / Spam / Trash (phone) |
+| **Delete account** | states exactly what will be removed, takes an OTP, then removes it all |
 
 ### 📱 Both clients & the feedback language
 
