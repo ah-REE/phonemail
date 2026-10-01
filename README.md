@@ -12,7 +12,7 @@ group threads that cannot leak, and a toll-free path for people who have no smar
 
 ## 🎬 Video Demo
 
-[🎬 **Watch the PhoneMail Video Demo**]([https://www.youtube.com/watch?v=YOUR_VIDEO_ID](https://youtu.be/17zlQ5wG2QM))
+[🎬 **Watch the PhoneMail Video Demo**](https://youtu.be/17zlQ5wG2QM)
 
 
 > **At a glance**
